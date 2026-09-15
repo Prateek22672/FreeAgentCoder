@@ -1,0 +1,7 @@
+name = "agentic-relay"
+main = "worker.js"
+compatibility_date = "2026-09-01"
+
+# Lock the relay to your deployed site (comma-separated). Leave unset to allow any origin.
+# [vars]
+# ALLOWED_ORIGIN = "https://agentic.pages.dev"

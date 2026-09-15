@@ -1,0 +1,30 @@
+{
+  "name": "agentic-monorepo",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Agentic: an AI coding helper and app builder that runs on free LLM tiers.",
+  "type": "module",
+  "workspaces": [
+    "packages/*",
+    "apps/*"
+  ],
+  "scripts": {
+    "agentic": "tsx packages/cli/src/index.ts",
+    "build": "npm run build -w @agentic/cli",
+    "typecheck": "tsc -p packages/core && tsc -p packages/cli",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "web": "npm run dev -w @agentic/web",
+    "web:build": "npm run build -w @agentic/web"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "devDependencies": {
+    "@types/node": "^22.20.2",
+    "esbuild": "^0.28.2",
+    "tsx": "^4.23.13",
+    "typescript": "^7.0.2",
+    "vitest": "^5.0.0"
+  }
+}

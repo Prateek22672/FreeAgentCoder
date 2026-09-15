@@ -1,0 +1,22 @@
+{
+  "name": "@agentic/cli",
+  "version": "0.1.0",
+  "description": "Agentic in your terminal: an AI coding agent that reads, edits, runs and builds your projects.",
+  "type": "module",
+  "bin": {
+    "agentic": "dist/agentic.js"
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "node build.mjs",
+    "typecheck": "tsc -p tsconfig.json"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "devDependencies": {
+    "@agentic/core": "*"
+  }
+}
