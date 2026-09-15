@@ -25,9 +25,22 @@ export interface ProviderEcho {
   data: unknown;
 }
 
+/** An image attached to a user message (screenshots and the like). */
+export interface ImagePart {
+  mimeType: 'image/png' | 'image/jpeg' | 'image/webp' | 'image/gif';
+  /** base64, no data: prefix */
+  data: string;
+  name?: string;
+}
+
 export interface UserMessage {
   role: 'user';
   content: string;
+  /**
+   * Attachments. Vision models receive the images; text-only models get a
+   * short placeholder naming them instead.
+   */
+  images?: ImagePart[];
   /** Injected by the harness (nudges, summaries) rather than typed by a person. */
   synthetic?: boolean;
 }

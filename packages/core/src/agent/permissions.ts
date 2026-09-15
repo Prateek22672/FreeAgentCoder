@@ -72,6 +72,14 @@ const DANGEROUS: [RegExp, string][] = [
   [/\bkill(?:all)?\s+-9\b|\btaskkill\b.*\/f\b/i, 'force-kills processes'],
   [/\bchmod\s+-R\b|\bchown\s+-R\b/, 'changes permissions recursively'],
   [/\bdocker\s+(?:system\s+prune|rm|rmi|volume\s+rm)\b/, 'deletes Docker resources'],
+  [/\b(?:choco|winget|scoop)\s+(?:install|upgrade|uninstall)\b/i, 'installs or removes software system-wide'],
+  [/\bbrew\s+(?:install|reinstall|upgrade|uninstall)\b/, 'installs or removes software system-wide'],
+  [/\b(?:apt|apt-get|dnf|yum|zypper|apk)\s+(?:install|remove|purge|upgrade)\b|\bpacman\s+-S/, 'installs or removes software system-wide'],
+  [/\b(?:npm|pnpm|bun)\s+(?:i|install|add|uninstall|remove|rm)\b[^|;&\n]*\s(?:-g|--global)\b|\byarn\s+global\s+(?:add|remove)\b/, 'installs packages globally'],
+  [
+    /(?:>{1,2}|\btee\b)[^|;&\n]*\.(?:bashrc|bash_profile|zshrc|zprofile|profile)\b|\b(?:Add-Content|Set-Content|Out-File)\b[^|;&\n]*\$PROFILE\b|\bsetx\b/i,
+    'changes your shell profile or environment variables permanently',
+  ],
   [/\bsudo\b|\brunas\b/i, 'runs with administrator rights'],
 ];
 

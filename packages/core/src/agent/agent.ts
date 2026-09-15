@@ -11,13 +11,15 @@ import {
   type ToolContext,
   type ToolResult,
 } from '../tools/types';
-import type { AssistantMessage, Message, Todo, ToolCall, ToolSchema, Usage } from '../types';
+import { describeImages, normalizeImage } from '../providers/images';
+import type { AssistantMessage, ImagePart, Message, Todo, ToolCall, ToolSchema, Usage, UserMessage } from '../types';
 import { cleanModelText, truncateMiddle } from '../util/text';
 import { displayPath, type Workspace } from '../workspace/types';
 import {
   compactionMessage,
   dropEchoes,
   fallbackSummary,
+  IMAGES_REMOVED_NOTE,
   microCompact,
   splitTail,
   SUMMARY_INSTRUCTIONS,
@@ -44,6 +46,21 @@ export interface AgentOptions {
   /** Resume a saved conversation. */
   messages?: Message[];
   todos?: Todo[];
+  /**
+   * Asked when the model is about to end its turn. Return a message to send it
+   * back to work (for example, required checks haven't passed), or nothing to
+   * let it finish. Asked at most twice per turn.
+   */
+  reviewCompletion?: (message: AssistantMessage) => string | undefined | Promise<string | undefined>;
+}
+
+export interface RunOptions {
+  signal?: AbortSignal;
+  /**
+   * Images attached to this user message (e.g. screenshots). Vision models see
+   * them; text-only models get a placeholder naming them.
+   */
+  images?: ImagePart[];
 }
 
 export type AgentEvent =
@@ -140,21 +157,24 @@ export class Agent {
   }
 
   /** Run one user turn. Consume the events to drive a UI. */
-  async *run(input: string, options: { signal?: AbortSignal } = {}): AsyncGenerator<AgentEvent> {
+  async *run(input: string, options: RunOptions = {}): AsyncGenerator<AgentEvent> {
     if (this.running) throw new Error('The agent is already working on something.');
     this.running = true;
     try {
-      yield* this.loop(input, options.signal ?? new AbortController().signal);
+      yield* this.loop(input, options.signal ?? new AbortController().signal, options.images);
     } finally {
       this.running = false;
     }
   }
 
-  private async *loop(input: string, signal: AbortSignal): AsyncGenerator<AgentEvent> {
+  private async *loop(input: string, signal: AbortSignal, images?: ImagePart[]): AsyncGenerator<AgentEvent> {
     this.checkpoints.beginTurn();
-    this.messages.push({ role: 'user', content: input });
+    const request: UserMessage = { role: 'user', content: input };
+    if (images?.length) request.images = images.map(normalizeImage);
+    this.messages.push(request);
     const maxSteps = this.opts.maxSteps ?? 80;
     let nudges = 0;
+    let reviews = 0;
     let lastKey = '';
     let repeats = 0;
     let forcedCompaction = false;
@@ -244,6 +264,15 @@ export class Agent {
           if (nudge) {
             nudges++;
             this.messages.push({ role: 'user', content: nudge, synthetic: true });
+            continue;
+          }
+        }
+        if (reviews < 2 && this.opts.reviewCompletion && message.stop !== 'max_tokens') {
+          const feedback = await this.opts.reviewCompletion(message);
+          if (feedback) {
+            reviews++;
+            this.messages.push({ role: 'user', content: feedback, synthetic: true });
+            yield { type: 'notice', message: 'The task is not finished yet: required checks are still missing. Continuing.' };
             continue;
           }
         }
@@ -468,10 +497,13 @@ export class Agent {
       yield { type: 'notice', message: `Couldn't get a model summary (${errorText(err)}); using a basic one.` };
       summary = fallbackSummary(head);
     }
-    const latest = [...head].reverse().find((m) => m.role === 'user' && !m.synthetic);
+    const latest = [...head].reverse().find((m): m is UserMessage => m.role === 'user' && !m.synthetic);
     const tailHasRequest = tail.some((m) => m.role === 'user' && !m.synthetic);
+    // Images in the summarized messages are dropped; only their names survive, as text.
+    const latestText =
+      latest?.images?.length ? `${latest.content}\n[${describeImages(latest.images)} ${IMAGES_REMOVED_NOTE}]` : latest?.content;
     this.messages = [
-      { role: 'user', content: compactionMessage(summary, tailHasRequest ? undefined : latest?.content), synthetic: true },
+      { role: 'user', content: compactionMessage(summary, tailHasRequest ? undefined : latestText), synthetic: true },
       ...tail,
     ];
     dropEchoes(this.messages);

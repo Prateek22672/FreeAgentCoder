@@ -1,6 +1,7 @@
 import type { AssistantMessage, Message, ToolSchema } from '../types';
 import { estimateTokens } from '../util/text';
 import { ProviderError, type ProviderErrorKind } from './errors';
+import { imageTokens } from './images';
 import { pickModel } from './presets';
 import type { ChatRequest, Provider, StreamEvent } from './types';
 
@@ -126,7 +127,7 @@ function defaultSleep(ms: number, signal?: AbortSignal): Promise<void> {
 export function estimateRequestTokens(system: string, messages: Message[], tools: ToolSchema[]): number {
   let tokens = estimateTokens(system) + estimateTokens(JSON.stringify(tools));
   for (const m of messages) {
-    tokens += estimateTokens(m.content) + 4;
+    tokens += estimateTokens(m.content) + 4 + imageTokens(m);
     if (m.role === 'assistant' && m.toolCalls) tokens += estimateTokens(JSON.stringify(m.toolCalls));
   }
   return tokens;
@@ -266,6 +267,15 @@ export class ModelRouter {
     this.cooldownUntil.set(entry, this.now() + Math.min(MAX_TRANSIENT_COOLDOWN_MS, base * 2 ** (streak - 1)));
   }
 
+  /** A model that keeps hitting rate limits while others can answer is parked longer each time. */
+  private rateLimitCooldown(entry: RouterEntry, retryAfter: number | undefined, hasAlternative: boolean): number {
+    const base = retryAfter ?? 60_000;
+    if (!hasAlternative) return base;
+    const streak = (this.failStreak.get(entry) ?? 0) + 1;
+    this.failStreak.set(entry, streak);
+    return Math.max(base, Math.min(MAX_TRANSIENT_COOLDOWN_MS, 15_000 * 2 ** (streak - 1)));
+  }
+
   private async *attempt(
     entry: RouterEntry,
     req: Omit<ChatRequest, 'model'>,
@@ -321,7 +331,7 @@ export class ModelRouter {
               await this.sleep(retryAfter + 250, req.signal);
               continue;
             }
-            this.cooldownUntil.set(entry, this.now() + (retryAfter ?? 60_000));
+            this.cooldownUntil.set(entry, this.now() + this.rateLimitCooldown(entry, retryAfter, hasAlternative));
             return { ok: false, error };
           }
           case 'too_large':

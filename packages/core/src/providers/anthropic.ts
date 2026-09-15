@@ -2,6 +2,7 @@ import Anthropic from '@anthropic-ai/sdk';
 import type { AssistantMessage, Message, ToolCall, Usage } from '../types';
 import { toolCallId } from '../util/ids';
 import { classify, ProviderError, retryAfterFrom } from './errors';
+import { imagePlaceholder, modelSupportsImages, sendableImages } from './images';
 import type { ChatRequest, Provider, StreamEvent } from './types';
 
 /**
@@ -21,6 +22,8 @@ export interface AnthropicConfig {
   browser?: boolean;
   /** Sees the HTTP response headers of each request (rate-limit dashboards). */
   onHeaders?: (headers: Headers) => void;
+  /** Whether the model accepts image input. Default: true for claude-* models. */
+  supportsImages?: boolean | ((model: string) => boolean);
 }
 
 function tapHeaders(onHeaders: (headers: Headers) => void): typeof fetch {
@@ -68,12 +71,18 @@ export class AnthropicProvider implements Provider {
     return ids;
   }
 
+  supportsImages(model: string): boolean {
+    const opt = this.cfg.supportsImages;
+    if (typeof opt === 'function') return opt(model);
+    return opt ?? modelSupportsImages(this.id, model);
+  }
+
   async *stream(req: ChatRequest): AsyncGenerator<StreamEvent> {
     const params: Anthropic.Beta.MessageCreateParamsStreaming = {
       model: req.model,
       max_tokens: this.cfg.maxOutputTokens ?? 64_000,
       system: req.system,
-      messages: toAnthropicMessages(req.messages),
+      messages: toAnthropicMessages(req.messages, { images: this.supportsImages(req.model) }),
       tools: req.tools.map((t) => ({
         name: t.name,
         description: t.description,
@@ -167,7 +176,8 @@ function toAssistantMessage(final: Anthropic.Beta.BetaMessage, model: string): A
   return message;
 }
 
-export function toAnthropicMessages(messages: Message[]): MessageParam[] {
+/** `images: false` replaces attachments with a text placeholder (default: send them). */
+export function toAnthropicMessages(messages: Message[], options: { images?: boolean } = {}): MessageParam[] {
   const out: MessageParam[] = [];
   const push = (role: 'user' | 'assistant', blocks: ContentBlock[]) => {
     if (!blocks.length) return;
@@ -178,7 +188,20 @@ export function toAnthropicMessages(messages: Message[]): MessageParam[] {
 
   for (const m of messages) {
     if (m.role === 'user') {
-      push('user', [{ type: 'text', text: m.content || '(empty message)' }]);
+      const images = sendableImages(m);
+      if (!images.length) {
+        push('user', [{ type: 'text', text: m.content || '(empty message)' }]);
+      } else if (options.images ?? true) {
+        const blocks = images.map((img): ContentBlock => ({
+          type: 'image',
+          source: { type: 'base64', media_type: img.mimeType, data: img.data },
+        }));
+        if (m.content) blocks.push({ type: 'text', text: m.content });
+        push('user', blocks);
+      } else {
+        const note = imagePlaceholder(images);
+        push('user', [{ type: 'text', text: m.content ? `${m.content}\n\n${note}` : note }]);
+      }
     } else if (m.role === 'tool') {
       push('user', [
         {

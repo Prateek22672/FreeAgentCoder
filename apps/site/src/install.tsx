@@ -18,18 +18,31 @@ function InstallPage() {
       <p className="lead">
         {released ? "If VS Code doesn't open, pick one of these." : "FreeAgentCoder isn't on the VS Code Marketplace yet. Check back soon."}
       </p>
-      {released && (
-        <div className="redirect-actions">
-          <LinkButton href={links.vscode}>Open in VS Code</LinkButton>
-          <LinkButton href={links.marketplace} variant="secondary" external>
-            Marketplace page
+      <div className="redirect-actions">
+        {released ? (
+          <>
+            <LinkButton href={links.vscode}>Open in VS Code</LinkButton>
+            <LinkButton href={links.marketplace} variant="secondary" external>
+              Marketplace page
+            </LinkButton>
+            <LinkButton href={links.openVsx} variant="secondary" external>
+              Cursor · Windsurf
+            </LinkButton>
+          </>
+        ) : (
+          <LinkButton href={links.github} variant="secondary" external>
+            View on GitHub
           </LinkButton>
-          <LinkButton href={links.openVsx} variant="secondary" external>
-            Cursor · Windsurf
-          </LinkButton>
-        </div>
-      )}
+        )}
+      </div>
       <a href="../">← Back to the website</a>
+      <p className="redirect-by">
+        An{' '}
+        <a href={links.foliofyx} target="_blank" rel="noopener">
+          Imperium × Foliofyx
+        </a>{' '}
+        product
+      </p>
     </main>
   );
 }

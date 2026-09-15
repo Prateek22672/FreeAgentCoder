@@ -1,123 +1,90 @@
-import { useState } from 'react';
-import { installCommand, links, openInVsCode, released } from './config';
-import { CopyField, LinkButton, Mark, Section } from './ui';
+import { useEffect, useState } from 'react';
+import { KeyCalculator } from './calculator';
+import { config, installCommand, links, released } from './config';
+import { FAQ, KEY_STORAGE, KEYCHAINS, PROVIDERS } from './content';
+import { Demo } from './demo';
+import { FeatureExplorer } from './features';
+import { BrandBadge, CopyField, handleTabKeys, LinkButton, LockIcon, Mark, Section, VsCodeButton } from './ui';
 
-const PROVIDERS = ['Gemini', 'Groq', 'Cerebras', 'Mistral', 'OpenRouter', 'OpenAI', 'Anthropic'];
-
-const FEATURES = [
-  {
-    title: 'Smart routing',
-    body: 'Quick questions and small edits go to the fastest model. Builds, debugging and multi-file work go to the strongest. Choosing costs no extra request.',
-  },
-  {
-    title: 'Every key works',
-    body: 'Add several named keys per provider. When one is rate-limited, the next continues the same task, starting with the key used least today.',
-  },
-  {
-    title: 'Honest usage',
-    body: 'Tokens and requests per key, per day. Quota shows only the limits providers actually report, with a warning before you run out.',
-  },
-  {
-    title: 'Every step visible',
-    body: 'A live plan, grouped file reads, inline diffs, live terminal output, and a list of every file changed when the task is done.',
-  },
-  {
-    title: 'Safe by default',
-    body: 'Pick Manual, Auto-edit or Auto. Risky commands always ask, disk-wiping commands are always blocked, and each task can be undone.',
-  },
-  {
-    title: 'Build and ship',
-    body: 'Scaffolds new apps, installs dependencies, runs production builds, and prepares deployment config for platforms like Vercel and Docker.',
-  },
+const NAV = [
+  { href: '#demo', label: 'Demo' },
+  { href: '#features', label: 'Features' },
+  { href: '#keys', label: 'Keys' },
+  { href: '#providers', label: 'Providers' },
+  { href: '#privacy', label: 'Privacy' },
+  { href: '#faq', label: 'FAQ' },
 ];
 
-const PROMPTS = [
-  'Explain how this project is structured and how to run it',
-  'Create an AGENTS.md with the exact commands to build, test and lint this project',
-  'Run the tests and fix whatever fails',
-  'Add a dark mode toggle to the settings page',
-];
-
-const ROUTES = [
-  { request: 'What does useAuth do?', tier: 'fast', route: 'Groq · College' },
-  { request: 'Rename getUser to fetchUser', tier: 'fast', route: 'Groq · College' },
-  { request: 'Debug why checkout fails on Safari', tier: 'deep', route: 'Gemini · Personal' },
-  { request: 'Build a dashboard with charts and login', tier: 'deep', route: 'Gemini · Personal → Gemini · College' },
-];
-
-const FAQ = [
-  {
-    q: 'Is it really free?',
-    a: 'Yes. The extension is free and open source, and it runs on the free tiers of providers like Gemini, Groq and Cerebras using your own keys. Paid providers such as OpenAI and Anthropic are optional, and are only used automatically if you have no free key.',
-  },
-  {
-    q: 'Which editors does it work in?',
-    a: 'VS Code 1.137 or newer. Cursor, Windsurf and VSCodium install it from the Open VSX registry, or from a .vsix file.',
-  },
-  {
-    q: 'Where does my code go?',
-    a: 'Only to the model providers whose keys you add, sent directly from your editor. FreeAgentCoder has no server of its own and collects no telemetry.',
-  },
-  {
-    q: 'Will it follow my team’s conventions?',
-    a: 'It reads AGENTS.md, CLAUDE.md, .github/copilot-instructions.md or .cursorrules from your project automatically. If you have none, ask it to create an AGENTS.md.',
-  },
-  {
-    q: 'What happens when a key hits its limit?',
-    a: 'That key cools down and your next key continues the same task. Settings shows each key’s status, usage and, when the provider reports it, remaining quota.',
-  },
-  {
-    q: 'Can it break my project?',
-    a: 'In Manual mode it asks before every change. In every mode, risky commands like deleting files, git push or deploys need your approval, and you can undo the files changed by each task.',
-  },
-];
-
-type InstallTab = 'vscode' | 'cursor' | 'terminal' | 'vsix';
-
-const INSTALL_TABS: { id: InstallTab; label: string }[] = [
-  { id: 'vscode', label: 'VS Code' },
-  { id: 'cursor', label: 'Cursor · Windsurf' },
-  { id: 'terminal', label: 'Terminal' },
-  { id: 'vsix', label: '.vsix file' },
+const SPEC = [
+  { term: 'Price', value: 'Free. MIT licensed.' },
+  { term: 'Free keys', value: 'Gemini, Groq, Cerebras, Mistral, OpenRouter' },
+  { term: 'Paid keys', value: 'OpenAI, Anthropic (optional)' },
+  { term: 'Editors', value: 'VS Code 1.137+, Cursor, Windsurf, VSCodium' },
+  { term: 'Your keys', value: 'On your device, in your OS keychain' },
+  { term: 'Telemetry', value: 'None. No account, no server.' },
 ];
 
 export function App() {
   return (
     <>
-      <Nav />
-      <main>
+      <Header />
+      <main id="main" tabIndex={-1}>
         <Hero />
-        <Providers />
-        <Section id="features" index="01" label="Features" title="A real agent, not a chat box" lead="It explores your project, makes a plan, edits files, runs your build and tests, and fixes what breaks, showing you every step.">
-          <div className="cells cols-3">
-            {FEATURES.map((feature, i) => (
-              <article className="cell" key={feature.title}>
-                <span className="cell-num">{String(i + 1).padStart(2, '0')}</span>
-                <h3>{feature.title}</h3>
-                <p>{feature.body}</p>
-              </article>
-            ))}
-          </div>
+
+        <Section
+          id="demo"
+          index="01"
+          label="Demo"
+          title="Watch it finish a task"
+          lead="Plan, read, edit, test, report. Every step shows up in the chat panel as it happens. Jump to any step, or pause and read."
+        >
+          <Demo />
         </Section>
-        <Onboarding />
-        <Routing />
-        <Section index="04" label="Privacy" title="Your keys, your code, your machine" alt>
-          <div className="cells cols-3">
-            <article className="cell">
-              <h3>Keys stay local</h3>
-              <p>Encrypted in VS Code Secret Storage and never displayed again after you save them.</p>
-            </article>
-            <article className="cell">
-              <h3>No middleman</h3>
-              <p>Requests go straight from your editor to the providers you add. No account, no telemetry.</p>
-            </article>
-            <article className="cell">
-              <h3>Open source</h3>
-              <p>MIT licensed. Read every line of what runs in your editor.</p>
-            </article>
-          </div>
+
+        <Section id="features" index="02" label="Features" title="A real agent, not a chat box" lead="Pick a feature to see what it does." alt>
+          <FeatureExplorer />
         </Section>
-        <Section id="faq" index="05" label="FAQ" title="Questions, answered">
+
+        <Section
+          id="keys"
+          index="03"
+          label="Keys calculator"
+          title="How many keys do I need?"
+          lead="A quick estimate based on how you work. Every assumption is listed, and the per-key allowance is yours to set."
+        >
+          <KeyCalculator />
+        </Section>
+
+        <Section
+          id="providers"
+          index="04"
+          label="Providers"
+          title="Free tiers first. Paid keys if you want them."
+          lead="Mix keys from any of these providers. Free-tier limits change often, so check each provider’s site for current numbers."
+          alt
+        >
+          <ProvidersTable />
+        </Section>
+
+        <Section id="install" index="05" label="Install" title="Install in under a minute" lead="No sign-up and no config files. Open the folder you already work in.">
+          <Install />
+        </Section>
+
+        <Section id="privacy" index="06" label="Privacy" title="Your keys, your code, your machine" alt>
+          <Privacy />
+        </Section>
+
+        <Section
+          id="about"
+          index="07"
+          label="Credits"
+          title="Built by Imperium × Foliofyx"
+          lead="FreeAgentCoder is an Imperium × Foliofyx product, a collaboration between Imperium and Foliofyx."
+        >
+          <Credits />
+        </Section>
+
+        <Section id="faq" index="08" label="FAQ" title="Questions, answered" alt>
           <div className="faq">
             {FAQ.map((item) => (
               <details key={item.q}>
@@ -127,6 +94,7 @@ export function App() {
             ))}
           </div>
         </Section>
+
         <FinalCta />
       </main>
       <Footer />
@@ -134,310 +102,372 @@ export function App() {
   );
 }
 
-function Nav() {
+function Header() {
+  const [open, setOpen] = useState(false);
+
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setOpen(false);
+        document.getElementById('menu-toggle')?.focus();
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [open]);
+
   return (
     <header className="nav">
+      <a className="skip" href="#main">
+        Skip to content
+      </a>
       <div className="wrap nav-row">
         <a className="brand" href="#top">
-          <Mark /> FreeAgentCoder
+          <Mark size={20} />
+          <span>FreeAgentCoder</span>
         </a>
+        <span className="nav-by">
+          <BrandBadge compact />
+        </span>
         <nav className="nav-links" aria-label="Main">
-          <a href="#features">Features</a>
-          <a href="#start">Get started</a>
-          <a href="#routing">Routing</a>
-          <a href="#faq">FAQ</a>
+          {NAV.map((item) => (
+            <a key={item.href} href={item.href}>
+              {item.label}
+            </a>
+          ))}
         </nav>
         <div className="nav-cta">
-          {links.github && (
-            <a className="btn btn-ghost btn-sm" href={links.github} target="_blank" rel="noopener">
-              GitHub
-            </a>
-          )}
+          <a className="btn btn-ghost btn-sm nav-github" href={links.github} target="_blank" rel="noopener">
+            GitHub
+          </a>
           <a className="btn btn-primary btn-sm" href="#install">
             Install
           </a>
+          <button
+            id="menu-toggle"
+            type="button"
+            className="btn btn-ghost btn-sm nav-toggle"
+            aria-expanded={open}
+            aria-controls="mobile-nav"
+            onClick={() => setOpen((value) => !value)}
+          >
+            {open ? 'Close' : 'Menu'}
+          </button>
         </div>
       </div>
+      <nav id="mobile-nav" className="mobile-nav" aria-label="Main" hidden={!open}>
+        {NAV.map((item) => (
+          <a key={item.href} href={item.href} onClick={() => setOpen(false)}>
+            {item.label}
+          </a>
+        ))}
+        <a href="#install" onClick={() => setOpen(false)}>
+          Install
+        </a>
+        <a href={links.github} target="_blank" rel="noopener" onClick={() => setOpen(false)}>
+          GitHub <span aria-hidden="true">↗</span>
+        </a>
+      </nav>
     </header>
   );
 }
 
 function Hero() {
   return (
-    <section className="hero" id="top">
+    <section className="hero" id="top" aria-labelledby="hero-title">
       <div className="wrap hero-grid">
-        <div>
-          <p className="label">Free · Open source · For VS Code</p>
-          <h1>The AI coding agent that runs on free models.</h1>
-          <p className="lead">
-            FreeAgentCoder plans, writes, runs and verifies code inside your editor. Add free API keys from Gemini, Groq or Cerebras, and it switches between them whenever one hits
-            its limit.
+        <div className="hero-copy">
+          <BrandBadge />
+          <p className="label hero-kicker">FreeAgentCoder · Extension for VS Code</p>
+          <h1 id="hero-title">A free AI coding agent for VS Code.</h1>
+          <p className="lead hero-lead">
+            FreeAgentCoder plans, edits, runs and verifies code in your project using your own free API keys from Gemini, Groq, Cerebras, Mistral and OpenRouter, or paid
+            OpenAI and Anthropic keys.
           </p>
-          <InstallBox />
+          <div className="hero-actions">
+            <VsCodeButton />
+            <LinkButton href={links.github} variant="secondary" size="lg" external>
+              View on GitHub
+            </LinkButton>
+          </div>
+          {!released && <p className="soon-line">Launching soon on the VS Code Marketplace and Open VSX.</p>}
+          <p className="trust">
+            <LockIcon size={20} />
+            <span>
+              <strong>Your API keys stay on your device.</strong> They are stored encrypted in VS Code's Secret Storage (your operating system's keychain). No account, no
+              server, no telemetry. <a href="#privacy">How keys are stored</a>
+            </span>
+          </p>
         </div>
-        <PanelPreview />
+
+        <div className="spec">
+          <p className="spec-title label">At a glance</p>
+          <dl>
+            {SPEC.map((row) => (
+              <div className="spec-row" key={row.term}>
+                <dt>{row.term}</dt>
+                <dd>{row.value}</dd>
+              </div>
+            ))}
+          </dl>
+        </div>
       </div>
     </section>
   );
 }
 
-function InstallBox() {
-  const [tab, setTab] = useState<InstallTab>('vscode');
+function ProvidersTable() {
   return (
-    <div className="install" id="install">
-      <div className="tabs" role="tablist" aria-label="Install options">
-        {INSTALL_TABS.map((item) => (
-          <button key={item.id} type="button" role="tab" aria-selected={tab === item.id} className="tab" onClick={() => setTab(item.id)}>
-            {item.label}
-          </button>
-        ))}
-      </div>
-      <div className="tab-panel" role="tabpanel">
-        {tab === 'vscode' && (
-          <>
-            <LinkButton
-              href={links.vscode}
-              size="lg"
-              onClick={(event) => {
-                event.preventDefault();
-                openInVsCode();
-              }}
-            >
-              Open in VS Code
-            </LinkButton>
-            <p className="hint">
-              Opens the extension page inside VS Code with an Install button.{' '}
-              {released && (
-                <a href={links.marketplace} target="_blank" rel="noopener">
-                  Marketplace page ↗
-                </a>
-              )}
-            </p>
-          </>
-        )}
-        {tab === 'cursor' && (
-          <>
-            <LinkButton href={links.openVsx} size="lg" external>
-              Open the Open VSX page
-            </LinkButton>
-            <p className="hint">Or search “FreeAgentCoder” in your editor’s Extensions view.</p>
-          </>
-        )}
-        {tab === 'terminal' && (
-          <>
-            <CopyField value={installCommand('code')} disabled={!released} />
-            <CopyField value={installCommand('cursor')} disabled={!released} />
-          </>
-        )}
-        {tab === 'vsix' && (
-          <>
-            <LinkButton href={links.releases} size="lg" external>
-              Download from GitHub
-            </LinkButton>
-            <p className="hint">Then in the Extensions view: ··· menu → Install from VSIX…</p>
-          </>
-        )}
-      </div>
-      {!released && <p className="soon-note">Launching soon on the VS Code Marketplace and Open VSX.</p>}
+    <div className="table">
+      <table>
+        <caption className="sr-only">Supported providers, their plans and what each is good at</caption>
+        <thead>
+          <tr>
+            <th scope="col">Provider</th>
+            <th scope="col">Plan</th>
+            <th scope="col">Good at</th>
+            <th scope="col">Good to know</th>
+            <th scope="col">Get a key</th>
+          </tr>
+        </thead>
+        <tbody>
+          {PROVIDERS.map((provider) => (
+            <tr key={provider.name}>
+              <th scope="row" data-label="Provider">
+                {provider.name}
+              </th>
+              <td data-label="Plan">
+                <span className={`plan${provider.paid ? ' is-paid' : ''}`}>{provider.plan}</span>
+              </td>
+              <td data-label="Good at">{provider.goodAt}</td>
+              <td data-label="Good to know" className="muted">
+                {provider.note}
+              </td>
+              <td data-label="Get a key">
+                {provider.keyUrl ? (
+                  <a href={provider.keyUrl} target="_blank" rel="noopener">
+                    {provider.keyHost}
+                    <span className="sr-only"> (opens in a new tab)</span>
+                  </a>
+                ) : (
+                  <span className="muted">Your provider account</span>
+                )}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
     </div>
   );
 }
 
-function PanelPreview() {
+const INSTALL_TABS = ['VS Code', 'Cursor · Windsurf', '.vsix file'];
+
+function Install() {
+  const [tab, setTab] = useState(0);
   return (
-    <figure className="panel" aria-label="The FreeAgentCoder panel adding a login page: a four-step plan, a new file with its diff, and a passing production build.">
-      <div className="panel-bar">
-        <span className="panel-title">
-          <Mark size={14} /> FreeAgentCoder
-        </span>
-        <span className="panel-meta">Auto-edit</span>
-      </div>
-      <div className="panel-body">
-        <div className="p-user">Add a login page with form validation, then run the build</div>
-        <div className="p-agent">
-          <Mark size={14} /> FreeAgentCoder <span className="p-chip">Deep</span>
-          <span className="p-chip">Gemini · Personal</span>
+    <div className="install-grid">
+      <div className="install">
+        <div className="tabs" role="tablist" aria-label="Install options">
+          {INSTALL_TABS.map((label, index) => (
+            <button
+              key={label}
+              id={`install-tab-${index}`}
+              type="button"
+              role="tab"
+              className="tab"
+              aria-selected={tab === index}
+              aria-controls="install-panel"
+              tabIndex={tab === index ? 0 : -1}
+              onClick={() => setTab(index)}
+              onKeyDown={(event) => handleTabKeys(event, index, INSTALL_TABS.length, 'install', setTab)}
+            >
+              {label}
+            </button>
+          ))}
         </div>
-        <div className="p-box">
-          <div className="p-head">
-            <span>Plan</span>
-            <span className="muted">3 / 4</span>
-          </div>
-          <div className="p-progress">
-            <span />
-          </div>
-          <ul className="p-todos">
-            <li className="done">Inspect routes and auth setup</li>
-            <li className="done">Create the Login page</li>
-            <li className="done">Add form validation</li>
-            <li className="doing">Run the production build</li>
+
+        <div className="tab-panel" id="install-panel" role="tabpanel" aria-labelledby={`install-tab-${tab}`}>
+          {tab === 0 && (
+            <>
+              <div className="actions">
+                <VsCodeButton size="md" label="Open in VS Code" />
+                {released && (
+                  <a href={links.marketplace} target="_blank" rel="noopener">
+                    Marketplace page <span aria-hidden="true">↗</span>
+                  </a>
+                )}
+              </div>
+              <CopyField label="Or from a terminal" value={installCommand('code')} disabled={!released} />
+            </>
+          )}
+          {tab === 1 && (
+            <>
+              <div className="actions">
+                <LinkButton href={links.openVsx} size="md" external>
+                  Open VSX page
+                </LinkButton>
+                <span className="hint">Or search “FreeAgentCoder” in the Extensions view.</span>
+              </div>
+              <CopyField label="Or from a terminal" value={installCommand('cursor')} disabled={!released} />
+            </>
+          )}
+          {tab === 2 && (
+            <>
+              <div className="actions">
+                <LinkButton href={links.releases} size="md" external>
+                  Download from GitHub Releases
+                </LinkButton>
+              </div>
+              <p className="hint">In the Extensions view, open the ··· menu and choose Install from VSIX…, or run:</p>
+              <CopyField label="Terminal" value={`code --install-extension ${config.extension}-<version>.vsix`} />
+            </>
+          )}
+          <ol className="steps">
+            <li>
+              <span>Click the FreeAgentCoder icon in the activity bar.</span>
+            </li>
+            <li>
+              <span>
+                Open <strong>Settings → API Keys → Add API key</strong> and paste a key. Each key is checked with the provider before it’s saved.
+              </span>
+            </li>
+            <li>
+              <span>Open a project folder and ask, for example: “Explain how this project is structured and how to run it.”</span>
+            </li>
+          </ol>
+        </div>
+        {!released && <p className="soon-note">Launching soon on the VS Code Marketplace and Open VSX.</p>}
+      </div>
+
+      <aside className="install-side" aria-label="Requirements">
+        <div className="side-block">
+          <p className="label">Requirements</p>
+          <ul className="checks checks-sm">
+            <li>VS Code 1.137 or newer</li>
+            <li>At least one API key</li>
+            <li>A project folder open in VS Code</li>
           </ul>
         </div>
-        <div className="p-line">
-          <span className="muted">›</span> Explored <span className="muted">6 files, 2 searches</span>
+        <div className="side-block">
+          <p className="label">Free keys</p>
+          <ul className="side-links">
+            {PROVIDERS.filter((provider) => !provider.paid).map((provider) => (
+              <li key={provider.name}>
+                <a href={provider.keyUrl} target="_blank" rel="noopener">
+                  {provider.name}
+                  <span className="sr-only"> API keys (opens in a new tab)</span>
+                </a>
+              </li>
+            ))}
+          </ul>
         </div>
-        <div className="p-box">
-          <div className="p-head">
-            <span>
-              <span className="muted">Created</span> src/pages/Login.tsx
-            </span>
-            <span className="mono">
-              <span className="add">+48</span> <span className="del">−0</span>
-            </span>
-          </div>
-          <pre className="p-diff">
-            <span className="add">
-              <i>1</i>+ import {'{ useState }'} from 'react';
-            </span>
-            <span className="add">
-              <i>2</i>+ import {'{ validateEmail }'} from '../lib/validate';
-            </span>
-            <span className="add">
-              <i>3</i>+ export function Login() {'{'}
-            </span>
-          </pre>
-        </div>
-        <div className="p-box">
-          <div className="p-head mono">
-            <span>$ npm run build</span>
-            <span className="p-badge">exit 0</span>
-          </div>
-          <pre className="p-term">✓ 214 modules transformed.{'\n'}✓ built in 2.41s</pre>
-        </div>
-        <div className="p-done">
-          <span className="ok">✓</span> Done <span className="muted">· 9 steps · 48s · 21.3K tokens</span>
-        </div>
-      </div>
-      <div className="p-input">
-        <span>Ask FreeAgentCoder to build, fix or explain…</span>
-        <span className="p-send">↑</span>
-      </div>
-    </figure>
+      </aside>
+    </div>
   );
 }
 
-function Providers() {
+const PRIVACY = [
+  { title: 'No server, no telemetry', body: 'FreeAgentCoder has no server of its own and collects no telemetry. There’s no account to create.' },
+  { title: 'Prompts go straight to your providers', body: 'Your prompts and code are sent directly from your editor, only to the providers whose keys you add.' },
+  {
+    title: 'Check free-tier data policies',
+    body: 'Provider terms apply, and some free tiers may use requests to improve their models. Check a provider’s data policy before working on sensitive code.',
+  },
+  { title: 'History stays on your computer', body: 'Chat history is saved only if you agree, and only on your computer. Turn it off or delete saved chats any time.' },
+  { title: 'Logs stay local', body: 'Errors are logged in Settings → Logs. Copy diagnostics removes API keys, tokens and your username from paths.' },
+  { title: 'Open source', body: 'MIT licensed. Read the code that runs in your editor on GitHub.' },
+];
+
+function Privacy() {
   return (
-    <section className="providers" aria-label="Supported providers">
-      <div className="wrap">
-        <p className="label">Works with keys from</p>
-        <ul className="provider-list">
-          {PROVIDERS.map((name) => (
-            <li key={name}>{name}</li>
+    <div className="privacy">
+      <article className="privacy-keys" aria-labelledby="keys-storage-title">
+        <div>
+          <p className="label">
+            <LockIcon size={14} /> Where your API keys are stored
+          </p>
+          <h3 id="keys-storage-title">On your device. Nowhere else.</h3>
+          <p className="privacy-quote">{KEY_STORAGE}</p>
+        </div>
+        <dl className="keychains" aria-label="Operating system keychains used by VS Code Secret Storage">
+          {KEYCHAINS.map((item) => (
+            <div key={item.os}>
+              <dt>{item.os}</dt>
+              <dd>{item.store}</dd>
+            </div>
           ))}
-        </ul>
-      </div>
-    </section>
+        </dl>
+      </article>
+      {PRIVACY.map((item) => (
+        <article className="cell" key={item.title}>
+          <h3>{item.title}</h3>
+          <p>
+            {item.body}
+            {item.title === 'Open source' && (
+              <>
+                {' '}
+                <a href={links.github} target="_blank" rel="noopener">
+                  View the repository<span className="sr-only"> (opens in a new tab)</span>
+                </a>
+              </>
+            )}
+          </p>
+        </article>
+      ))}
+    </div>
   );
 }
 
-function Onboarding() {
+function Credits() {
   return (
-    <Section id="start" index="02" label="Get started" title="Working in your codebase in two minutes" lead="No sign-up and no config files. Open the folder you already work in." alt>
-      <div className="cells cols-4">
+    <div className="credits">
+      <p className="credits-mark" aria-hidden="true">
+        Imperium <span>×</span> Foliofyx
+      </p>
+      <div className="cells cols-3">
         <article className="cell">
-          <span className="cell-num">01</span>
-          <h3>Install</h3>
-          <p>One click from the Marketplace, one command in the terminal, or Open VSX for Cursor and Windsurf.</p>
+          <p className="label">Collaborator</p>
+          <h3>Imperium</h3>
+          <p>Builds FreeAgentCoder in collaboration with Foliofyx.</p>
         </article>
         <article className="cell">
-          <span className="cell-num">02</span>
-          <h3>Add a free key</h3>
-          <p>
-            Get one from{' '}
-            <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener">
-              Google AI Studio
+          <p className="label">Collaborator</p>
+          <h3>Foliofyx</h3>
+          <p>Builds FreeAgentCoder in collaboration with Imperium.</p>
+          <p className="cell-link">
+            <a href={links.foliofyx} target="_blank" rel="noopener">
+              foliofyx.in<span className="sr-only"> (opens in a new tab)</span>
             </a>
-            ,{' '}
-            <a href="https://console.groq.com/keys" target="_blank" rel="noopener">
-              Groq
-            </a>{' '}
-            or{' '}
-            <a href="https://cloud.cerebras.ai" target="_blank" rel="noopener">
-              Cerebras
-            </a>
-            . It’s verified, then encrypted locally.
           </p>
         </article>
         <article className="cell">
-          <span className="cell-num">03</span>
-          <h3>Open your project</h3>
-          <p>It picks up your AGENTS.md, CLAUDE.md, Copilot instructions or .cursorrules, so your conventions carry over.</p>
-        </article>
-        <article className="cell">
-          <span className="cell-num">04</span>
-          <h3>Ask</h3>
-          <p>Follow the live plan, approve risky steps, and undo any task’s changes with one click.</p>
+          <p className="label">Creator</p>
+          <h3>{config.creator}</h3>
+          <p>
+            Created FreeAgentCoder. Marketplace publisher ID: <code>{config.publisher}</code>
+          </p>
         </article>
       </div>
-      <div className="prompts">
-        <p className="label">First prompts to try</p>
-        {PROMPTS.map((prompt) => (
-          <CopyField key={prompt} value={prompt} />
-        ))}
-      </div>
-    </Section>
-  );
-}
-
-function Routing() {
-  return (
-    <Section
-      id="routing"
-      index="03"
-      label="Smart routing"
-      title="The right model for every request"
-      lead="Each request gets a route. If a key runs out mid-task, the next one continues without redoing work that's already done."
-    >
-      <div className="table-wrap">
-        <table>
-          <thead>
-            <tr>
-              <th>Request</th>
-              <th>Tier</th>
-              <th>Keys used</th>
-            </tr>
-          </thead>
-          <tbody>
-            {ROUTES.map((row) => (
-              <tr key={row.request}>
-                <td>“{row.request}”</td>
-                <td>
-                  <span className={`tier ${row.tier}`}>{row.tier === 'fast' ? 'Fast' : 'Deep'}</span>
-                </td>
-                <td className="mono">{row.route}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-      <ul className="checks">
-        <li>Free keys first. Paid keys are only used automatically if you have no free ones.</li>
-        <li>The least-used key goes first, spreading your daily quota.</li>
-        <li>Invalid keys are detected, skipped and flagged in Settings.</li>
-      </ul>
-    </Section>
+    </div>
   );
 }
 
 function FinalCta() {
   return (
-    <section className="final">
+    <section className="final" aria-labelledby="final-title">
       <div className="wrap">
         <div className="final-box">
           <div>
-            <h2>Stop paying to code with AI.</h2>
-            <p className="lead">Install FreeAgentCoder, add a free key, and ship your next feature today.</p>
+            <h2 id="final-title">Bring your own free keys. Start building.</h2>
+            <p className="lead">Install FreeAgentCoder, add a key, and ask for your next feature.</p>
           </div>
           <div className="final-actions">
-            <a className="btn btn-primary btn-lg" href="#install">
-              Install
-            </a>
-            {links.github && (
-              <a className="btn btn-secondary btn-lg" href={links.github} target="_blank" rel="noopener">
-                Star on GitHub
-              </a>
-            )}
+            <VsCodeButton />
+            <LinkButton href={links.github} variant="secondary" size="lg" external>
+              View on GitHub
+            </LinkButton>
           </div>
         </div>
       </div>
@@ -448,28 +478,84 @@ function FinalCta() {
 function Footer() {
   return (
     <footer className="footer">
-      <div className="wrap footer-row">
-        <span className="brand">
-          <Mark size={16} /> FreeAgentCoder
-        </span>
-        <nav className="footer-links" aria-label="Footer">
-          {links.marketplace && (
-            <a href={links.marketplace} target="_blank" rel="noopener">
-              VS Code Marketplace
-            </a>
-          )}
-          {links.openVsx && (
-            <a href={links.openVsx} target="_blank" rel="noopener">
-              Open VSX
-            </a>
-          )}
-          {links.github && (
-            <a href={links.github} target="_blank" rel="noopener">
-              GitHub
-            </a>
-          )}
-        </nav>
-        <span>MIT License · © {new Date().getFullYear()}</span>
+      <div className="wrap">
+        <div className="footer-top">
+          <div className="footer-brand">
+            <span className="brand">
+              <Mark size={18} /> FreeAgentCoder
+            </span>
+            <p>A free AI coding agent for VS Code.</p>
+            <p className="footer-product">
+              An{' '}
+              <a href={links.foliofyx} target="_blank" rel="noopener">
+                Imperium × Foliofyx
+              </a>{' '}
+              product.
+            </p>
+          </div>
+          <nav className="footer-cols" aria-label="Footer">
+            <div>
+              <p className="label">Product</p>
+              <ul>
+                {NAV.map((item) => (
+                  <li key={item.href}>
+                    <a href={item.href}>{item.label}</a>
+                  </li>
+                ))}
+              </ul>
+            </div>
+            <div>
+              <p className="label">Get it</p>
+              <ul>
+                <li>
+                  <a href="#install">Install</a>
+                </li>
+                <li>
+                  <a href={links.github} target="_blank" rel="noopener">
+                    GitHub
+                  </a>
+                </li>
+                <li>
+                  <a href={links.releases} target="_blank" rel="noopener">
+                    Releases
+                  </a>
+                </li>
+                {links.marketplace && (
+                  <li>
+                    <a href={links.marketplace} target="_blank" rel="noopener">
+                      VS Code Marketplace
+                    </a>
+                  </li>
+                )}
+                {links.openVsx && (
+                  <li>
+                    <a href={links.openVsx} target="_blank" rel="noopener">
+                      Open VSX
+                    </a>
+                  </li>
+                )}
+              </ul>
+            </div>
+            <div>
+              <p className="label">Made by</p>
+              <ul>
+                <li>Imperium</li>
+                <li>
+                  <a href={links.foliofyx} target="_blank" rel="noopener">
+                    Foliofyx
+                  </a>
+                </li>
+                <li>{config.creator}</li>
+              </ul>
+            </div>
+          </nav>
+        </div>
+        <div className="footer-bottom">
+          <span>© {new Date().getFullYear()} FreeAgentCoder · MIT License</span>
+          <span>
+            Created by {config.creator} · Publisher ID <code>{config.publisher}</code>
+          </span>
+        </div>
       </div>
     </footer>
   );

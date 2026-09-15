@@ -3,8 +3,10 @@ import { PermissionPolicy, type PermissionMode } from '../agent/permissions';
 import { buildLocalSystemPrompt } from '../agent/prompt';
 import type { ModelRouter } from '../providers/router';
 import { fileTools } from '../tools/index';
+import { CodeIndex, searchCodeTool } from '../tools/search';
 import type { Message, Todo } from '../types';
 import { buildRouter, type AgenticConfig } from './config';
+import { environmentTool } from './environment';
 import { fetchUrlTool } from './fetch-url';
 import { LocalWorkspace } from './local-workspace';
 import { isGitRepo, loadProjectInstructions } from './project';
@@ -13,6 +15,7 @@ import { detectShell, processTool, ProcessRegistry, runCommandTool, type ShellIn
 export { LocalWorkspace } from './local-workspace';
 export { detectShell, killTree, ProcessRegistry, runCommandTool, processTool, type ShellInfo } from './shell';
 export { fetchUrlTool, htmlToText } from './fetch-url';
+export { environmentTool, inspectEnvironment, TOOLCHAINS, type CommandRunner, type ToolchainCheck } from './environment';
 export {
   loadConfig,
   saveConfig,
@@ -44,6 +47,8 @@ export interface LocalAgentOptions {
   agentName?: string;
   /** Extra system-prompt guidance from the host app. */
   extraInstructions?: string;
+  /** Checked before the agent ends a turn; see AgentOptions.reviewCompletion. */
+  reviewCompletion?: AgentOptions['reviewCompletion'];
 }
 
 export interface LocalAgent {
@@ -51,6 +56,8 @@ export interface LocalAgent {
   workspace: LocalWorkspace;
   shell: ShellInfo;
   processes: ProcessRegistry;
+  /** Local search index over the project, shared with the search_code tool. */
+  codeIndex: CodeIndex;
   instructionsFile?: string;
   warnings: string[];
 }
@@ -60,6 +67,7 @@ export async function createLocalAgent(opts: LocalAgentOptions): Promise<LocalAg
   const workspace = new LocalWorkspace(opts.cwd);
   const shell = detectShell(opts.config.shell);
   const processes = new ProcessRegistry();
+  const codeIndex = new CodeIndex(workspace);
   const { router, warnings } = opts.router ? { router: opts.router, warnings: [] } : buildRouter(opts.config, opts.model);
   const instructions = await loadProjectInstructions(workspace.root);
 
@@ -77,7 +85,14 @@ export async function createLocalAgent(opts: LocalAgentOptions): Promise<LocalAg
   const agent = new Agent({
     router,
     workspace,
-    tools: [...fileTools(), runCommandTool(shell, processes), processTool(processes), fetchUrlTool],
+    tools: [
+      ...fileTools(),
+      searchCodeTool(codeIndex),
+      runCommandTool(shell, processes),
+      processTool(processes),
+      fetchUrlTool,
+      environmentTool,
+    ],
     systemPrompt,
     permissions: new PermissionPolicy(opts.mode ?? opts.config.mode ?? 'ask'),
     approve: opts.approve,
@@ -85,6 +100,7 @@ export async function createLocalAgent(opts: LocalAgentOptions): Promise<LocalAg
     maxContextTokens: opts.config.maxContextTokens,
     messages: opts.messages,
     todos: opts.todos,
+    reviewCompletion: opts.reviewCompletion,
   });
-  return { agent, workspace, shell, processes, instructionsFile: instructions?.file, warnings };
+  return { agent, workspace, shell, processes, codeIndex, instructionsFile: instructions?.file, warnings };
 }

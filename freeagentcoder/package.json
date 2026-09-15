@@ -3,8 +3,18 @@
   "displayName": "FreeAgentCoder",
   "description": "Autonomous AI coding agent that runs on free models. Plans, edits, runs and verifies code, and switches between your API keys when one hits its limit.",
   "version": "0.1.0",
+  "publisher": "PrateekKoratala",
   "license": "MIT",
   "icon": "media/icon.png",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Prateek22672/FreeAgentCoder",
+    "directory": "freeagentcoder"
+  },
+  "bugs": {
+    "url": "https://github.com/Prateek22672/FreeAgentCoder/issues"
+  },
+  "homepage": "https://github.com/Prateek22672/FreeAgentCoder/tree/main/freeagentcoder#readme",
   "galleryBanner": {
     "color": "#0c0c0d",
     "theme": "dark"
@@ -117,6 +127,8 @@
     "serialize-javascript": "^7.0.6"
   },
   "dependencies": {
-    "@agentic/core": "file:../packages/core"
+    "@agentic/core": "file:../packages/core",
+    "fflate": "^0.8.3",
+    "unpdf": "^1.8.1"
   }
 }

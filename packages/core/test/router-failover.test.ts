@@ -79,4 +79,20 @@ describe('ModelRouter failover speed', () => {
     await drive(router);
     expect(a.provider.requests).toHaveLength(1);
   });
+
+  it('parks a model that keeps hitting rate limits for longer each time', async () => {
+    let now = 0;
+    const a = entry('a', [fail('rate_limit', 1_000), fail('rate_limit', 1_000), say('a ok')]);
+    const b = entry('b', [say('b1'), say('b2'), say('b3'), say('b4')]);
+    const router = new ModelRouter([a, b], { now: () => now, sleep: async () => {} });
+
+    expect((await drive(router)).message.content).toBe('b1'); // a parked 15s
+    now += 16_000;
+    expect((await drive(router)).message.content).toBe('b2'); // a limited again, parked 30s
+    now += 16_000;
+    expect((await drive(router)).message.content).toBe('b3'); // a still parked
+    expect(a.provider.requests).toHaveLength(2);
+    now += 15_000;
+    expect((await drive(router)).message.content).toBe('a ok');
+  });
 });

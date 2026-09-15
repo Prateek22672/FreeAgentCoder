@@ -1,12 +1,12 @@
 import { compactNumber, formatDuration } from '../../shared/format';
-import type { ApprovalView, DiffLineView, TodoView, ToWebview, TurnEndReason } from '../../shared/protocol';
+import type { ApprovalView, AttachmentView, DiffLineView, LessonView, TodoView, ToWebview, TurnEndReason } from '../../shared/protocol';
 import { button, fileLink, h, handleContentClick, openSettingsEvent, send } from './dom';
 import { icon, type IconName } from './icons';
 import { renderMarkdown } from './markdown';
 
 type Msg<T extends ToWebview['type']> = Extract<ToWebview, { type: T }>;
 
-const READ_TOOLS = new Set(['read_file', 'list_dir', 'glob', 'grep']);
+const READ_TOOLS = new Set(['read_file', 'list_dir', 'glob', 'grep', 'search_code']);
 const EDIT_TOOLS = new Set(['write_file', 'edit_file']);
 const ANSI = /\x1b\[[0-9;?]*[ -/]*[@-~]/g;
 
@@ -18,6 +18,7 @@ function toolIcon(tool: string): IconName {
             return 'folder';
         case 'glob':
         case 'grep':
+        case 'search_code':
             return 'search';
         case 'write_file':
             return 'filePlus';
@@ -28,6 +29,8 @@ function toolIcon(tool: string): IconName {
             return 'terminal';
         case 'fetch_url':
             return 'globe';
+        case 'inspect_environment':
+            return 'gauge';
         case 'todo_write':
             return 'list';
         default:
@@ -61,6 +64,7 @@ const VERBS: Record<string, string> = {
     Find: 'Finding',
     Fetch: 'Fetching',
     Update: 'Updating',
+    Check: 'Checking',
 };
 
 function activeText(label: string): string {
@@ -73,6 +77,18 @@ function activeText(label: string): string {
 
 function plural(count: number, one: string, many = `${one}s`): string {
     return count ? `${count} ${count === 1 ? one : many}` : '';
+}
+
+function attachmentList(items: AttachmentView[]): HTMLElement {
+    return h(
+        'div',
+        { class: 'user-attachments' },
+        ...items.map((item) =>
+            item.thumb
+                ? h('img', { title: item.name, attrs: { src: item.thumb, alt: item.name } })
+                : h('span', { class: 'user-file', title: item.name }, icon(item.kind === 'image' ? 'image' : item.kind === 'text' ? 'list' : 'file'), h('span', { text: item.name })),
+        ),
+    );
 }
 
 export class Transcript {
@@ -173,6 +189,12 @@ export class Transcript {
             case 'undone':
                 this.turn(message.turnId).undone(message);
                 break;
+            case 'checks':
+                this.turn(message.turnId).checks(message);
+                break;
+            case 'learned':
+                this.turn(message.turnId).learned(message.lessons);
+                break;
             default:
                 return;
         }
@@ -232,12 +254,47 @@ class TurnView {
 
     start(message: Msg<'turnStart'>): void {
         this.startedAt = message.at;
-        this.root.prepend(h('div', { class: 'user-msg' }, h('div', { class: 'user-text', text: message.prompt })));
+        this.root.prepend(
+            h(
+                'div',
+                { class: 'user-msg' },
+                message.attachments?.length ? attachmentList(message.attachments) : null,
+                h('div', { class: 'user-text', text: message.prompt }),
+            ),
+        );
+        if (message.correction) {
+            this.header.insertBefore(
+                h('span', { class: 'chip correction', title: 'Correction mode: each point you raised is fixed and verified separately' }, icon('target'), 'Correction'),
+                this.modelChip,
+            );
+        }
+        if (message.lessons) {
+            this.header.insertBefore(
+                h(
+                    'span',
+                    { class: 'chip lessons', title: 'Lessons from your earlier corrections were added to this task' },
+                    icon('brain'),
+                    `${message.lessons} lesson${message.lessons === 1 ? '' : 's'}`,
+                ),
+                this.modelChip,
+            );
+        }
         const fast = message.tier === 'fast';
         const chip = message.pinned
             ? h('span', { class: 'chip tier pinned', title: message.tierReason }, icon('layers'), 'Pinned model')
             : h('span', { class: `chip tier ${message.tier}`, title: message.tierReason }, icon(fast ? 'bolt' : 'layers'), fast ? 'Fast' : 'Deep');
         this.header.insertBefore(chip, this.modelChip);
+        if (message.playbooks.length) {
+            this.header.insertBefore(
+                h(
+                    'span',
+                    { class: 'chip playbook', title: 'Senior mode: stack playbook, required quality checks and a publishing checklist' },
+                    icon('shield'),
+                    `${message.playbooks.join(' + ')} playbook`,
+                ),
+                this.modelChip,
+            );
+        }
         this.setStatus('Starting…');
     }
 
@@ -432,6 +489,97 @@ class TurnView {
         this.body.append(this.footer);
     }
 
+    checks(message: Msg<'checks'>): void {
+        const blocking = message.gates.filter((g) => g.required && g.status !== 'passed').length;
+        const passed = message.gates.filter((g) => g.status === 'passed').length;
+        const card = h('div', { class: `card checks${blocking ? ' has-blocking' : ''}` });
+        card.append(
+            h(
+                'div',
+                { class: 'card-head' },
+                icon('shield'),
+                h('span', { class: 'card-title', text: `Quality report · ${message.playbooks.join(' + ')}` }),
+                h('span', {
+                    class: `badge ${blocking ? 'bad' : 'ok'}`,
+                    text: blocking ? `${blocking} required check${blocking === 1 ? '' : 's'} not passing` : `${passed} of ${message.gates.length} passed`,
+                }),
+            ),
+        );
+
+        const gates = h('div', { class: 'gate-list' });
+        for (const gate of message.gates) {
+            const [iconName, tone, status]: [IconName, string, string] =
+                gate.status === 'passed'
+                    ? ['check', 'passed', 'Passed']
+                    : gate.status === 'failed'
+                      ? ['alert', 'failed', `Failed${gate.exitCode !== null && gate.exitCode !== undefined ? ` · exit ${gate.exitCode}` : ''}`]
+                      : ['close', 'not-run', gate.required ? 'Not run' : 'Skipped'];
+            gates.append(
+                h(
+                    'div',
+                    { class: `gate ${tone}` },
+                    icon(iconName),
+                    h(
+                        'div',
+                        { class: 'gate-main' },
+                        h('div', { class: 'gate-title' }, h('span', { text: gate.label }), gate.required ? h('span', { class: 'tag', text: 'REQUIRED' }) : null),
+                        h('code', { class: 'gate-command', text: gate.command, title: gate.command }),
+                    ),
+                    h('span', { class: 'gate-status', text: status }),
+                ),
+            );
+        }
+        card.append(gates);
+
+        const checklists: [string, string[]][] = [
+            ['Security checklist', message.security],
+            ['Before publishing', message.release],
+        ];
+        for (const [title, items] of checklists) {
+            if (items.length) {
+                card.append(
+                    h(
+                        'details',
+                        { class: 'checklist' },
+                        h('summary', {}, icon('chevron', 'caret'), h('span', { text: `${title} (${items.length})` })),
+                        h('ul', {}, ...items.map((item) => h('li', { text: item }))),
+                    ),
+                );
+            }
+        }
+        card.append(
+            h('p', {
+                class: 'checks-note',
+                text: 'Checks reflect the commands the agent actually ran. Review the checklists yourself; the agent reports what it covered above.',
+            }),
+        );
+        this.append(card);
+    }
+
+    learned(lessons: LessonView[]): void {
+        const body = h('div', { class: 'card-body' });
+        for (const lesson of lessons) {
+            const row = h(
+                'div',
+                { class: 'lesson-item' },
+                icon('check'),
+                h('div', { class: 'lesson-main' }, h('div', { text: lesson.text }), h('div', { class: 'lesson-meta', text: lesson.scope === 'global' ? 'Applies to all projects' : 'Applies to this project' })),
+            );
+            const forget = button('Forget', 'ghost small', () => {
+                send({ type: 'deleteLesson', id: lesson.id });
+                row.classList.add('forgotten');
+                forget.disabled = true;
+            });
+            row.append(forget);
+            body.append(row);
+        }
+        body.append(
+            h('p', { class: 'muted small', text: 'FreeAgentCoder will follow this in future tasks.' }),
+            button('Manage memory', 'ghost small', () => openSettingsEvent('memory'), 'brain'),
+        );
+        this.body.append(h('div', { class: 'card learned' }, h('div', { class: 'card-head' }, icon('brain'), h('span', { class: 'card-title', text: 'Learned from your correction' })), body));
+    }
+
     undone(message: Msg<'undone'>): void {
         this.disableUndo();
         const parts = [plural(message.restored.length, 'file restored', 'files restored'), plural(message.deleted.length, 'new file deleted', 'new files deleted')]
@@ -497,6 +645,11 @@ class TurnView {
         }
         if (message.reason === 'max_steps') {
             actions.append(button('Continue', 'primary small', () => send({ type: 'continue' })));
+        }
+        if (message.reason === 'completed' || message.reason === 'max_steps') {
+            actions.append(
+                button('Point out a fix', 'ghost small', () => window.dispatchEvent(new CustomEvent('fac:correct')), 'target', 'Tell FreeAgentCoder exactly what is wrong. Attach a screenshot if it helps.'),
+            );
         }
         if (actions.childElementCount) {
             footer.append(actions);

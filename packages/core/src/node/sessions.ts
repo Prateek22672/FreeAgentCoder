@@ -1,6 +1,7 @@
 import { createHash } from 'node:crypto';
 import { promises as fs } from 'node:fs';
 import * as path from 'node:path';
+import { stripImageData } from '../providers/images';
 import type { Message, Todo, Usage } from '../types';
 import { randomId } from '../util/ids';
 import { configDir } from './config';
@@ -43,7 +44,8 @@ export async function saveSession(data: SessionData): Promise<void> {
   await fs.mkdir(dir, { recursive: true });
   const file = path.join(dir, `${data.id}.json`);
   const tmp = `${file}.tmp`;
-  await fs.writeFile(tmp, JSON.stringify(data), 'utf8');
+  // Base64 screenshots would bloat session files; keep only their names.
+  await fs.writeFile(tmp, JSON.stringify({ ...data, messages: stripImageData(data.messages) }), 'utf8');
   await fs.rename(tmp, file);
 }
 

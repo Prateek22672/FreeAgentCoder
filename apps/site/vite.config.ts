@@ -1,13 +1,43 @@
 import react from '@vitejs/plugin-react';
 import { fileURLToPath } from 'node:url';
-import { defineConfig } from 'vite';
+import { defineConfig, type Plugin } from 'vite';
+import { config } from './src/config.ts';
 
 const page = (path: string) => fileURLToPath(new URL(path, import.meta.url));
 
+/** Injects the production URL (config.site) into the HTML and emits robots.txt and sitemap.xml. */
+function siteMeta(): Plugin {
+  const site = config.site.replace(/\/+$/, '');
+  return {
+    name: 'freeagentcoder-site-meta',
+    transformIndexHtml: {
+      order: 'pre',
+      handler: (html) => html.replaceAll('__SITE_URL__', site),
+    },
+    generateBundle() {
+      const today = new Date().toISOString().slice(0, 10);
+      this.emitFile({
+        type: 'asset',
+        fileName: 'robots.txt',
+        source: `User-agent: *\nAllow: /\n\nSitemap: ${site}/sitemap.xml\n`,
+      });
+      this.emitFile({
+        type: 'asset',
+        fileName: 'sitemap.xml',
+        source:
+          '<?xml version="1.0" encoding="UTF-8"?>\n' +
+          '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n' +
+          `  <url>\n    <loc>${site}/</loc>\n    <lastmod>${today}</lastmod>\n  </url>\n` +
+          '</urlset>\n',
+      });
+    },
+  };
+}
+
 export default defineConfig({
-  // Relative asset paths, so the site works at a domain root or under /<repo>/ on GitHub Pages.
+  // Relative asset paths, so the build works at a domain root (Vercel) and under /<repo>/ (GitHub Pages).
   base: './',
-  plugins: [react()],
+  plugins: [react(), siteMeta()],
   server: { port: 5190 },
   build: {
     outDir: 'dist',

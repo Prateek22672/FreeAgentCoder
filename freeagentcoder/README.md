@@ -7,7 +7,9 @@ FreeAgentCoder plans, writes, runs and verifies code in your project. Add free A
 - **Free to use.** Runs on the free tiers of AI providers with your own keys. No account, no subscription.
 - **A real agent.** Explores your project, makes a plan, edits files, runs your build and tests, and fixes what breaks.
 - **Every step visible.** A live plan, inline diffs, live terminal output, and one-click undo.
-- **Your keys stay on your machine.** Encrypted in VS Code Secret Storage, and requests go straight to the providers you choose.
+- **Your keys stay on your device.** Encrypted in VS Code Secret Storage, never uploaded to FreeAgentCoder or anyone else, and sent only to the provider each key belongs to.
+- **Understands what you show it.** Paste screenshots, PDFs, Word, PowerPoint or Excel files, or long text.
+- **Takes corrections seriously.** Point at what's wrong and it fixes exactly that, then remembers the lesson.
 
 ## Quick start
 
@@ -24,6 +26,18 @@ FreeAgentCoder plans, writes, runs and verifies code in your project. Add free A
 - **Fix:** run your tests or build, read the errors, fix them, and run again until they pass.
 - **Understand:** explain code, trace how a feature works, answer questions about your codebase.
 - **Ship:** add Dockerfiles and deployment config, and give you the exact deploy commands.
+- **Correct:** show it what's wrong, with a screenshot or a note, and it fixes each point and verifies it.
+
+## Attachments, corrections and memory
+
+- **Paste or drop anything.** Screenshots, PDFs (including scanned ones), Word, PowerPoint and Excel files, or long pasted text. Documents are read locally; a vision model (Gemini, Mistral, OpenAI or Anthropic) reads screenshots and scanned pages first, so every model in the chain works from the exact details.
+- **Very long documents** are summarized for the agent and saved in `.freeagentcoder/attachments/` (git-ignored), so it can read the exact parts it needs.
+- **Correction mode.** Click **Point out a fix** under a reply, or just say what's wrong. Each point you raise becomes its own item that is fixed with the smallest change and verified separately, and the reply ends with what was wrong, what changed and how it was checked.
+- **Memory.** After a correction, FreeAgentCoder saves a short lesson (for example *"Use Riverpod for state, not setState"*) and follows it in later tasks. Type *"remember that …"* to teach it directly. Review, add or delete lessons in **Settings → Memory**, or turn learning off. Lessons are instructions stored on your computer; they don't retrain the models.
+
+## Overview: know where you stand
+
+**Settings → Overview** shows prompts left today (worked out from the daily limits your providers report and your own average requests per prompt), the project's detected stack and status, your last 7 days (tasks, completion rate, time and tokens per task, problems recovered automatically), and a switch for every feature: senior mode, attachment reading, learning, relevant-file search and automatic recovery.
 
 ## Smart routing across all your keys
 
@@ -33,11 +47,23 @@ FreeAgentCoder plans, writes, runs and verifies code in your project. Add free A
 - **Pin a model** at any time from the model menu. Your other free keys stay available as fallbacks.
 - **No surprise bills.** Paid providers (OpenAI, Anthropic) are only used automatically when you have no free key.
 
+## Senior mode for complex builds
+
+When you ask for something big, such as *"build a Flutter wallpaper app that's ready to publish"*, FreeAgentCoder works like a senior engineer:
+
+- **Checks your machine first.** It sees which SDKs are installed before writing code, and asks before installing anything system-wide.
+- **Follows a stack playbook.** Flutter, web apps, Node.js APIs, Python backends and machine-learning projects each come with the structure, security rules and release steps they need.
+- **Must pass quality checks.** It can't call the task done until analysis, tests and builds actually pass, or it explains exactly why one can't run.
+- **Reports honestly.** A quality report lists every check it ran, passed or failed, plus a security and publishing checklist for you.
+- **Recovers on its own.** If every model is rate-limited or your connection drops, the task waits and picks up where it stopped instead of failing. Press Stop at any time to cancel.
+
 ## Usage you can trust
 
 - Tokens and requests for each key: today, since VS Code started, and over the last 30 days.
 - Quota bars show only the limits a provider reports in its responses (Groq, Cerebras, Mistral, OpenRouter, OpenAI and Anthropic do). Gemini doesn't, so Gemini keys show local usage only.
 - A warning when a key drops below 10% of a reported limit.
+- **Limits across your keys:** each provider's reported limits added up across all your keys, so you can see how much is left in total.
+- **Key suggestions** based on what actually happened: rate limits hit, limits nearly used up, fallbacks to weak models and the size of your tasks. For example: "Room for about 30 more tasks today".
 
 ## Safe by default
 
@@ -57,6 +83,7 @@ FreeAgentCoder plans, writes, runs and verifies code in your project. Add free A
 - Detects your stack (Node.js frameworks and scripts; Python with uv, poetry, conda or pip; Rust, Go, Java, .NET and Docker), so it spends less time exploring.
 - Python and ML aware: uses your virtualenv, keeps test runs small, runs long training jobs in the background, and reads Jupyter notebooks as clean cells without their outputs.
 - Respects `.gitignore` and skips dependency, cache and experiment-tracking folders.
+- Instant local code search: a built-in index of file names and identifiers finds the right files for a request without using any API quota, and complex tasks start with the most relevant files already attached.
 
 ## Supported providers
 
@@ -84,8 +111,12 @@ In the chat box, **Enter** sends, **Shift+Enter** adds a new line, **Esc** stops
 
 ## Privacy
 
-- API keys are encrypted in VS Code Secret Storage and never shown again after you save them.
+- **Your API keys stay on your device.** They're stored encrypted in VS Code's Secret Storage (your operating system's keychain: Windows Credential Manager, macOS Keychain or Linux Secret Service), are never uploaded to FreeAgentCoder or anyone else, and are sent only to the provider each key belongs to when you run a task. They're never shown again after you save them.
+- No account, no sign-up and no FreeAgentCoder server.
+- Attachments are saved in your project's `.freeagentcoder/` folder, which is git-ignored automatically. Lessons learned from your corrections are stored on this computer only, and you can review or delete them in Settings → Memory.
 - Your prompts and code are sent only to the providers whose keys you add, directly from your editor. Their terms apply, and some free tiers may use requests to improve their models, so check a provider's data policy before working on sensitive code.
+- Chat history is saved only if you agree, and only on your computer. Turn it off or delete saved chats any time in Settings → History.
+- Errors are logged locally in Settings → Logs. **Copy diagnostics** removes API keys, tokens and your username from paths before copying.
 - FreeAgentCoder has no server of its own and collects no telemetry.
 
 ## Requirements

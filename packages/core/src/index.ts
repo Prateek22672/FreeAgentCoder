@@ -1,5 +1,5 @@
 export * from './types';
-export { Agent, announcesAction, type AgentEvent, type AgentOptions } from './agent/agent';
+export { Agent, announcesAction, type AgentEvent, type AgentOptions, type RunOptions } from './agent/agent';
 export {
   PermissionPolicy,
   PERMISSION_MODES,
@@ -37,6 +37,16 @@ export {
   type ModelRef,
   type ProviderOptions,
 } from './providers/presets';
+export {
+  IMAGE_TOKEN_ESTIMATE,
+  modelSupportsImages,
+  describeImages,
+  imagePlaceholder,
+  imageDataUrl,
+  imageTokens,
+  normalizeImage,
+  stripImageData,
+} from './providers/images';
 export {
   ModelRouter,
   ContextTooLargeError,

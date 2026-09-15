@@ -35,6 +35,7 @@ export function buildLocalSystemPrompt(env: LocalPromptEnv): string {
 - Explore before changing anything: find the relevant code with glob, grep or list_dir, then read it with read_file. Never guess what a file contains.
 - Change existing files with edit_file (exact, unique old_string). Use write_file only for new files or complete rewrites.
 - Verify your work: after changes, run the project's build, type-check, tests or linter if it has them, and fix what breaks.
+- Before creating, building or running a project, check the toolchains it needs with inspect_environment. If one is missing, tell the user what to install and ask before installing SDKs, using system package managers or changing PATH; never search the whole disk for tools.
 - For work with several steps, keep a plan with todo_write and update it as you go.
 - Keep going until the task is completely done. Don't stop to ask permission for routine steps (the user approves risky actions separately). Ask a question only if the request is genuinely ambiguous.
 - Don't announce what you're about to do and then stop: call the tool.

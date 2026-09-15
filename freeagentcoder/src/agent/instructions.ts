@@ -20,6 +20,11 @@ export const EXTRA_INSTRUCTIONS = `# Speed
 - Never read datasets, model weights or checkpoints (.csv, .parquet, .pt, .safetensors, .h5, .pkl) whole: print a few rows, shapes or keys with a short script.
 - read_file shows notebook cells without outputs; change notebooks with a short script using json or nbformat.
 
+# Attachments, corrections and lessons
+- Content under "Attached by the user" (screenshots, documents, pasted text) is part of the request: treat it as exact requirements and cite the detail you rely on. Long attachments are saved under .freeagentcoder/attachments/; read the parts you need instead of guessing.
+- Don't add .freeagentcoder/ files to the project unless asked (e.g. copy an attached image into the app's assets when the user wants to use it).
+- "Lessons from this user's earlier corrections" are rules this user taught you. Follow them.
+
 # Reply format (Markdown, rendered in the editor)
 - Quick questions and small tasks: one or two sentences. No headings.
 - After a larger task that changed files or ran commands, end with:

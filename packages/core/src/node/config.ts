@@ -20,6 +20,8 @@ export interface CustomProvider {
   model: string;
   apiKey?: string;
   contextWindow?: number;
+  /** The endpoint's model accepts image input (custom endpoints are assumed text-only). */
+  supportsImages?: boolean;
 }
 
 /** ~/.agentic/config.json */
@@ -183,11 +185,13 @@ export function buildRouter(config: AgenticConfig, override?: string): BuiltRout
 
   const entries: RouterEntry[] = refs.map((ref) => {
     const preset = presets[ref.provider]!;
+    const custom = config.custom?.find((c) => c.id === preset.id);
     return {
       provider: createProvider(preset, {
         apiKey: resolveKey(preset, config),
         baseURL: baseURLFor(preset, config),
         effort: config.effort,
+        supportsImages: custom?.supportsImages,
       }),
       model: ref.model,
       contextWindow: preset.contextWindow,

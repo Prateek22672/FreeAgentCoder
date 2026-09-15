@@ -2,6 +2,7 @@ import type { AssistantMessage, ToolCall, Usage } from '../types';
 import { toolCallId } from '../util/ids';
 import { parseToolArgs } from '../util/json';
 import { errorFromResponse, ProviderError, toProviderError } from './errors';
+import { imageDataUrl, imagePlaceholder, modelSupportsImages, sendableImages } from './images';
 import { idleSignal, sseData } from './sse';
 import type { ChatRequest, Provider, StreamEvent } from './types';
 
@@ -24,6 +25,11 @@ export interface OpenAICompatConfig {
   idleTimeoutMs?: number;
   /** Sees the HTTP response headers of each chat request (rate-limit dashboards). */
   onHeaders?: (headers: Headers) => void;
+  /**
+   * Whether the model accepts image input. Default: `modelSupportsImages(id, model)`,
+   * which treats unknown (custom) provider ids as text-only.
+   */
+  supportsImages?: boolean | ((model: string) => boolean);
 }
 
 /** Gemini's documented placeholder for function calls it didn't produce itself. */
@@ -140,11 +146,28 @@ export class OpenAICompatProvider implements Provider {
     return body;
   }
 
+  supportsImages(model: string): boolean {
+    const opt = this.cfg.supportsImages;
+    if (typeof opt === 'function') return opt(model);
+    return opt ?? modelSupportsImages(this.cfg.id, model);
+  }
+
   private toMessages(req: ChatRequest): Record<string, unknown>[] {
     const out: Record<string, unknown>[] = [{ role: 'system', content: req.system }];
+    let vision: boolean | undefined;
     for (const m of req.messages) {
       if (m.role === 'user') {
-        out.push({ role: 'user', content: m.content });
+        const images = sendableImages(m);
+        if (!images.length) {
+          out.push({ role: 'user', content: m.content });
+        } else if ((vision ??= this.supportsImages(req.model))) {
+          const parts: Record<string, unknown>[] = m.content ? [{ type: 'text', text: m.content }] : [];
+          for (const img of images) parts.push({ type: 'image_url', image_url: { url: imageDataUrl(img) } });
+          out.push({ role: 'user', content: parts });
+        } else {
+          const note = imagePlaceholder(images);
+          out.push({ role: 'user', content: m.content ? `${m.content}\n\n${note}` : note });
+        }
       } else if (m.role === 'tool') {
         out.push({ role: 'tool', tool_call_id: m.toolCallId, content: m.content || '(no output)' });
       } else {

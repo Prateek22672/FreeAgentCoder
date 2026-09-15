@@ -6,13 +6,19 @@ import {
     type AgentEvent,
     type ApprovalDecision,
     type ApprovalRequest,
+    type AssistantMessage,
+    type ImagePart,
+    type Message,
     type ModelRouter,
+    type SearchHit,
+    type Todo,
 } from '@agentic/core';
 import { createLocalAgent, loadConfig, type AgenticConfig, type LocalAgent } from '@agentic/core/node';
 import { compactNumber, errorMessage } from '../shared/format';
-import type { ApprovalView, ChangedFile, PermissionMode, Tier, ToolDisplayView, ToWebview, TurnEndReason } from '../shared/protocol';
+import type { ApprovalView, AttachmentView, ChangedFile, PermissionMode, Tier, ToolDisplayView, ToWebview, TurnEndReason } from '../shared/protocol';
 import type { DiffDocuments } from './diffDocuments';
 import { EXTRA_INSTRUCTIONS } from './instructions';
+import { evaluateGates, reviewMessage, type CommandRun, type Playbook } from './playbooks';
 import { projectSnapshot } from './projectSnapshot';
 
 type ToolEndEvent = Extract<AgentEvent, { type: 'tool_end' }>;
@@ -21,6 +27,28 @@ type RawDisplay = NonNullable<ToolEndEvent['result']['display']>;
 const MAX_STEPS = 150;
 const DIFF_LINES = 400;
 const OUTPUT_CHARS = 8_000;
+const RESUME_PROMPT = 'Continue the task from where you stopped. (The editor resumed it automatically after a temporary problem reaching the AI providers.)';
+const TEMPORARY =
+    /rate limit|rate-limited|cooling down|too many requests|timed out|timeout|network|fetch failed|ECONNRESET|ECONNREFUSED|ENOTFOUND|ETIMEDOUT|EAI_AGAIN|socket hang up|server error|overloaded|unavailable|stream ended early|\b50[0-4]\b/i;
+const OFFLINE = /fetch failed|ECONN|ENOTFOUND|ETIMEDOUT|EAI_AGAIN|socket hang up|network/i;
+const FINAL = /larger than any configured model|declined to continue|No model is configured/i;
+
+/** Whether a turn-ending error is temporary enough to wait out and resume automatically. */
+export function recoveryFor(message: string, attempt: number): { delayMs: number; explanation: string; action: string } | undefined {
+    if (attempt >= 2 || FINAL.test(message)) {
+        return undefined;
+    }
+    const reasons = message.startsWith('Every model failed') ? message.split('\n').slice(1) : [message];
+    if (!reasons.some((line) => TEMPORARY.test(line))) {
+        return undefined;
+    }
+    const delayMs = attempt === 0 ? 30_000 : 90_000;
+    return {
+        delayMs,
+        explanation: reasons.every((line) => OFFLINE.test(line)) ? 'The connection to the AI providers dropped.' : 'Every model is busy or rate-limited right now.',
+        action: `Waited ${delayMs / 1000}s and resumed the task`,
+    };
+}
 
 export interface TurnPlan {
     tier: Tier;
@@ -28,6 +56,26 @@ export interface TurnPlan {
     /** The user pinned a specific model, so no tier was chosen. */
     pinned: boolean;
     notes: string[];
+    /** What the agent receives: the request, plus the task brief, lessons and relevant files when they apply. */
+    agentPrompt: string;
+    playbooks: Playbook[];
+    /** The request asks for a publish-ready result, so release gates are required. */
+    release: boolean;
+    /** The user is correcting earlier work. */
+    correction: boolean;
+    attachments: AttachmentView[];
+    /** How many saved lessons were added to the prompt. */
+    lessons: number;
+    /** Reads attachments inside the turn (so progress shows and Stop works), returning the final prompt and images. */
+    prepare?: (turnId: string, signal: AbortSignal) => Promise<{ agentPrompt: string; images: ImagePart[] }>;
+}
+
+export interface SessionLogEntry {
+    kind: 'agent';
+    source: string;
+    message: string;
+    recovered: boolean;
+    action?: string;
 }
 
 interface TouchedFile {
@@ -42,7 +90,12 @@ interface ActiveTurn {
     startedAt: number;
     tokensAtStart: number;
     files: Map<string, TouchedFile>;
+    runs: CommandRun[];
+    playbooks: Playbook[];
+    release: boolean;
     stopRequested: boolean;
+    /** Ends an automatic-retry wait early (when the user stops the task). */
+    wake?: () => void;
 }
 
 export interface SessionOptions {
@@ -50,6 +103,8 @@ export interface SessionOptions {
     diffs: DiffDocuments;
     post(message: ToWebview): void;
     mode(): PermissionMode;
+    log(entry: SessionLogEntry): void;
+    features(): { autoRecovery: boolean };
 }
 
 /** One conversation with the engine: runs turns and translates its events for the webview. */
@@ -60,11 +115,15 @@ export class AgentSession implements vscode.Disposable {
     private abort?: AbortController;
     private turn?: ActiveTurn;
     private runPromise?: Promise<void>;
+    private pendingRestore?: { messages: Message[]; todos: Todo[] };
     private readonly approvals = new Map<string, (decision: ApprovalDecision) => void>();
     private approvalCount = 0;
     private turnCount = 0;
     private undoableTurn?: string;
     lastTier?: Tier;
+    /** Carried into follow-ups like "continue", so the same checks still apply. */
+    lastPlaybooks: Playbook[] = [];
+    lastRelease = false;
 
     constructor(private readonly options: SessionOptions) {}
 
@@ -74,6 +133,28 @@ export class AgentSession implements vscode.Disposable {
 
     get turnId(): string | undefined {
         return this.turn?.id;
+    }
+
+    /** Whether this chat already has earlier work the user could be correcting. */
+    get hasHistory(): boolean {
+        return (this.local?.agent.messages.length ?? 0) > 0 || !!this.pendingRestore?.messages.length;
+    }
+
+    /** Files in the local code index, once it has been built. */
+    get indexedFiles(): number | undefined {
+        return this.local?.codeIndex.fileCount || undefined;
+    }
+
+    /** The agent's latest non-empty reply. */
+    lastReply(): string {
+        const messages = this.local?.agent.messages ?? [];
+        for (let i = messages.length - 1; i >= 0; i--) {
+            const message = messages[i];
+            if (message.role === 'assistant' && message.content.trim()) {
+                return message.content;
+            }
+        }
+        return '';
     }
 
     usageInfo(): { sessionTokens: number; contextTokens: number; contextLimit: number } {
@@ -88,6 +169,33 @@ export class AgentSession implements vscode.Disposable {
         };
     }
 
+    /** The conversation as the agent sees it, for saving to history. */
+    snapshot(): { messages: Message[]; todos: Todo[] } {
+        const agent = this.local?.agent;
+        if (agent) {
+            return { messages: [...agent.messages], todos: [...agent.todos] };
+        }
+        return { messages: [...(this.pendingRestore?.messages ?? [])], todos: [...(this.pendingRestore?.todos ?? [])] };
+    }
+
+    /** Continue a saved conversation: the agent gets its earlier messages and plan back. */
+    async restore(messages: Message[], todos: Todo[]): Promise<void> {
+        await this.newChat();
+        if (this.local) {
+            this.local.agent.messages = [...messages];
+            this.local.agent.todos = [...todos];
+        } else {
+            this.pendingRestore = { messages, todos };
+        }
+    }
+
+    /** Files most related to a request, from the project's local search index. */
+    async relevantFiles(cwd: string, query: string, limit: number): Promise<SearchHit[]> {
+        const local = await this.ensureAgent(cwd);
+        await local.codeIndex.ensureFresh();
+        return local.codeIndex.search(query, limit);
+    }
+
     run(cwd: string, prompt: string, plan: TurnPlan): Promise<void> {
         this.runPromise = this.execute(cwd, prompt, plan);
         return this.runPromise;
@@ -98,6 +206,7 @@ export class AgentSession implements vscode.Disposable {
             return;
         }
         this.turn.stopRequested = true;
+        this.turn.wake?.();
         this.abort?.abort();
         for (const resolve of [...this.approvals.values()]) {
             resolve({ allow: false, feedback: 'The user stopped the task.' });
@@ -118,8 +227,11 @@ export class AgentSession implements vscode.Disposable {
         this.stop();
         await this.runPromise?.catch(() => undefined);
         this.local?.agent.clear();
+        this.pendingRestore = undefined;
         this.undoableTurn = undefined;
         this.lastTier = undefined;
+        this.lastPlaybooks = [];
+        this.lastRelease = false;
         this.options.diffs.clear();
     }
 
@@ -163,11 +275,28 @@ export class AgentSession implements vscode.Disposable {
             startedAt: Date.now(),
             tokensAtStart: 0,
             files: new Map(),
+            runs: [],
+            playbooks: plan.playbooks,
+            release: plan.release,
             stopRequested: false,
         };
         this.turn = turn;
         this.lastTier = plan.tier;
-        this.options.post({ type: 'turnStart', turnId: turn.id, prompt, tier: plan.tier, tierReason: plan.tierReason, pinned: plan.pinned, at: turn.startedAt });
+        this.lastPlaybooks = plan.playbooks;
+        this.lastRelease = plan.release;
+        this.options.post({
+            type: 'turnStart',
+            turnId: turn.id,
+            prompt,
+            tier: plan.tier,
+            tierReason: plan.tierReason,
+            pinned: plan.pinned,
+            playbooks: plan.playbooks.map((p) => p.name),
+            at: turn.startedAt,
+            attachments: plan.attachments.length ? plan.attachments : undefined,
+            correction: plan.correction || undefined,
+            lessons: plan.lessons || undefined,
+        });
         for (const note of plan.notes) {
             this.options.post({ type: 'notice', turnId: turn.id, message: note, level: 'info' });
         }
@@ -184,19 +313,101 @@ export class AgentSession implements vscode.Disposable {
             agent.permissions.mode = this.options.mode();
             turn.tokensAtStart = agent.usage.inputTokens + agent.usage.outputTokens;
             this.abort = new AbortController();
-            for await (const event of agent.run(prompt, { signal: this.abort.signal })) {
-                if (event.type === 'done') {
-                    reason = event.reason;
-                    steps = event.steps;
-                } else {
-                    this.forward(turn.id, event);
+
+            let input = plan.agentPrompt;
+            let images: ImagePart[] | undefined;
+            if (plan.prepare) {
+                const prepared = await plan.prepare(turn.id, this.abort.signal);
+                if (turn.stopRequested) {
+                    reason = 'aborted';
+                    return;
                 }
+                input = prepared.agentPrompt;
+                images = prepared.images;
+            }
+
+            for (let attempt = 0; ; attempt++) {
+                const outcome = await this.runAgent(agent, input, turn.id, attempt === 0 ? images : undefined);
+                steps += outcome.steps;
+                reason = outcome.reason;
+                if (reason !== 'error' || outcome.error === undefined) {
+                    break;
+                }
+                const recoveryOn = this.options.features().autoRecovery;
+                const recovery = turn.stopRequested || !recoveryOn ? undefined : recoveryFor(outcome.error, attempt);
+                if (!recovery) {
+                    this.postError(turn.id, outcome.error);
+                    this.options.log({
+                        kind: 'agent',
+                        source: 'Task',
+                        message: outcome.error,
+                        recovered: false,
+                        action: attempt
+                            ? `Stopped after ${attempt} automatic ${attempt === 1 ? 'retry' : 'retries'}`
+                            : recoveryOn
+                              ? 'Stopped the task and showed the error'
+                              : 'Stopped the task (automatic recovery is off)',
+                    });
+                    break;
+                }
+                this.options.log({ kind: 'agent', source: 'Task', message: outcome.error, recovered: true, action: recovery.action });
+                this.options.post({
+                    type: 'notice',
+                    turnId: turn.id,
+                    level: 'warn',
+                    message: `${recovery.explanation} Retrying automatically in ${Math.round(recovery.delayMs / 1000)}s. Press Stop to cancel.`,
+                });
+                await this.pause(turn, recovery.delayMs);
+                if (turn.stopRequested) {
+                    reason = 'aborted';
+                    break;
+                }
+                input = RESUME_PROMPT;
             }
         } catch (error) {
-            this.postError(turn.id, errorMessage(error));
+            if (turn.stopRequested) {
+                reason = 'aborted';
+            } else {
+                this.postError(turn.id, errorMessage(error));
+                this.options.log({ kind: 'agent', source: 'Task', message: errorMessage(error), recovered: false, action: 'Stopped the task and showed the error' });
+            }
         } finally {
             this.finish(turn, reason, steps);
         }
+    }
+
+    private async runAgent(
+        agent: LocalAgent['agent'],
+        input: string,
+        turnId: string,
+        images?: ImagePart[],
+    ): Promise<{ reason: TurnEndReason; steps: number; error?: string }> {
+        let reason: TurnEndReason = 'error';
+        let steps = 0;
+        let error: string | undefined;
+        for await (const event of agent.run(input, { signal: this.abort?.signal, images })) {
+            if (event.type === 'done') {
+                reason = event.reason;
+                steps = event.steps;
+            } else if (event.type === 'error') {
+                error = event.message;
+            } else {
+                this.forward(turnId, event);
+            }
+        }
+        return { reason, steps, error };
+    }
+
+    private pause(turn: ActiveTurn, ms: number): Promise<void> {
+        return new Promise((resolve) => {
+            const timer = setTimeout(done, ms);
+            function done(): void {
+                clearTimeout(timer);
+                turn.wake = undefined;
+                resolve();
+            }
+            turn.wake = done;
+        });
     }
 
     private finish(turn: ActiveTurn, reason: TurnEndReason, steps: number): void {
@@ -214,6 +425,17 @@ export class AgentSession implements vscode.Disposable {
             if (added || removed || file.created) {
                 files.push({ path, created: file.created, added, removed, diffId: file.diffId });
             }
+        }
+
+        if (turn.playbooks.length && (turn.runs.length || turn.files.size)) {
+            this.options.post({
+                type: 'checks',
+                turnId: turn.id,
+                playbooks: turn.playbooks.map((p) => p.name),
+                gates: evaluateGates(turn.playbooks, turn.runs, turn.release),
+                security: [...new Set(turn.playbooks.flatMap((p) => p.security))],
+                release: turn.release ? [...new Set(turn.playbooks.flatMap((p) => p.release))] : [],
+            });
         }
 
         const agent = this.local?.agent;
@@ -286,9 +508,6 @@ export class AgentSession implements vscode.Disposable {
             case 'usage':
                 post({ type: 'usage', ...this.usageInfo() });
                 break;
-            case 'error':
-                this.postError(turnId, event.message);
-                break;
             default:
                 break;
         }
@@ -301,6 +520,9 @@ export class AgentSession implements vscode.Disposable {
         let diffId: string | undefined;
         if (ok && raw?.type === 'diff') {
             diffId = this.recordFile(raw.path, raw.before, raw.after, raw.created);
+        }
+        if (raw?.type === 'command' && event.call.name === 'run_command') {
+            this.turn?.runs.push({ command: raw.command, exitCode: raw.exitCode, background: !!raw.background });
         }
         this.options.post({
             type: 'toolEnd',
@@ -354,13 +576,20 @@ export class AgentSession implements vscode.Disposable {
             return undefined;
         }
         const previous = turn.files.get(path);
-        const file: TouchedFile = previous
-            ? { ...previous, after }
-            : { created, before, after, diffId: `${turn.id}-${turn.files.size + 1}` };
+        const file: TouchedFile = previous ? { ...previous, after } : { created, before, after, diffId: `${turn.id}-${turn.files.size + 1}` };
         turn.files.set(path, file);
         this.options.diffs.set(file.diffId, file.before, file.after);
         return file.diffId;
     }
+
+    /** Before the agent ends a turn, required quality gates must have passed. */
+    private readonly reviewCompletion = (message: AssistantMessage): string | undefined => {
+        const turn = this.turn;
+        if (!turn?.playbooks.length || (!turn.files.size && !turn.runs.length)) {
+            return undefined;
+        }
+        return reviewMessage(evaluateGates(turn.playbooks, turn.runs, turn.release), message.content);
+    };
 
     private readonly approve = (request: ApprovalRequest): Promise<ApprovalDecision> => {
         const turnId = this.turn?.id;
@@ -392,7 +621,7 @@ export class AgentSession implements vscode.Disposable {
         });
     };
 
-    private ensureAgent(cwd: string, turnId: string): Promise<LocalAgent> {
+    private ensureAgent(cwd: string, turnId?: string): Promise<LocalAgent> {
         if (this.local && this.localRoot === cwd) {
             return Promise.resolve(this.local);
         }
@@ -401,15 +630,22 @@ export class AgentSession implements vscode.Disposable {
             try {
                 config = await loadConfig();
             } catch (error) {
-                this.options.post({ type: 'notice', turnId, level: 'warn', message: `Ignoring the Agentic CLI config: ${errorMessage(error)}` });
+                if (turnId) {
+                    this.options.post({ type: 'notice', turnId, level: 'warn', message: `Ignoring the Agentic CLI config: ${errorMessage(error)}` });
+                }
             }
             this.local?.processes.killAll();
+            const restore = this.pendingRestore;
+            this.pendingRestore = undefined;
             const local = await createLocalAgent({
                 cwd,
                 config,
                 router: this.options.router,
                 mode: this.options.mode(),
                 approve: this.approve,
+                reviewCompletion: this.reviewCompletion,
+                messages: restore?.messages,
+                todos: restore?.todos,
                 agentName: 'FreeAgentCoder',
                 extraInstructions: [EXTRA_INSTRUCTIONS, await projectSnapshot(cwd)].filter(Boolean).join('\n\n'),
                 maxSteps: MAX_STEPS,
@@ -427,11 +663,11 @@ export class AgentSession implements vscode.Disposable {
         let hint: string | undefined;
         let action: 'openKeys' | undefined;
         if (/Every model failed|No model is configured/.test(message)) {
-            hint = "None of your keys could complete this request. Check each key's status and quota in Settings → API Keys, or add another key.";
+            hint = "None of your keys could complete this request. Check each key's status and last error in Settings → API Keys, or add another key.";
             action = 'openKeys';
         } else if (/larger than any configured model/.test(message)) {
             hint = 'This conversation no longer fits your models. Start a new chat, or add a Gemini key for its 1M-token context.';
-        } else if (/fetch failed|ENOTFOUND|ECONNREFUSED|ETIMEDOUT|network/i.test(message)) {
+        } else if (OFFLINE.test(message)) {
             hint = 'Check your internet connection and try again.';
         }
         this.options.post({ type: 'error', turnId, message, hint, action });

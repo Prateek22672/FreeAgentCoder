@@ -1,22 +1,36 @@
-// Fill these in once the extension is published; every install button and the /install redirect update from here.
+// Every install button, the /install redirect, canonical/OG URLs, robots.txt and sitemap.xml update from this object.
 export const config = {
-  /** VS Code Marketplace publisher ID, e.g. "prateek". Leave empty until the extension is live. */
-  publisher: '',
+  /** Production URL, no trailing slash. Used for canonical, Open Graph, robots.txt and sitemap.xml. */
+  site: 'https://freeagentcoder.foliofyx.in',
+  /** VS Code Marketplace publisher ID. */
+  publisher: 'PrateekKoratala',
+  /** Creator shown in the credits. */
+  creator: 'Prateek Koratala',
   extension: 'freeagentcoder',
-  /** Public repository URL, e.g. "https://github.com/your-name/freeagentcoder". */
-  github: '',
+  /** Public repository URL. */
+  github: 'https://github.com/Prateek22672/FreeAgentCoder',
+  /** Foliofyx website, linked from the "Imperium × Foliofyx" credits. */
+  foliofyx: 'https://foliofyx.in',
+  /**
+   * Flip to true once the extension has actually been uploaded to the
+   * Marketplace (publisher + repo can be filled in beforehand; the install
+   * buttons should stay in "Soon" state until there's really something to install).
+   */
+  published: false,
 };
 
-export const released = config.publisher !== '';
+export const released = config.published;
 
 const extensionId = `${config.publisher}.${config.extension}`;
 
 export const links = {
+  site: config.site,
   vscode: released ? `vscode:extension/${extensionId}` : '',
   marketplace: released ? `https://marketplace.visualstudio.com/items?itemName=${extensionId}` : '',
   openVsx: released ? `https://open-vsx.org/extension/${config.publisher}/${config.extension}` : '',
   github: config.github,
   releases: config.github ? `${config.github}/releases/latest` : '',
+  foliofyx: config.foliofyx,
 };
 
 export function installCommand(cli: 'code' | 'cursor'): string {

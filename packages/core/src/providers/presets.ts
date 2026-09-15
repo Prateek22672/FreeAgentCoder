@@ -205,6 +205,8 @@ export interface ProviderOptions {
   maxOutputTokens?: number;
   /** Sees the HTTP response headers of each request (rate-limit dashboards). */
   onHeaders?: (headers: Headers) => void;
+  /** Override image-input detection (default: `modelSupportsImages(preset.id, model)`). */
+  supportsImages?: boolean | ((model: string) => boolean);
 }
 
 export function createProvider(preset: ProviderPreset, opts: ProviderOptions = {}): Provider {
@@ -216,6 +218,7 @@ export function createProvider(preset: ProviderPreset, opts: ProviderOptions = {
       effort: opts.effort,
       maxOutputTokens: opts.maxOutputTokens,
       onHeaders: opts.onHeaders,
+      supportsImages: opts.supportsImages,
     });
   }
   return new OpenAICompatProvider({
@@ -227,6 +230,7 @@ export function createProvider(preset: ProviderPreset, opts: ProviderOptions = {
     maxTokensParam: preset.maxTokensParam,
     maxOutputTokens: opts.maxOutputTokens,
     onHeaders: opts.onHeaders,
+    supportsImages: opts.supportsImages,
   });
 }
 

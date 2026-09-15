@@ -1,11 +1,8 @@
-name: Deploy website
+name: Deploy website to GitHub Pages (backup)
 
+# The site is deployed by Vercel at https://freeagentcoder.foliofyx.in on every push.
+# This backup deploy only runs when started by hand from the Actions tab.
 on:
-  push:
-    branches: [main]
-    paths:
-      - 'apps/site/**'
-      - '.github/workflows/pages.yml'
   workflow_dispatch:
 
 permissions:

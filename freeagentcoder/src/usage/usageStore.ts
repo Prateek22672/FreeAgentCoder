@@ -1,10 +1,37 @@
 import * as vscode from 'vscode';
 import type { QuotaSnapshot, QuotaWindow, UsageCounts, UsageDay } from '../shared/protocol';
 
+interface DayEvents {
+    rateLimits: Record<string, number>;
+    weakFallbacks: number;
+    tasks: number;
+    completed: number;
+    taskTokens: number;
+    taskRequests: number;
+    taskDurationMs: number;
+    recoveries: number;
+}
+
+interface LearnedLimit {
+    requestsPerDay: number;
+    learnedAt: number;
+}
+
 interface Persisted {
     days: Record<string, Record<string, UsageCounts>>;
     lastUsed: Record<string, number>;
     quota: Record<string, QuotaSnapshot>;
+    events: Record<string, DayEvents>;
+    limits: Record<string, LearnedLimit>;
+}
+
+export interface TaskStats {
+    tasks: number;
+    completed: number;
+    tokens: number;
+    requests: number;
+    durationMs: number;
+    recoveries: number;
 }
 
 const STORAGE_KEY = 'freeagentcoder.usage.v1';
@@ -29,16 +56,24 @@ export function dayKey(time = Date.now()): string {
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 }
 
+function emptyEvents(): DayEvents {
+    return { rateLimits: {}, weakFallbacks: 0, tasks: 0, completed: 0, taskTokens: 0, taskRequests: 0, taskDurationMs: 0, recoveries: 0 };
+}
+
 /**
  * Usage counted locally from provider responses, per key and per day, kept
- * for 30 days. Also holds live key state that shouldn't outlive the window:
- * rate-limit cooldowns and auth failures of keys managed outside the extension.
+ * for 30 days, plus the events the key advisor learns from (rate limits,
+ * fallbacks to weak models, task sizes and outcomes) and daily limits learned
+ * from providers' rate-limit errors. Live key state that shouldn't outlive
+ * the window (cooldowns, auth failures of external keys, last errors) is kept
+ * in memory only.
  */
 export class UsageStore implements vscode.Disposable {
     private readonly data: Persisted;
     private readonly windowUsage = new Map<string, UsageCounts>();
     private readonly cooldowns = new Map<string, number>();
     private readonly invalid = new Map<string, string>();
+    private readonly lastErrors = new Map<string, { message: string; at: number }>();
     private readonly changed = new vscode.EventEmitter<void>();
     readonly onDidChange = this.changed.event;
     private saveTimer?: ReturnType<typeof setTimeout>;
@@ -46,7 +81,7 @@ export class UsageStore implements vscode.Disposable {
 
     constructor(private readonly context: vscode.ExtensionContext) {
         const raw = context.globalState.get<Partial<Persisted>>(STORAGE_KEY);
-        this.data = { days: raw?.days ?? {}, lastUsed: raw?.lastUsed ?? {}, quota: raw?.quota ?? {} };
+        this.data = { days: raw?.days ?? {}, lastUsed: raw?.lastUsed ?? {}, quota: raw?.quota ?? {}, events: raw?.events ?? {}, limits: raw?.limits ?? {} };
         this.prune();
     }
 
@@ -71,6 +106,71 @@ export class UsageStore implements vscode.Disposable {
         this.touch();
     }
 
+    recordRateLimit(keyId: string): void {
+        const events = this.todayEvents();
+        events.rateLimits[keyId] = (events.rateLimits[keyId] ?? 0) + 1;
+        this.touch();
+    }
+
+    recordWeakFallback(): void {
+        this.todayEvents().weakFallbacks++;
+        this.touch();
+    }
+
+    recordRecovery(): void {
+        this.todayEvents().recoveries++;
+        this.touch();
+    }
+
+    recordTask(task: { tokens: number; requests: number; completed: boolean; durationMs: number }): void {
+        const events = this.todayEvents();
+        events.tasks++;
+        events.completed = (events.completed ?? 0) + (task.completed ? 1 : 0);
+        events.taskTokens += Math.max(0, task.tokens);
+        events.taskRequests += Math.max(0, task.requests);
+        events.taskDurationMs = (events.taskDurationMs ?? 0) + Math.max(0, task.durationMs);
+        this.touch();
+    }
+
+    /** A daily request limit a provider named in a rate-limit error (Gemini does, but sends no quota headers). */
+    learnDailyLimit(keyId: string, requestsPerDay: number): void {
+        if (!Number.isFinite(requestsPerDay) || requestsPerDay <= 0 || this.data.limits[keyId]?.requestsPerDay === requestsPerDay) {
+            return;
+        }
+        this.data.limits[keyId] = { requestsPerDay, learnedAt: Date.now() };
+        this.touch();
+    }
+
+    learnedDailyLimits(): Record<string, number> {
+        const cutoff = Date.now() - KEEP_DAYS * 86_400_000;
+        return Object.fromEntries(Object.entries(this.data.limits).filter(([, l]) => l.learnedAt >= cutoff).map(([id, l]) => [id, l.requestsPerDay]));
+    }
+
+    rateLimitsToday(): Record<string, number> {
+        return { ...(this.data.events[dayKey()]?.rateLimits ?? {}) };
+    }
+
+    weakFallbacksToday(): number {
+        return this.data.events[dayKey()]?.weakFallbacks ?? 0;
+    }
+
+    /** Tasks finished over the last `days` days: how many, how many completed, and their totals. */
+    taskStats(days: number): TaskStats {
+        const result: TaskStats = { tasks: 0, completed: 0, tokens: 0, requests: 0, durationMs: 0, recoveries: 0 };
+        for (let i = 0; i < days; i++) {
+            const events = this.data.events[dayKey(Date.now() - i * 86_400_000)];
+            if (events) {
+                result.tasks += events.tasks ?? 0;
+                result.completed += events.completed ?? 0;
+                result.tokens += events.taskTokens ?? 0;
+                result.requests += events.taskRequests ?? 0;
+                result.durationMs += events.taskDurationMs ?? 0;
+                result.recoveries += events.recoveries ?? 0;
+            }
+        }
+        return result;
+    }
+
     setCooldown(keyId: string, until: number): void {
         this.cooldowns.set(keyId, until);
         this.touch();
@@ -92,6 +192,15 @@ export class UsageStore implements vscode.Disposable {
 
     invalidReason(keyId: string): string | undefined {
         return this.invalid.get(keyId);
+    }
+
+    setLastError(keyId: string, message: string): void {
+        this.lastErrors.set(keyId, { message, at: Date.now() });
+        this.touch();
+    }
+
+    lastError(keyId: string): { message: string; at: number } | undefined {
+        return this.lastErrors.get(keyId);
     }
 
     quota(keyId: string): QuotaSnapshot | undefined {
@@ -131,11 +240,16 @@ export class UsageStore implements vscode.Disposable {
         for (const day of Object.values(this.data.days)) {
             delete day[keyId];
         }
+        for (const events of Object.values(this.data.events)) {
+            delete events.rateLimits[keyId];
+        }
         delete this.data.lastUsed[keyId];
         delete this.data.quota[keyId];
+        delete this.data.limits[keyId];
         this.windowUsage.delete(keyId);
         this.cooldowns.delete(keyId);
         this.invalid.delete(keyId);
+        this.lastErrors.delete(keyId);
         this.touch();
     }
 
@@ -144,6 +258,13 @@ export class UsageStore implements vscode.Disposable {
         clearTimeout(this.notifyTimer);
         void this.context.globalState.update(STORAGE_KEY, this.data);
         this.changed.dispose();
+    }
+
+    private todayEvents(): DayEvents {
+        const key = dayKey();
+        const events = (this.data.events[key] ??= emptyEvents());
+        events.rateLimits ??= {};
+        return events;
     }
 
     private touch(): void {
@@ -163,9 +284,11 @@ export class UsageStore implements vscode.Disposable {
 
     private prune(): void {
         const cutoff = dayKey(Date.now() - KEEP_DAYS * 86_400_000);
-        for (const day of Object.keys(this.data.days)) {
-            if (day < cutoff) {
-                delete this.data.days[day];
+        for (const table of [this.data.days, this.data.events]) {
+            for (const day of Object.keys(table)) {
+                if (day < cutoff) {
+                    delete table[day];
+                }
             }
         }
     }

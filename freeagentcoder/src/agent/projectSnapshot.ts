@@ -45,19 +45,22 @@ const PYTHON_LIBRARIES = [
 
 const USEFUL_SCRIPTS = /^(dev|start|build|test|lint|typecheck|check-types|check|format)$/;
 
-/**
- * A few lines about the project's stack and commands, detected from files in
- * its root. It saves the agent exploration steps on every task.
- */
-export async function projectSnapshot(root: string): Promise<string> {
+interface Detected {
+    facts: string[];
+    /** Short stack names for display, e.g. ["TypeScript", "React", "Vite"]. */
+    labels: string[];
+}
+
+async function detect(root: string): Promise<Detected> {
     let names: Set<string>;
     try {
         names = new Set(await fs.readdir(root));
     } catch {
-        return '';
+        return { facts: [], labels: [] };
     }
     const read = (file: string) => fs.readFile(path.join(root, file), 'utf8').catch(() => '');
     const facts: string[] = [];
+    const labels: string[] = [];
 
     if (names.has('package.json')) {
         try {
@@ -79,8 +82,10 @@ export async function projectSnapshot(root: string): Promise<string> {
                     scripts.length ? ` Scripts: ${scripts.join(', ')}.` : ''
                 }`,
             );
+            labels.push(language, ...frameworks);
         } catch {
             facts.push('Node.js project (package.json could not be parsed).');
+            labels.push('Node.js');
         }
     }
 
@@ -102,27 +107,43 @@ export async function projectSnapshot(root: string): Promise<string> {
         const venv = ['.venv', 'venv'].find((dir) => names.has(dir));
         const libraries = PYTHON_LIBRARIES.filter((lib) => new RegExp(`(^|[\\s"'\\[,-])${lib}(?=[\\s=<>~!\\[;"',]|$)`, 'im').test(manifests));
         facts.push(`Python with ${tool}${venv ? `, virtualenv in ${venv}/` : ''}${libraries.length ? `: ${libraries.join(', ')}` : ''}.`);
+        labels.push('Python', ...libraries.filter((lib) => !['numpy', 'pytest'].includes(lib)));
     }
 
     if ([...names].some((name) => name.endsWith('.ipynb')) || names.has('notebooks')) {
         facts.push('Jupyter notebooks are present.');
+        labels.push('Jupyter');
     }
 
-    const others: [boolean, string][] = [
-        [names.has('Cargo.toml'), 'Rust (cargo build, cargo test)'],
-        [names.has('go.mod'), 'Go (go build ./..., go test ./...)'],
-        [names.has('pom.xml'), 'Java with Maven'],
-        [names.has('build.gradle') || names.has('build.gradle.kts'), 'JVM with Gradle'],
-        [[...names].some((name) => /\.(sln|csproj)$/.test(name)), '.NET (dotnet build, dotnet test)'],
-        [names.has('Gemfile'), 'Ruby with Bundler'],
-        [names.has('composer.json'), 'PHP with Composer'],
-        [names.has('pubspec.yaml'), 'Dart/Flutter'],
-        [names.has('Dockerfile') || names.has('docker-compose.yml') || names.has('compose.yaml'), 'Docker'],
+    const others: [boolean, string, string][] = [
+        [names.has('Cargo.toml'), 'Rust (cargo build, cargo test)', 'Rust'],
+        [names.has('go.mod'), 'Go (go build ./..., go test ./...)', 'Go'],
+        [names.has('pom.xml'), 'Java with Maven', 'Java'],
+        [names.has('build.gradle') || names.has('build.gradle.kts'), 'JVM with Gradle', 'Gradle'],
+        [[...names].some((name) => /\.(sln|csproj)$/.test(name)), '.NET (dotnet build, dotnet test)', '.NET'],
+        [names.has('Gemfile'), 'Ruby with Bundler', 'Ruby'],
+        [names.has('composer.json'), 'PHP with Composer', 'PHP'],
+        [names.has('pubspec.yaml'), 'Dart/Flutter', 'Flutter'],
+        [names.has('Dockerfile') || names.has('docker-compose.yml') || names.has('compose.yaml'), 'Docker', 'Docker'],
     ];
-    const extra = others.filter(([present]) => present).map(([, label]) => label);
+    const extra = others.filter(([present]) => present);
     if (extra.length) {
-        facts.push(`Also: ${extra.join('; ')}.`);
+        facts.push(`Also: ${extra.map(([, fact]) => fact).join('; ')}.`);
+        labels.push(...extra.map(([, , label]) => label));
     }
+    return { facts, labels: [...new Set(labels)] };
+}
 
+/**
+ * A few lines about the project's stack and commands, detected from files in
+ * its root. It saves the agent exploration steps on every task.
+ */
+export async function projectSnapshot(root: string): Promise<string> {
+    const { facts } = await detect(root);
     return facts.length ? `# Project snapshot (detected from root files; confirm before relying on it)\n- ${facts.join('\n- ')}` : '';
+}
+
+/** Short stack names for the Overview, e.g. ["TypeScript", "React", "Vite"]. */
+export async function detectStack(root: string): Promise<string[]> {
+    return (await detect(root)).labels;
 }

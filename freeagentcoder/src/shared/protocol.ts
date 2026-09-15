@@ -2,8 +2,13 @@ export type PermissionMode = 'ask' | 'auto-edit' | 'auto';
 export type Tier = 'fast' | 'deep';
 export type KeyStatus = 'active' | 'cooldown' | 'invalid' | 'disabled' | 'unverified';
 export type KeySource = 'extension' | 'env' | 'config';
-export type SettingsSection = 'keys' | 'usage' | 'model' | 'permissions';
+export type SettingsSection = 'overview' | 'keys' | 'usage' | 'memory' | 'history' | 'model' | 'permissions' | 'logs';
+export type HistoryMode = 'ask' | 'on' | 'off';
+export type LogKind = 'provider' | 'agent' | 'extension';
 export type TurnEndReason = 'completed' | 'max_steps' | 'aborted' | 'error';
+export type FeatureId = 'seniorMode' | 'autoRecovery' | 'codeSearch' | 'readAttachments' | 'learning';
+export type AttachmentKind = 'image' | 'document' | 'text';
+export type LessonScope = 'project' | 'global';
 
 export const AUTO_MODEL = 'auto';
 
@@ -44,6 +49,8 @@ export interface KeyView {
     statusDetail?: string;
     cooldownUntil?: number;
     lastUsedAt?: number;
+    lastError?: string;
+    lastErrorAt?: number;
     today: UsageCounts;
     month: UsageCounts;
     window: UsageCounts;
@@ -88,6 +95,137 @@ export interface SettingsView {
     routes: RouteView[];
     warnings: string[];
     usableKeys: number;
+    capacity: ProviderCapacity[];
+    suggestions: Suggestion[];
+    overview: OverviewView;
+}
+
+export interface CapacityWindow {
+    name: string;
+    dimension: string;
+    period?: string;
+    used: number;
+    limit: number;
+    /** How many of the provider's usable keys reported this limit. */
+    reportingKeys: number;
+    resetAt?: number;
+}
+
+export interface ProviderCapacity {
+    provider: string;
+    label: string;
+    keys: number;
+    usableKeys: number;
+    today: UsageCounts;
+    rateLimitsToday: number;
+    windows: CapacityWindow[];
+}
+
+export interface Suggestion {
+    id: string;
+    level: 'tip' | 'warn';
+    title: string;
+    detail: string;
+    action?: 'addKey';
+    provider?: string;
+}
+
+export interface PromptsLeft {
+    /** Undefined when none of the active keys has a known daily request limit. */
+    value?: number;
+    /** Some active keys don't report a daily limit, so the real number is higher. */
+    atLeast: boolean;
+    requestsPerPrompt: number;
+    /** Plain-language explanation of how the number was worked out. */
+    basis: string;
+}
+
+export interface ProjectStatus {
+    name: string;
+    stack: string[];
+    indexedFiles?: number;
+    instructionsFile?: string;
+    git: boolean;
+}
+
+export interface EfficiencyStats {
+    tasks: number;
+    completed: number;
+    avgTokens: number;
+    avgRequests: number;
+    avgDurationMs: number;
+    recoveries: number;
+}
+
+export interface FeatureView {
+    id: FeatureId;
+    label: string;
+    description: string;
+    on: boolean;
+}
+
+export interface LessonView {
+    id: string;
+    text: string;
+    scope: LessonScope;
+    source: 'correction' | 'user';
+    createdAt: number;
+    /** Folder name, for project lessons. */
+    project?: string;
+}
+
+export interface OverviewView {
+    project?: ProjectStatus;
+    promptsLeft: PromptsLeft;
+    efficiency: EfficiencyStats;
+    features: FeatureView[];
+    lessons: LessonView[];
+}
+
+export interface ChatSummary {
+    id: string;
+    title: string;
+    workspace?: string;
+    createdAt: number;
+    updatedAt: number;
+    turns: number;
+}
+
+export interface LogEntry {
+    id: string;
+    at: number;
+    kind: LogKind;
+    source: string;
+    message: string;
+    recovered: boolean;
+    action?: string;
+    count: number;
+}
+
+export interface LogStats {
+    today: number;
+    handled: number;
+    unresolved: number;
+    topSources: { source: string; count: number }[];
+}
+
+/** A file, screenshot or long pasted text sent with a message. */
+export interface AttachmentInput {
+    name: string;
+    kind: AttachmentKind;
+    mimeType: string;
+    size: number;
+    /** Base64 for images and documents; the text itself for pasted text. */
+    data: string;
+    /** Small preview for images, kept in the chat transcript. */
+    thumb?: string;
+}
+
+export interface AttachmentView {
+    name: string;
+    kind: AttachmentKind;
+    size: number;
+    thumb?: string;
 }
 
 export interface TodoView {
@@ -129,10 +267,30 @@ export interface ChangedFile {
     diffId: string;
 }
 
+export interface GateView {
+    label: string;
+    command: string;
+    required: boolean;
+    status: 'passed' | 'failed' | 'not_run';
+    exitCode?: number | null;
+}
+
 export type ToWebview =
     | { type: 'state'; settings: SettingsView; running: boolean; hasWorkspace: boolean }
     | { type: 'settings'; settings: SettingsView }
-    | { type: 'turnStart'; turnId: string; prompt: string; tier: Tier; tierReason: string; pinned: boolean; at: number }
+    | {
+          type: 'turnStart';
+          turnId: string;
+          prompt: string;
+          tier: Tier;
+          tierReason: string;
+          pinned: boolean;
+          playbooks: string[];
+          at: number;
+          attachments?: AttachmentView[];
+          correction?: boolean;
+          lessons?: number;
+      }
     | { type: 'model'; turnId: string; providerLabel: string; model: string; keyLabel: string }
     | { type: 'text'; turnId: string; delta: string }
     | { type: 'reasoning'; turnId: string; delta: string }
@@ -170,6 +328,11 @@ export type ToWebview =
           canUndo: boolean;
       }
     | { type: 'undone'; turnId: string; restored: string[]; deleted: string[] }
+    | { type: 'checks'; turnId: string; playbooks: string[]; gates: GateView[]; security: string[]; release: string[] }
+    | { type: 'learned'; turnId: string; lessons: LessonView[] }
+    | { type: 'history'; mode: HistoryMode; chats: ChatSummary[]; currentId: string }
+    | { type: 'historyConsent' }
+    | { type: 'logs'; entries: LogEntry[]; stats: LogStats }
     | { type: 'usage'; sessionTokens: number; contextTokens: number; contextLimit: number }
     | { type: 'reset' }
     | { type: 'toast'; message: string; level: 'info' | 'error' }
@@ -180,7 +343,7 @@ export type ToWebview =
 
 export type FromWebview =
     | { type: 'ready' }
-    | { type: 'send'; text: string }
+    | { type: 'send'; text: string; attachments?: AttachmentInput[]; correction?: boolean }
     | { type: 'stop' }
     | { type: 'continue' }
     | { type: 'newChat' }
@@ -197,4 +360,14 @@ export type FromWebview =
     | { type: 'openExternal'; url: string }
     | { type: 'copy'; text: string }
     | { type: 'undo'; turnId: string }
-    | { type: 'openFolder' };
+    | { type: 'openFolder' }
+    | { type: 'openChat'; id: string }
+    | { type: 'deleteChat'; id: string }
+    | { type: 'clearHistory' }
+    | { type: 'setHistoryMode'; mode: 'on' | 'off' }
+    | { type: 'clearLogs' }
+    | { type: 'copyDiagnostics' }
+    | { type: 'logError'; message: string }
+    | { type: 'setFeature'; id: FeatureId; on: boolean }
+    | { type: 'addLesson'; text: string; scope: LessonScope }
+    | { type: 'deleteLesson'; id: string };

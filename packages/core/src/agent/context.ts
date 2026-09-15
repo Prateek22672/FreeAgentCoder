@@ -1,3 +1,4 @@
+import { describeImages, imageTokens, withoutImages } from '../providers/images';
 import type { Message } from '../types';
 import { estimateTokens, truncateMiddle } from '../util/text';
 
@@ -10,17 +11,30 @@ import { estimateTokens, truncateMiddle } from '../util/text';
  * Both edit history, so provider echo data (Claude thinking blocks, Gemini
  * signatures) is dropped at the same time — replaying it against an edited
  * history is invalid.
+ * Image attachments on earlier user requests are removed by both stages; a
+ * note with their names stays in the text so the model knows they existed.
  */
 
 const BULKY_ARGS = ['content', 'new_string', 'old_string'];
+
+export const IMAGES_REMOVED_NOTE = 'attached earlier — removed to save context';
 
 export function microCompact(messages: Message[], keepRecentTools = 6): number {
   let saved = 0;
   let toolSeen = 0;
   let assistantSeen = 0;
+  let requestSeen = false;
   for (let i = messages.length - 1; i >= 0; i--) {
     const m = messages[i]!;
-    if (m.role === 'tool') {
+    if (m.role === 'user') {
+      // Keep the images of the latest request; older ones go.
+      if (m.images?.length && requestSeen) {
+        const stripped = withoutImages(m, IMAGES_REMOVED_NOTE);
+        saved += imageTokens(m) - (estimateTokens(stripped.content) - estimateTokens(m.content));
+        messages[i] = stripped;
+      }
+      if (!m.synthetic) requestSeen = true;
+    } else if (m.role === 'tool') {
       toolSeen++;
       if (toolSeen > keepRecentTools && m.content.length > 400) {
         const note = `[Earlier ${m.name} output removed to save context. Run the tool again if you need it.]`;
@@ -58,7 +72,8 @@ export function splitTail(messages: Message[], maxTokens: number, maxMessages = 
   let tokens = 0;
   while (start > 0 && messages.length - start < maxMessages) {
     const m = messages[start - 1]!;
-    const cost = estimateTokens(m.content) + (m.role === 'assistant' && m.toolCalls ? estimateTokens(JSON.stringify(m.toolCalls)) : 0);
+    const cost =
+      estimateTokens(m.content) + imageTokens(m) + (m.role === 'assistant' && m.toolCalls ? estimateTokens(JSON.stringify(m.toolCalls)) : 0);
     if (tokens + cost > maxTokens) break;
     tokens += cost;
     start--;
@@ -72,7 +87,8 @@ export function transcript(messages: Message[], maxChars: number): string {
   const lines: string[] = [];
   for (const m of messages) {
     if (m.role === 'user') {
-      lines.push(`${m.synthetic ? 'NOTE' : 'USER'}: ${m.content}`);
+      // Only the names of attachments: images never go into the summary request.
+      lines.push(`${m.synthetic ? 'NOTE' : 'USER'}: ${m.content}${m.images?.length ? ` [${describeImages(m.images)} attached]` : ''}`);
     } else if (m.role === 'assistant') {
       if (m.content) lines.push(`ASSISTANT: ${m.content}`);
       for (const call of m.toolCalls ?? []) {
@@ -98,7 +114,9 @@ Be specific (paths, names, commands, versions). Plain text, under 500 words.`;
 
 /** Mechanical fallback when no model is available to summarize. */
 export function fallbackSummary(messages: Message[]): string {
-  const requests = messages.filter((m) => m.role === 'user' && !m.synthetic).map((m) => `- ${truncateMiddle(m.content, 300)}`);
+  const requests = messages
+    .filter((m) => m.role === 'user' && !m.synthetic)
+    .map((m) => `- ${truncateMiddle(m.content, 300)}${m.role === 'user' && m.images?.length ? ` [${describeImages(m.images)} attached]` : ''}`);
   const touched = new Set<string>();
   for (const m of messages) {
     if (m.role !== 'assistant') continue;
