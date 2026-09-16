@@ -25,6 +25,12 @@ const extensionId = `${config.publisher}.${config.extension}`;
 
 export const links = {
   site: config.site,
+  issues: `${config.github}/issues`,
+  changelog: `${config.github}/blob/main/freeagentcoder/CHANGELOG.md`,
+  /** The file that stores API keys, linked as proof of the key-storage claim. */
+  keyStorage: `${config.github}/blob/main/freeagentcoder/src/keys/keyStore.ts`,
+  review: released ? `https://marketplace.visualstudio.com/items?itemName=${extensionId}&ssr=false#review-details` : '',
+  qna: released ? `https://marketplace.visualstudio.com/items?itemName=${extensionId}&ssr=false#qna` : '',
   vscode: released ? `vscode:extension/${extensionId}` : '',
   marketplace: released ? `https://marketplace.visualstudio.com/items?itemName=${extensionId}` : '',
   openVsx: released ? `https://open-vsx.org/extension/${config.publisher}/${config.extension}` : '',

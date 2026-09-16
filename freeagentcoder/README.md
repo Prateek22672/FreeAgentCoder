@@ -1,5 +1,9 @@
 # FreeAgentCoder — free AI coding agent for VS Code
 
+[![Visual Studio Marketplace](https://img.shields.io/visual-studio-marketplace/v/PrateekKoratala.freeagentcoder?label=Marketplace&color=1f6feb)](https://marketplace.visualstudio.com/items?itemName=PrateekKoratala.freeagentcoder)
+[![License: MIT](https://img.shields.io/badge/license-MIT-2ea043)](https://github.com/Prateek22672/FreeAgentCoder/blob/main/LICENSE.txt)
+[![Source](https://img.shields.io/badge/source-open-6e7681)](https://github.com/Prateek22672/FreeAgentCoder)
+
 **An autonomous AI coding agent and chat that runs on your own free API keys.**
 
 FreeAgentCoder plans, writes, runs and verifies code in your project. Add free API keys from Gemini, Groq or Cerebras, and it sends each request to the right model, switching to your next key whenever one hits its limit.

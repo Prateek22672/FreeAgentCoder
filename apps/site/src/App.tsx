@@ -411,6 +411,10 @@ function Privacy() {
                 <a href={links.github} target="_blank" rel="noopener">
                   View the repository<span className="sr-only"> (opens in a new tab)</span>
                 </a>
+                {' · '}
+                <a href={links.keyStorage} target="_blank" rel="noopener">
+                  See exactly how keys are stored<span className="sr-only"> (opens in a new tab)</span>
+                </a>
               </>
             )}
           </p>
@@ -448,6 +452,42 @@ function Credits() {
           <p>
             Created FreeAgentCoder. Marketplace publisher ID: <code>{config.publisher}</code>
           </p>
+        </article>
+      </div>
+      <div className="cells cols-3">
+        <article className="cell">
+          <p className="label">Something broken?</p>
+          <h3>Report an issue</h3>
+          <p>Bugs and feature requests are tracked in the open, and the code that fixes them is public.</p>
+          <p className="cell-link">
+            <a href={links.issues} target="_blank" rel="noopener">
+              Open an issue<span className="sr-only"> (opens in a new tab)</span>
+            </a>
+          </p>
+        </article>
+        <article className="cell">
+          <p className="label">Not sure about something?</p>
+          <h3>Ask before you install</h3>
+          <p>Questions on the Marketplace Q&amp;A tab are answered, not left sitting there.</p>
+          {links.qna ? (
+            <p className="cell-link">
+              <a href={links.qna} target="_blank" rel="noopener">
+                Ask a question<span className="sr-only"> (opens in a new tab)</span>
+              </a>
+            </p>
+          ) : null}
+        </article>
+        <article className="cell">
+          <p className="label">Already using it?</p>
+          <h3>Leave a review</h3>
+          <p>Reviews are how the next developer decides whether a new extension is worth trusting.</p>
+          {links.review ? (
+            <p className="cell-link">
+              <a href={links.review} target="_blank" rel="noopener">
+                Write a review<span className="sr-only"> (opens in a new tab)</span>
+              </a>
+            </p>
+          ) : null}
         </article>
       </div>
     </div>
