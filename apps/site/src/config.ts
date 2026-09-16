@@ -16,7 +16,7 @@ export const config = {
    * Marketplace (publisher + repo can be filled in beforehand; the install
    * buttons should stay in "Soon" state until there's really something to install).
    */
-  published: false,
+  published: true,
 };
 
 export const released = config.published;

@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.1.1 — Easier to find
+
+### Changed
+
+- The Marketplace name is now "Free Agent Coder — Free AI Coding Agent", with a clearer description and keywords, so the extension turns up for searches like "free ai agent", "coding agent" or "free agent coder". The extension id and all commands are unchanged.
+
 ## 0.1.0 — First public release
 
 ### Added

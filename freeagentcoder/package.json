@@ -1,8 +1,8 @@
 {
   "name": "freeagentcoder",
-  "displayName": "FreeAgentCoder — Free AI Coding Agent",
-  "description": "Free AI coding agent and chat for VS Code. Plans, edits, runs and verifies code using your own free Gemini, Groq, Cerebras, Mistral or OpenRouter API keys. No subscription and no usage limits of ours.",
-  "version": "0.1.0",
+  "displayName": "Free Agent Coder — Free AI Coding Agent",
+  "description": "FreeAgentCoder: a free AI coding agent and chat for VS Code. Plans, edits, runs and verifies code using your own free Gemini, Groq, Cerebras, Mistral or OpenRouter API keys. No subscription and no usage limits of ours.",
+  "version": "0.1.1",
   "publisher": "PrateekKoratala",
   "license": "MIT",
   "icon": "media/icon.png",
