@@ -221,6 +221,10 @@ export const FAQ: { q: string; a: string }[] = [
     a: 'Yes. The extension is free and MIT licensed, and it runs on the free tiers of providers like Gemini, Groq, Cerebras, Mistral and OpenRouter using your own keys. Paid OpenAI and Anthropic keys are optional, and are only used automatically when you have no free key. Each provider’s own limits and terms apply.',
   },
   {
+    q: 'Is it an alternative to paid AI coding assistants?',
+    a: 'Yes. It is a free alternative to subscription tools such as GitHub Copilot, Cursor or Claude Code: there is no subscription, no seat fee and no usage metering of ours. You bring your own API keys, so the only limits are the free tiers of the providers you pick — and you can add as many keys as you like, which is exactly what FreeAgentCoder is built around. It is not affiliated with any of those products.',
+  },
+  {
     q: 'Where are my API keys stored?',
     a: KEY_STORAGE,
   },

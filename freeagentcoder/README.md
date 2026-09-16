@@ -1,8 +1,10 @@
-# FreeAgentCoder
+# FreeAgentCoder — free AI coding agent for VS Code
 
-**An autonomous AI coding agent for VS Code that runs on free models.**
+**An autonomous AI coding agent and chat that runs on your own free API keys.**
 
 FreeAgentCoder plans, writes, runs and verifies code in your project. Add free API keys from Gemini, Groq or Cerebras, and it sends each request to the right model, switching to your next key whenever one hits its limit.
+
+It is a free alternative to paid AI coding assistants: no subscription, no per-seat fee and no usage metering of ours. The only limits are the free tiers of the keys you bring, and you can add as many keys as you like.
 
 - **Free to use.** Runs on the free tiers of AI providers with your own keys. No account, no subscription.
 - **A real agent.** Explores your project, makes a plan, edits files, runs your build and tests, and fixes what breaks.
