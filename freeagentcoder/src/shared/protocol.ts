@@ -337,6 +337,7 @@ export type ToWebview =
     | { type: 'reset' }
     | { type: 'toast'; message: string; level: 'info' | 'error' }
     | { type: 'keyResult'; requestId: string; ok: boolean; message: string }
+    | { type: 'clipboard'; text: string }
     | { type: 'keyTest'; id: string; ok: boolean; message: string }
     | { type: 'showSettings'; section?: SettingsSection }
     | { type: 'focusInput' };
@@ -359,6 +360,8 @@ export type FromWebview =
     | { type: 'openDiff'; diffId: string; title: string }
     | { type: 'openExternal'; url: string }
     | { type: 'copy'; text: string }
+    /** Reads the clipboard for the "Paste" button in the add-key form; only ever on an explicit click. */
+    | { type: 'pasteClipboard' }
     | { type: 'undo'; turnId: string }
     | { type: 'openFolder' }
     | { type: 'openChat'; id: string }

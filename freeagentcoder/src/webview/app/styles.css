@@ -787,6 +787,14 @@ select.input { background: var(--vscode-dropdown-background, var(--vscode-input-
 .composer-foot { flex-wrap: wrap; row-gap: 2px; }
 .foot-link.warn { color: var(--warn); }
 .link-row { display: flex; flex-wrap: wrap; gap: 6px; }
+/* Add-key form: per-provider steps and pasted-key detection */
+.key-steps { display: grid; gap: 4px; margin: 6px 0 0; padding-left: 18px; color: var(--muted); font-size: 11.5px; line-height: 1.5; }
+.key-steps li { padding-left: 2px; }
+.provider-note .btn { align-self: flex-start; margin-top: 8px; }
+.detected { display: flex; align-items: center; gap: 6px; color: var(--ok); font-size: 11.5px; }
+.detected .icon { width: 13px; height: 13px; }
+.detected.warn { color: var(--warn); }
+
 .lesson-item.forgotten { opacity: 0.55; }
 .lesson-item.forgotten .lesson-main > div:first-child { text-decoration: line-through; }
 

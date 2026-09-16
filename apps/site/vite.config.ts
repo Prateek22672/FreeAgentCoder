@@ -6,9 +6,9 @@ import { config } from './src/config.ts';
 
 const page = (path: string) => fileURLToPath(new URL(path, import.meta.url));
 
-/** Injects the production URL (config.site) into the HTML and emits robots.txt and sitemap.xml. */
+/** Injects the production URL (origin + base path) into the HTML and emits robots.txt and sitemap.xml. */
 function siteMeta(): Plugin {
-  const site = config.site.replace(/\/+$/, '');
+  const site = `${config.site}${config.basePath}`.replace(/\/+$/, '');
   return {
     name: 'freeagentcoder-site-meta',
     transformIndexHtml: {

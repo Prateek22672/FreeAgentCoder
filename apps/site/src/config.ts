@@ -1,7 +1,13 @@
 // Every install button, the /install redirect, canonical/OG URLs, robots.txt and sitemap.xml update from this object.
 export const config = {
-  /** Production URL, no trailing slash. Used for canonical, Open Graph, robots.txt and sitemap.xml. */
-  site: 'https://freeagentcoder.foliofyx.in',
+  /** Production origin, no trailing slash. Used for canonical, Open Graph, robots.txt and sitemap.xml. */
+  site: 'https://foliofyx.in',
+  /**
+   * Path the site is served under, no trailing slash. Empty for a domain root
+   * or a subdomain; set to '/freeagentcoder' to serve it from foliofyx.in
+   * instead. Assets are already relative, so this only moves the internal links.
+   */
+  basePath: '/freeagentcoder',
   /** VS Code Marketplace publisher ID. */
   publisher: 'PrateekKoratala',
   /** Creator shown in the credits. */
@@ -20,6 +26,11 @@ export const config = {
 };
 
 export const released = config.published;
+
+/** An internal link, correct whether the site sits at a domain root or under a path. */
+export function href(path: string): string {
+  return `${config.basePath}${path}`;
+}
 
 const extensionId = `${config.publisher}.${config.extension}`;
 

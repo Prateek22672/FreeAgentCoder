@@ -1,4 +1,5 @@
 import { compactNumber, formatAgo, formatDate, formatDuration, fullNumber } from '../../shared/format';
+import { detectProvider, KEY_STEPS } from '../../shared/keyFormat';
 import type {
     CapacityWindow,
     KeyView,
@@ -224,14 +225,19 @@ class AddKeyForm {
     readonly el = h('div', { class: 'card add-key', hidden: true });
     private readonly provider = h('select', { class: 'input' });
     private readonly note = h('p', {});
-    private readonly getKey = h('a', { class: 'link', text: 'Get a free key ↗', attrs: { href: '#' } });
+    private readonly steps = h('ol', { class: 'key-steps' });
+    private readonly getKey: HTMLButtonElement;
     private readonly name = h('input', { class: 'input', attrs: { type: 'text', placeholder: 'e.g. Personal, College, Work', maxlength: '40' } });
     private readonly secret = h('input', { class: 'input mono', attrs: { type: 'password', placeholder: 'Paste your API key', autocomplete: 'off', spellcheck: 'false' } });
+    private readonly detected = h('span', { class: 'detected', hidden: true });
     private readonly error = h('div', { class: 'inline-result bad', hidden: true });
     private readonly reveal: HTMLButtonElement;
+    private readonly paste: HTMLButtonElement;
     private readonly save: HTMLButtonElement;
     private providers: ProviderView[] = [];
     private requestId?: string;
+    /** Set when the provider was chosen by the user, so pasting a key doesn't override them. */
+    private pickedByUser = false;
 
     constructor() {
         this.reveal = iconButton('eye', 'Show or hide the key', () => {
@@ -239,18 +245,17 @@ class AddKeyForm {
             this.secret.type = show ? 'text' : 'password';
             this.reveal.replaceChildren(icon(show ? 'eyeOff' : 'eye'));
         });
+        this.paste = iconButton('copy', 'Paste the key you just copied', () => send({ type: 'pasteClipboard' }));
+        this.getKey = button('Get a free key', 'secondary small', () => this.openSignup(), 'external');
         this.save = button('Save key', 'primary', () => this.submit(), 'check');
-        this.provider.addEventListener('change', () => this.describe());
+        this.provider.addEventListener('change', () => {
+            this.pickedByUser = true;
+            this.describe();
+        });
+        this.secret.addEventListener('input', () => this.onSecretChanged());
         this.secret.addEventListener('keydown', (event) => {
             if (event.key === 'Enter') {
                 this.submit();
-            }
-        });
-        this.getKey.addEventListener('click', (event) => {
-            event.preventDefault();
-            const url = this.current()?.signupUrl;
-            if (url) {
-                send({ type: 'openExternal', url });
             }
         });
         this.el.append(
@@ -259,9 +264,10 @@ class AddKeyForm {
                 'div',
                 { class: 'card-body form' },
                 field('Provider', this.provider),
-                h('div', { class: 'provider-note' }, this.note, this.getKey),
+                h('div', { class: 'provider-note' }, this.note, this.steps, this.getKey),
                 field('Name', this.name, 'So you can tell your keys apart.'),
-                field('API key', h('div', { class: 'secret-field' }, this.secret, this.reveal), 'Checked with the provider, then stored encrypted on this device.'),
+                field('API key', h('div', { class: 'secret-field' }, this.secret, this.paste, this.reveal), 'Checked with the provider, then stored encrypted on this device.'),
+                this.detected,
                 h(
                     'div',
                     { class: 'callout' },
@@ -293,11 +299,25 @@ class AddKeyForm {
         this.el.hidden = false;
         if (providerId) {
             this.provider.value = providerId;
+            this.pickedByUser = true;
         }
         this.describe();
         this.error.hidden = true;
-        (providerId ? this.name : this.provider).focus();
+        (providerId ? this.secret : this.provider).focus();
         this.el.scrollIntoView({ block: 'nearest' });
+    }
+
+    /** The clipboard text, after the user pressed Paste. */
+    clipboard(text: string): void {
+        const key = text.trim();
+        if (!key) {
+            this.showError('The clipboard is empty. Copy your key from the provider first.');
+            return;
+        }
+        this.secret.value = key;
+        this.error.hidden = true;
+        this.onSecretChanged();
+        this.secret.focus();
     }
 
     result(message: Msg<'keyResult'>): boolean {
@@ -321,6 +341,39 @@ class AddKeyForm {
         this.secret.type = 'password';
         this.reveal.replaceChildren(icon('eye'));
         this.error.hidden = true;
+        this.detected.hidden = true;
+        this.pickedByUser = false;
+    }
+
+    private openSignup(): void {
+        const url = this.current()?.signupUrl;
+        if (url) {
+            send({ type: 'openExternal', url });
+        }
+    }
+
+    /** A pasted key names its own provider, so switch to it unless the user chose one. */
+    private onSecretChanged(): void {
+        const provider = detectProvider(this.secret.value);
+        const known = provider && this.providers.some((p) => p.id === provider);
+        if (known && !this.pickedByUser && this.provider.value !== provider) {
+            this.provider.value = provider;
+            this.describe();
+        }
+        const label = known ? this.providers.find((p) => p.id === provider)?.label : undefined;
+        const mismatch = known && this.provider.value !== provider;
+        this.detected.hidden = !label;
+        if (label) {
+            this.detected.replaceChildren(
+                icon(mismatch ? 'alert' : 'check'),
+                h('span', {
+                    text: mismatch
+                        ? `That looks like a ${label} key, but ${this.current()?.label ?? 'another provider'} is selected.`
+                        : `Recognised as a ${label} key.`,
+                }),
+            );
+            this.detected.classList.toggle('warn', !!mismatch);
+        }
     }
 
     private current(): ProviderView | undefined {
@@ -331,7 +384,14 @@ class AddKeyForm {
         const provider = this.current();
         this.note.textContent = provider?.note ?? '';
         this.getKey.hidden = !provider?.signupUrl;
-        this.getKey.textContent = provider?.free ? 'Get a free key ↗' : 'Get a key ↗';
+        const label = this.getKey.querySelector('span');
+        if (label) {
+            label.textContent = provider?.free ? 'Get a free key' : 'Get a key';
+        }
+        this.getKey.title = provider?.signupUrl ? `Opens ${provider.signupUrl} in your browser` : '';
+        const steps = provider ? (KEY_STEPS[provider.id] ?? []) : [];
+        this.steps.replaceChildren(...steps.map((step) => h('li', { text: step })));
+        this.steps.hidden = !steps.length;
     }
 
     private submit(): void {
@@ -461,6 +521,10 @@ export class SettingsPanel {
         if (this.form.result(message)) {
             this.options.toast(message.message, 'info');
         }
+    }
+
+    clipboard(message: Msg<'clipboard'>): void {
+        this.form.clipboard(message.text);
     }
 
     keyTest(message: Msg<'keyTest'>): void {

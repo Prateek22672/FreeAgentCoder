@@ -617,6 +617,9 @@ window.addEventListener('message', (event: MessageEvent<ToWebview>) => {
         case 'keyTest':
             settingsPanel.keyTest(message);
             break;
+        case 'clipboard':
+            settingsPanel.clipboard(message);
+            break;
         case 'history':
             settingsPanel.history(message);
             break;

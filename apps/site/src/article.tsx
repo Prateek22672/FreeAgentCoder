@@ -1,7 +1,7 @@
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import type { Article, Block } from './content-articles';
-import { links } from './config';
+import { href, links } from './config';
 import { BrandBadge, Mark, VsCodeButton } from './ui';
 import './styles.css';
 
@@ -63,7 +63,7 @@ function ArticlePage({ article }: { article: Article }) {
           Skip to content
         </a>
         <div className="wrap nav-row">
-          <a className="brand" href="/">
+          <a className="brand" href={href('/')}>
             <Mark size={20} />
             <span>FreeAgentCoder</span>
           </a>
@@ -74,7 +74,7 @@ function ArticlePage({ article }: { article: Article }) {
             <a className="btn btn-ghost btn-sm nav-github" href={links.github} target="_blank" rel="noopener">
               GitHub
             </a>
-            <a className="btn btn-primary btn-sm" href="/#install">
+            <a className="btn btn-primary btn-sm" href={href('/#install')}>
               Install
             </a>
           </div>
@@ -84,7 +84,7 @@ function ArticlePage({ article }: { article: Article }) {
         <article className="article">
           <div className="wrap">
             <p className="article-back">
-              <a href="/">← FreeAgentCoder</a>
+              <a href={href('/')}>← FreeAgentCoder</a>
             </p>
             <header className="article-head">
               <h1>{article.h1}</h1>
@@ -126,7 +126,7 @@ function ArticlePage({ article }: { article: Article }) {
             <a href={links.foliofyx} target="_blank" rel="noopener">
               Imperium × Foliofyx
             </a>{' '}
-            product. <a href="/">Back to FreeAgentCoder</a>.
+            product. <a href={href('/')}>Back to FreeAgentCoder</a>.
           </p>
         </div>
       </footer>

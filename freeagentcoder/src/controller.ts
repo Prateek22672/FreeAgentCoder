@@ -337,6 +337,12 @@ export class Controller implements vscode.Disposable {
             case 'copy':
                 await vscode.env.clipboard.writeText(message.text);
                 return;
+            case 'pasteClipboard': {
+                // Only ever in response to the Paste button in the add-key form.
+                const text = await vscode.env.clipboard.readText();
+                this.sink?.post({ type: 'clipboard', text: text.trim().slice(0, 400) });
+                return;
+            }
             case 'undo':
                 return this.session.undo(message.turnId);
             case 'openFolder':

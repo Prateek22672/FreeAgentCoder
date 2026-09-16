@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { KeyCalculator } from './calculator';
-import { config, installCommand, links, released } from './config';
+import { config, href, installCommand, links, released } from './config';
 import { FAQ, KEY_STORAGE, KEYCHAINS, PROVIDERS } from './content';
 import { ARTICLES } from './content-articles';
 import { Demo } from './demo';
@@ -582,7 +582,7 @@ function Footer() {
               <ul>
                 {ARTICLES.map((article) => (
                   <li key={article.slug}>
-                    <a href={`/${article.slug}/`}>{article.h1}</a>
+                    <a href={href(`/${article.slug}/`)}>{article.h1}</a>
                   </li>
                 ))}
               </ul>
