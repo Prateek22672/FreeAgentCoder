@@ -720,7 +720,7 @@ tbody td a { white-space: nowrap; }
 .footer-brand { display: grid; align-content: start; gap: 10px; }
 .footer-brand p { color: var(--muted); }
 .footer-product { color: var(--text) !important; font-weight: 600; }
-.footer-cols { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 32px; }
+.footer-cols { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 32px; }
 .footer-cols .label { margin-bottom: 14px; }
 .footer-cols ul { display: grid; gap: 8px; list-style: none; }
 .footer-cols li { color: var(--muted); }
@@ -843,4 +843,31 @@ tbody td a { white-space: nowrap; }
     transition-duration: 0.01ms !important;
     scroll-behavior: auto !important;
   }
+}
+
+/* Long-form SEO articles */
+.article { padding-block: 56px 88px; }
+.article-back { margin-bottom: 24px; font-size: 14px; }
+.article-back a { color: var(--muted); text-decoration: none; }
+.article-back a:hover { color: var(--text); text-decoration: underline; }
+.article-head { max-width: 760px; margin-bottom: 40px; }
+.article-head h1 { margin-bottom: 14px; }
+.article-updated { margin-top: 10px; color: var(--muted); font-size: 13px; font-family: var(--mono); }
+.article-body { display: grid; gap: 20px; max-width: 760px; font-size: 16px; line-height: 1.65; }
+.article-body h2 { margin-top: 16px; font-size: 22px; }
+.article-body p { color: var(--text); }
+.article-steps { display: grid; gap: 10px; padding-left: 22px; }
+.article-steps li { padding-left: 4px; }
+.article-callout { padding: 14px 18px; border-left: 3px solid var(--accent); background: var(--surface); color: var(--muted); font-size: 14.5px; }
+.article-table-wrap { overflow-x: auto; border: 1px solid var(--line-strong); }
+.article-table { width: 100%; min-width: 480px; border-collapse: collapse; font-size: 14.5px; }
+.article-table th, .article-table td { padding: 10px 14px; border-bottom: 1px solid var(--line); text-align: left; vertical-align: top; }
+.article-table th { background: var(--surface); font-weight: 650; }
+.article-table tr:last-child td { border-bottom: 0; }
+.article-faq { max-width: 760px; margin-top: 48px; }
+.article-faq h2 { margin-bottom: 18px; font-size: 22px; }
+.article-cta { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 20px; max-width: 880px; margin-top: 56px; padding: 28px; border: 1px solid var(--line-strong); background: var(--surface); }
+.article-cta h2 { font-size: 20px; margin-bottom: 6px; }
+@media (max-width: 640px) {
+  .article-cta { flex-direction: column; align-items: stretch; }
 }

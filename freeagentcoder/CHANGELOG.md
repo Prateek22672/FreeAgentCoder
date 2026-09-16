@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.1.2 — Clearer positioning
+
+### Changed
+
+- Description and keywords now use the terms people actually search for ("AI pair programmer", "vibe coding", "agentic AI", "open source", "BYOK") alongside every supported provider and model name. Added a SUPPORT.md so the Marketplace page shows a support link.
+
 ## 0.1.1 — Easier to find
 
 ### Changed

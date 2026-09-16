@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { KeyCalculator } from './calculator';
 import { config, installCommand, links, released } from './config';
 import { FAQ, KEY_STORAGE, KEYCHAINS, PROVIDERS } from './content';
+import { ARTICLES } from './content-articles';
 import { Demo } from './demo';
 import { FeatureExplorer } from './features';
 import { BrandBadge, CopyField, handleTabKeys, LinkButton, LockIcon, Mark, Section, VsCodeButton } from './ui';
@@ -179,11 +180,11 @@ function Hero() {
       <div className="wrap hero-grid">
         <div className="hero-copy">
           <BrandBadge />
-          <p className="label hero-kicker">FreeAgentCoder · Extension for VS Code</p>
+          <p className="label hero-kicker">FreeAgentCoder · Free, open-source · Extension for VS Code</p>
           <h1 id="hero-title">A free AI coding agent for VS Code.</h1>
           <p className="lead hero-lead">
-            FreeAgentCoder plans, edits, runs and verifies code in your project using your own free API keys from Gemini, Groq, Cerebras, Mistral and OpenRouter, or paid
-            OpenAI and Anthropic keys.
+            An open-source AI pair programmer that plans, edits, runs and verifies code in your project using your own free API keys from Gemini, Groq, Cerebras, Mistral and
+            OpenRouter, or paid OpenAI and Anthropic keys. No subscription, ever.
           </p>
           <div className="hero-actions">
             <VsCodeButton />
@@ -574,6 +575,16 @@ function Footer() {
                     </a>
                   </li>
                 )}
+              </ul>
+            </div>
+            <div>
+              <p className="label">Guides</p>
+              <ul>
+                {ARTICLES.map((article) => (
+                  <li key={article.slug}>
+                    <a href={`/${article.slug}/`}>{article.h1}</a>
+                  </li>
+                ))}
               </ul>
             </div>
             <div>
