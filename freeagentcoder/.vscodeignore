@@ -13,3 +13,10 @@ vsc-extension-quickstart.md
 **/*.ts
 **/.vscode-test.*
 *.vsix
+# Screenshots are served from GitHub in the README, so they don't need to ship in the package.
+media/screenshots/**
+# Ship only the three build outputs, so a stray file in dist/ can never be packaged.
+dist/**
+!dist/extension.js
+!dist/webview.js
+!dist/webview.css

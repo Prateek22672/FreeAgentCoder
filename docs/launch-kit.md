@@ -53,14 +53,21 @@ At 17 installs and 0 reviews, five honest reviews will do more for ranking and t
 
 ## 5. Take 4 screenshots (5 minutes)
 
-These go in the README (top, right after the badges) and on the site. Use your own project, in dark theme, at a normal window width:
+The Marketplace has **no image upload form** — listing images come from the README, so they just need to live in the repo.
 
-1. Mid-task: the chat with a plan checklist, a diff card, and the model chip visible.
-2. **Settings → API Keys**, showing the "stays on your device" note and an active key.
-3. **Settings → Overview**, showing "Prompts left today" and the feature switches.
-4. A correction: a pasted screenshot plus the "Correction" chip on a reply.
+Save them into `freeagentcoder/media/screenshots/` with these exact names:
 
-Crop each to just the chat/settings panel (not the whole VS Code window). Save as PNG. Send them over and they'll be added to the README and site.
+| Filename | What to capture |
+| --- | --- |
+| `chat.png` | A task mid-run: plan checklist, a diff card, model chip visible |
+| `keys.png` | Settings → API Keys, with the "stays on your device" note |
+| `overview.png` | Settings → Overview: prompts left, project status, feature switches |
+| `correction.png` | A reply with the Correction chip after pointing out a fix |
+| `demo.gif` | *Optional*, 15–20s screen recording ([ScreenToGif](https://www.screentogif.com/)) |
+
+How: `Win` + `Shift` + `S`, drag over **just the FreeAgentCoder panel** (not the whole window), click the notification, **Save As** into that folder. Dark theme, PNG only, under ~1 MB each.
+
+Then say the word — the README block and the website gallery get wired up, pointing at raw GitHub URLs so the images show on the Marketplace without bloating the `.vsix`.
 
 ## 6. Post to communities (draft copy below — post under your own accounts)
 
