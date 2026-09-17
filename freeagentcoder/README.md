@@ -1,6 +1,6 @@
 # FreeAgentCoder — free AI coding agent for VS Code
 
-[![Visual Studio Marketplace](https://img.shields.io/visual-studio-marketplace/v/PrateekKoratala.freeagentcoder?label=Marketplace&color=1f6feb)](https://marketplace.visualstudio.com/items?itemName=PrateekKoratala.freeagentcoder)
+[![Visual Studio Marketplace](https://img.shields.io/visual-studio-marketplace/v/PrateekKoratala.freeagentcoder?label=Marketplace&color=d97757)](https://marketplace.visualstudio.com/items?itemName=PrateekKoratala.freeagentcoder)
 [![License: MIT](https://img.shields.io/badge/license-MIT-2ea043)](https://github.com/Prateek22672/FreeAgentCoder/blob/main/LICENSE.txt)
 [![Source](https://img.shields.io/badge/source-open-6e7681)](https://github.com/Prateek22672/FreeAgentCoder)
 
@@ -16,6 +16,27 @@ It is a free alternative to paid AI coding assistants: no subscription, no per-s
 - **Your keys stay on your device.** Encrypted in VS Code Secret Storage, never uploaded to FreeAgentCoder or anyone else, and sent only to the provider each key belongs to.
 - **Understands what you show it.** Paste screenshots, PDFs, Word, PowerPoint or Excel files, or long text.
 - **Takes corrections seriously.** Point at what's wrong and it fixes exactly that, then remembers the lesson.
+
+## Screenshots
+
+<table>
+  <tr>
+    <td width="50%"><img src="https://raw.githubusercontent.com/Prateek22672/FreeAgentCoder/main/freeagentcoder/media/screenshots/chat.png" alt="A task running: the plan, a file edit with its diff, and live status"></td>
+    <td width="50%"><img src="https://raw.githubusercontent.com/Prateek22672/FreeAgentCoder/main/freeagentcoder/media/screenshots/correction.png" alt="Correction mode: a pasted screenshot fixed point by point, with the lesson saved"></td>
+  </tr>
+  <tr>
+    <td align="center"><b>Plans, edits and verifies</b> — every step visible</td>
+    <td align="center"><b>Point out a fix</b> — with a screenshot, and it remembers</td>
+  </tr>
+  <tr>
+    <td width="50%"><img src="https://raw.githubusercontent.com/Prateek22672/FreeAgentCoder/main/freeagentcoder/media/screenshots/keys.png" alt="API keys: stored encrypted on your device, with usage and limits per key"></td>
+    <td width="50%"><img src="https://raw.githubusercontent.com/Prateek22672/FreeAgentCoder/main/freeagentcoder/media/screenshots/overview.png" alt="Overview: prompts left today, project status and feature switches"></td>
+  </tr>
+  <tr>
+    <td align="center"><b>Your keys stay on your device</b> — usage and limits per key</td>
+    <td align="center"><b>Prompts left today</b> — and every feature switch</td>
+  </tr>
+</table>
 
 ## Quick start
 

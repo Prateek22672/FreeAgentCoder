@@ -246,7 +246,7 @@ class AddKeyForm {
             this.reveal.replaceChildren(icon(show ? 'eyeOff' : 'eye'));
         });
         this.paste = iconButton('copy', 'Paste the key you just copied', () => send({ type: 'pasteClipboard' }));
-        this.getKey = button('Get a free key', 'secondary small', () => this.openSignup(), 'external');
+        this.getKey = button('Get a free key', 'primary get-key', () => this.openSignup(), 'external');
         this.save = button('Save key', 'primary', () => this.submit(), 'check');
         this.provider.addEventListener('change', () => {
             this.pickedByUser = true;
@@ -384,9 +384,9 @@ class AddKeyForm {
         const provider = this.current();
         this.note.textContent = provider?.note ?? '';
         this.getKey.hidden = !provider?.signupUrl;
-        const label = this.getKey.querySelector('span');
-        if (label) {
-            label.textContent = provider?.free ? 'Get a free key' : 'Get a key';
+        const label = this.getKey.querySelector('.btn-label');
+        if (label && provider) {
+            label.textContent = provider.free ? `Get a free ${provider.label} key` : `Get a ${provider.label} key`;
         }
         this.getKey.title = provider?.signupUrl ? `Opens ${provider.signupUrl} in your browser` : '';
         const steps = provider ? (KEY_STEPS[provider.id] ?? []) : [];
@@ -416,7 +416,7 @@ class AddKeyForm {
 
     private setBusy(busy: boolean): void {
         this.save.disabled = busy;
-        const label = this.save.querySelector('span');
+        const label = this.save.querySelector('.btn-label');
         if (label) {
             label.textContent = busy ? 'Verifying…' : 'Save key';
         }

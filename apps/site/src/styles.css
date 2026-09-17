@@ -8,9 +8,10 @@
   --line: #e1e1e1;
   --line-strong: #0b0b0c;
   --control: #76767b;
-  --accent: #2b59e8;
-  --accent-hover: #1f46c6;
-  --accent-weak: #ebf0fd;
+  /* Claude orange. #d97757 is too light for small text on white, so light mode uses a deeper shade of it (4.9:1). */
+  --accent: #b4552f;
+  --accent-hover: #9a4524;
+  --accent-weak: #fbeee8;
   --on-accent: #ffffff;
   --font: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
   --mono: ui-monospace, "SF Mono", "Cascadia Mono", "Cascadia Code", Consolas, "Liberation Mono", Menlo, monospace;
@@ -29,9 +30,9 @@
     --line: #2a2a2e;
     --line-strong: #f2f2f3;
     --control: #8a8a90;
-    --accent: #6b8cff;
-    --accent-hover: #8ca5ff;
-    --accent-weak: #172142;
+    --accent: #d97757;
+    --accent-hover: #e8927c;
+    --accent-weak: #3a2219;
     --on-accent: #0c0c0d;
     color-scheme: dark;
   }
@@ -843,6 +844,20 @@ tbody td a { white-space: nowrap; }
     transition-duration: 0.01ms !important;
     scroll-behavior: auto !important;
   }
+}
+
+/* Screenshots of the real extension */
+.shots { margin-top: 56px; }
+.shots-label { margin-bottom: 18px; }
+.shots-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px; align-items: start; }
+.shot { margin: 0; border: 1px solid var(--line-strong); background: #181818; }
+.shot img { display: block; width: 100%; height: auto; }
+.shot figcaption { padding: 10px 12px; border-top: 1px solid var(--line-strong); background: var(--bg); color: var(--muted); font-size: 13.5px; line-height: 1.45; }
+@media (max-width: 960px) {
+  .shots-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 480px) {
+  .shots-grid { grid-template-columns: minmax(0, 1fr); }
 }
 
 /* Long-form SEO articles */

@@ -7,18 +7,27 @@
     --surface-3: color-mix(in srgb, var(--vscode-foreground) 9%, var(--bg));
     --border: var(--vscode-widget-border, var(--vscode-panel-border, rgba(128, 128, 128, 0.35)));
     --border-soft: color-mix(in srgb, var(--vscode-foreground) 12%, transparent);
-    --accent: var(--vscode-textLink-foreground);
-    --focus: var(--vscode-focusBorder);
+    /* Brand orange. Dark themes use the exact shade; light themes a deeper one so small text stays readable. */
+    --accent: #d97757;
+    --accent-hover: #e38a6e;
+    --on-accent: #ffffff;
+    --focus: var(--accent);
     --ok: var(--vscode-testing-iconPassed, #3fb950);
     --bad: var(--vscode-errorForeground, #f14c4c);
     --warn: var(--vscode-editorWarning-foreground, #cca700);
-    --info: var(--vscode-editorInfo-foreground, #3794ff);
+    --info: var(--accent);
     --add-bg: var(--vscode-diffEditor-insertedLineBackground, rgba(46, 160, 67, 0.15));
     --del-bg: var(--vscode-diffEditor-removedLineBackground, rgba(248, 81, 73, 0.15));
     --mono: var(--vscode-editor-font-family, ui-monospace, monospace);
     --mono-size: calc(var(--vscode-editor-font-size, 13px) - 1px);
     --radius: 8px;
     --radius-sm: 5px;
+}
+
+/* VS Code marks light themes on <body>; #d97757 is too light for small text on white. */
+body.vscode-light {
+    --accent: #b4552f;
+    --accent-hover: #9a4524;
 }
 
 * { box-sizing: border-box; }
@@ -395,8 +404,8 @@ details[open] > summary .caret { transform: rotate(90deg); }
 .btn .icon { width: 14px; height: 14px; }
 .btn.small { min-height: 22px; padding: 2px 8px; font-size: 11.5px; }
 .btn.block { width: 100%; }
-.btn.primary { background: var(--vscode-button-background); color: var(--vscode-button-foreground); }
-.btn.primary:hover { background: var(--vscode-button-hoverBackground); }
+.btn.primary { background: var(--accent); color: var(--on-accent); }
+.btn.primary:hover { background: var(--accent-hover); }
 .btn.secondary { background: var(--vscode-button-secondaryBackground); color: var(--vscode-button-secondaryForeground); }
 .btn.secondary:hover { background: var(--vscode-button-secondaryHoverBackground); }
 .btn.ghost { background: transparent; color: var(--muted); }
@@ -467,11 +476,11 @@ select.input { background: var(--vscode-dropdown-background, var(--vscode-input-
     height: 28px;
     border: 0;
     border-radius: 7px;
-    background: var(--vscode-button-background);
-    color: var(--vscode-button-foreground);
+    background: var(--accent);
+    color: var(--on-accent);
     cursor: pointer;
 }
-.send-btn:hover { background: var(--vscode-button-hoverBackground); }
+.send-btn:hover { background: var(--accent-hover); }
 .send-btn:disabled { opacity: 0.4; cursor: default; }
 .send-btn.stop { background: var(--vscode-button-secondaryBackground); color: var(--vscode-button-secondaryForeground); }
 .composer-foot { display: flex; align-items: center; gap: 12px; min-height: 20px; padding: 5px 2px 0; color: var(--muted); font-size: 11px; }
@@ -694,8 +703,8 @@ select.input { background: var(--vscode-dropdown-background, var(--vscode-input-
 .switch-text { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
 .switch { position: relative; flex: none; width: 34px; height: 20px; padding: 0; border: 1px solid var(--border); border-radius: 999px; background: var(--surface-3); cursor: pointer; }
 .switch-knob { position: absolute; top: 2px; left: 2px; width: 14px; height: 14px; border-radius: 50%; background: var(--muted); transition: transform 0.15s ease, background 0.15s ease; }
-.switch.on { border-color: var(--vscode-button-background); background: var(--vscode-button-background); }
-.switch.on .switch-knob { background: var(--vscode-button-foreground); transform: translateX(14px); }
+.switch.on { border-color: var(--accent); background: var(--accent); }
+.switch.on .switch-knob { background: var(--on-accent); transform: translateX(14px); }
 
 .history-list { display: flex; flex-direction: column; gap: 2px; }
 .history-group-title { margin: 8px 0 2px; color: var(--muted); font-size: 10.5px; font-weight: 600; letter-spacing: 0.4px; text-transform: uppercase; }
@@ -790,7 +799,9 @@ select.input { background: var(--vscode-dropdown-background, var(--vscode-input-
 /* Add-key form: per-provider steps and pasted-key detection */
 .key-steps { display: grid; gap: 4px; margin: 6px 0 0; padding-left: 18px; color: var(--muted); font-size: 11.5px; line-height: 1.5; }
 .key-steps li { padding-left: 2px; }
-.provider-note .btn { align-self: flex-start; margin-top: 8px; }
+/* The first step for anyone without a key, so it reads as the main action, not a footnote. */
+.btn.get-key { align-self: stretch; justify-content: center; min-height: 30px; margin-top: 10px; font-size: 12.5px; font-weight: 600; }
+.btn.get-key .icon { width: 13px; height: 13px; }
 .detected { display: flex; align-items: center; gap: 6px; color: var(--ok); font-size: 11.5px; }
 .detected .icon { width: 13px; height: 13px; }
 .detected.warn { color: var(--warn); }

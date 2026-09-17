@@ -2,7 +2,15 @@
 
 ## 0.1.2 — Clearer positioning
 
+### Fixed
+
+- The "Get a free key" button and the "Save key" button showed overlapping, cut-off text: updating a button's label replaced its icon instead. Button labels are now targeted directly.
+
 ### Changed
+
+- New orange brand color throughout the chat panel, buttons, switches and icon.
+- Adding a key: "Get a free Gemini key" (named for the selected provider) is now a clear full-width button, a pasted key selects its provider automatically, and a Paste button reads the clipboard in one click.
+- Screenshots on the Marketplace page.
 
 - Description and keywords now use the terms people actually search for ("AI pair programmer", "vibe coding", "agentic AI", "open source", "BYOK") alongside every supported provider and model name. Added a SUPPORT.md so the Marketplace page shows a support link.
 

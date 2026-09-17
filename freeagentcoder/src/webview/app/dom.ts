@@ -53,7 +53,8 @@ export function fill(parent: Element, ...children: Child[]): void {
 }
 
 export function button(label: string, variant: string, onClick: () => void, iconName?: IconName, title?: string): HTMLButtonElement {
-    const el = h('button', { class: `btn ${variant}`, attrs: { type: 'button' }, title }, iconName ? icon(iconName) : null, label ? h('span', { text: label }) : null);
+    // The label has its own class: icon() is also a <span>, so "the first span" is not the label.
+    const el = h('button', { class: `btn ${variant}`, attrs: { type: 'button' }, title }, iconName ? icon(iconName) : null, label ? h('span', { class: 'btn-label', text: label }) : null);
     el.addEventListener('click', onClick);
     return el;
 }

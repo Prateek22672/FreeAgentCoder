@@ -984,7 +984,7 @@ function collapsible(content: HTMLElement, lineCount: number, visible: number): 
     wrap.classList.add('collapsed');
     const toggle = button(`Show all ${lineCount} lines`, 'link small', () => {
         const collapsed = wrap.classList.toggle('collapsed');
-        const label = toggle.querySelector('span');
+        const label = toggle.querySelector('.btn-label');
         if (label) {
             label.textContent = collapsed ? `Show all ${lineCount} lines` : 'Show less';
         }

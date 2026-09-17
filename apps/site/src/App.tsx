@@ -40,6 +40,7 @@ export function App() {
           lead="Plan, read, edit, test, report. Every step shows up in the chat panel as it happens. Jump to any step, or pause and read."
         >
           <Demo />
+          <Screenshots />
         </Section>
 
         <Section id="features" index="02" label="Features" title="A real agent, not a chat box" lead="Pick a feature to see what it does." alt>
@@ -100,6 +101,29 @@ export function App() {
       </main>
       <Footer />
     </>
+  );
+}
+
+const SCREENSHOTS = [
+  { file: 'chat', caption: 'Plans, edits and verifies — every step visible', alt: 'A task running: the plan, a file edit with its diff, and live status' },
+  { file: 'correction', caption: 'Point out a fix with a screenshot, and it remembers', alt: 'Correction mode: a pasted screenshot fixed point by point, with the lesson saved' },
+  { file: 'keys', caption: 'Your keys stay on your device', alt: 'API keys stored encrypted on the device, with usage and limits per key' },
+  { file: 'overview', caption: 'Prompts left today, and every feature switch', alt: 'Overview: prompts left today, project status and feature switches' },
+];
+
+function Screenshots() {
+  return (
+    <div className="shots">
+      <p className="label shots-label">The real extension</p>
+      <div className="shots-grid">
+        {SCREENSHOTS.map((shot) => (
+          <figure className="shot" key={shot.file}>
+            <img src={`screenshots/${shot.file}.png`} alt={shot.alt} width={1040} loading="lazy" decoding="async" />
+            <figcaption>{shot.caption}</figcaption>
+          </figure>
+        ))}
+      </div>
+    </div>
   );
 }
 
