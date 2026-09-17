@@ -108,7 +108,8 @@ const SCREENSHOTS = [
   { file: 'chat', caption: 'Plans, edits and verifies — every step visible', alt: 'A task running: the plan, a file edit with its diff, and live status' },
   { file: 'correction', caption: 'Point out a fix with a screenshot, and it remembers', alt: 'Correction mode: a pasted screenshot fixed point by point, with the lesson saved' },
   { file: 'keys', caption: 'Your keys stay on your device', alt: 'API keys stored encrypted on the device, with usage and limits per key' },
-  { file: 'overview', caption: 'Prompts left today, and every feature switch', alt: 'Overview: prompts left today, project status and feature switches' },
+  { file: 'overview', caption: 'Prompts left today, savings and every switch', alt: 'Overview: prompts left today, money saved, project status and feature switches' },
+  { file: 'health', caption: 'Health: every model and key, live', alt: 'Health: each job, the models serving it, and whether each key is working' },
 ];
 
 function Screenshots() {

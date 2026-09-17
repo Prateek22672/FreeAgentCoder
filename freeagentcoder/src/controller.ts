@@ -8,7 +8,9 @@ import { ChainBuilder, isAuthFailure, verifyKey, type CallResult, type RoutableK
 import { correctionBrief, isCorrection, learnPrompt, LEARN_SYSTEM, parseLessons, rememberCommand } from './agent/correction';
 import { DIFF_SCHEME, DiffDocuments } from './agent/diffDocuments';
 import { buildBrief, choosePlaybooks, releaseIntent } from './agent/playbooks';
+import { detectChecks, structureMap, type ProjectCheck } from './agent/projectChecks';
 import { detectStack } from './agent/projectSnapshot';
+import { structureBlock, TEST_PROMPT, testBrief, testPlaybook } from './agent/testing';
 import { AgentSession, type SessionLogEntry, type TurnPlan } from './agent/session';
 import { PDF_READER_MODEL, planVisionRoute } from './agent/visionRoute';
 import { attachmentViews, prepareAttachments, type AttachmentReaders } from './attachments/prepare';
@@ -24,6 +26,9 @@ import {
     AUTO_MODEL,
     type AttachmentInput,
     type FromWebview,
+    type HealthEntry,
+    type HealthStatus,
+    type HealthView,
     type HistoryMode,
     type KeySource,
     type KeyStatus,
@@ -33,12 +38,14 @@ import {
     type PermissionMode,
     type ProjectStatus,
     type PromptsLeft,
+    type RoleHealth,
     type RouteView,
     type SettingsView,
     type Tier,
     type ToWebview,
 } from './shared/protocol';
 import { adviseKeys, estimatePromptsLeft, providerCapacity } from './usage/advisor';
+import { capacityMessage, capacityRisk, estimateSavings, isDailyLimit, requestsNeeded, type TaskShape } from './usage/forecast';
 import { UsageStore } from './usage/usageStore';
 
 const MODE_KEY = 'freeagentcoder.mode';
@@ -111,6 +118,17 @@ function sanitizeAttachments(value: unknown): AttachmentInput[] {
     );
 }
 
+function roleStatus(entries: HealthEntry[]): RoleHealth['status'] {
+    if (!entries.length) {
+        return 'unconfigured';
+    }
+    const working = entries.filter((e) => e.status === 'healthy' || e.status === 'untested').length;
+    if (!working) {
+        return 'down';
+    }
+    return working === entries.length ? 'ok' : 'degraded';
+}
+
 /** Gemini names its daily limit in rate-limit errors ("…PerDay… limit: 250"), though it sends no quota headers. */
 function dailyLimitFrom(message: string): number | undefined {
     if (!/per ?day|perday|daily/i.test(message)) {
@@ -147,6 +165,11 @@ export class Controller implements vscode.Disposable {
     private settingsTimer?: ReturnType<typeof setTimeout>;
     private logsTimer?: ReturnType<typeof setTimeout>;
     private weakModelWarnedTurn?: string;
+    /** The last settings sent to the chat panel, for sizing tasks against today's limits. */
+    private lastSettings?: SettingsView;
+    /** Keys already reported as out of daily quota in the current task. */
+    private readonly dailyWarned = new Set<string>();
+    private checksCache?: { root: string; at: number; checks: ProjectCheck[] };
 
     constructor(private readonly context: vscode.ExtensionContext) {
         this.keys = new KeyStore(context);
@@ -244,6 +267,8 @@ export class Controller implements vscode.Disposable {
                 return this.send(String(message.text ?? ''), sanitizeAttachments(message.attachments), message.correction === true);
             case 'continue':
                 return this.send('Continue where you left off.', [], false);
+            case 'testProject':
+                return this.send(TEST_PROMPT, [], false, { test: true });
             case 'stop':
                 this.session.stop();
                 return;
@@ -374,7 +399,8 @@ export class Controller implements vscode.Disposable {
         }
     }
 
-    private async send(text: string, attachments: AttachmentInput[], explicitCorrection: boolean): Promise<void> {
+    private async send(text: string, attachments: AttachmentInput[], explicitCorrection: boolean, options: { test?: boolean } = {}): Promise<void> {
+        const test = options.test === true;
         const prompt = text.trim() || (attachments.length ? `Take a look at the attached file${attachments.length === 1 ? '' : 's'}.` : '');
         if (!prompt) {
             return;
@@ -416,11 +442,13 @@ export class Controller implements vscode.Disposable {
             return;
         }
 
-        const correction = explicitCorrection || isCorrection(prompt, this.session.hasHistory, attachments.length > 0);
+        const correction = !test && (explicitCorrection || isCorrection(prompt, this.session.hasHistory, attachments.length > 0));
         const selected = parseModelChoice(this.model);
         const { tier, reason } = selected
             ? { tier: 'deep' as Tier, reason: `Selected model: ${providerLabel(selected.provider)} · ${selected.model}` }
-            : correction
+            : test
+              ? { tier: 'deep' as Tier, reason: "Test run: your project's own checks" }
+              : correction
               ? { tier: 'deep' as Tier, reason: 'Correcting earlier work: handled point by point' }
               : attachments.length
                 ? { tier: 'deep' as Tier, reason: 'Request with attachments' }
@@ -451,17 +479,45 @@ export class Controller implements vscode.Disposable {
         const followUp = isFollowUp(prompt);
         const carryChecks = followUp || correction;
         const senior = this.features.seniorMode;
-        const playbooks = !senior ? [] : carryChecks ? this.session.lastPlaybooks : choosePlaybooks(prompt, tier, new Set(await readdir(cwd).catch(() => [] as string[])));
-        const release = senior && (carryChecks ? this.session.lastRelease : releaseIntent(prompt));
+        // The project's own checks: required after complex code changes, and the whole point of a test run.
+        const checks = tier === 'deep' ? await this.projectChecks(cwd) : [];
+        const firstDeep = tier === 'deep' && !followUp && !this.session.hasHistory;
+        const structure = test || firstDeep ? await structureMap(cwd).catch(() => '') : '';
+        const playbooks = test
+            ? checks.length
+                ? [testPlaybook(checks)]
+                : []
+            : !senior
+              ? []
+              : carryChecks
+                ? this.session.lastPlaybooks
+                : choosePlaybooks(prompt, tier, new Set(await readdir(cwd).catch(() => [] as string[])));
+        const release = !test && senior && (carryChecks ? this.session.lastRelease : releaseIntent(prompt));
         const notes = route.note ? [route.note] : [];
-        let agentPrompt = correction ? correctionBrief(prompt) : playbooks.length && !followUp ? buildBrief(playbooks, release, prompt) : prompt;
+        let agentPrompt = test
+            ? testBrief(checks, structure)
+            : correction
+              ? correctionBrief(prompt)
+              : playbooks.length && !followUp
+                ? buildBrief(playbooks, release, prompt)
+                : prompt;
+        if (!test && firstDeep && structure) {
+            agentPrompt += `\n\n${structureBlock(structure)}`;
+        }
+        if (test) {
+            notes.push(
+                checks.length
+                    ? `Running ${checks.length} check${checks.length === 1 ? '' : 's'} found in this project: ${checks.map((c) => c.label.toLowerCase()).join(', ')}.`
+                    : 'No build or test commands were detected automatically, so FreeAgentCoder will look for how this project is checked.',
+            );
+        }
 
         const lessons = followUp ? [] : this.memory.forPrompt(cwd, prompt);
         if (lessons.length) {
             agentPrompt += `\n\n${lessonsBlock(lessons)}`;
         }
 
-        if (this.features.codeSearch && tier === 'deep' && !followUp) {
+        if (this.features.codeSearch && tier === 'deep' && !followUp && !test) {
             const hits = await this.relevantFiles(cwd, prompt);
             if (hits.length) {
                 agentPrompt += `\n\n## Likely relevant files\nFound by a local search of this project for the words in the request. Read them before changing anything; not all of them may matter.\n${hits
@@ -516,7 +572,40 @@ export class Controller implements vscode.Disposable {
             attachments: attachmentViews(attachments),
             lessons: lessons.length,
             prepare,
+            capacity: this.forecast({ tier, playbooks: playbooks.length, attachments: attachments.length, correction, test }),
+            test,
+            checks,
         });
+    }
+
+    private async projectChecks(root: string): Promise<ProjectCheck[]> {
+        const cached = this.checksCache;
+        if (cached && cached.root === root && Date.now() - cached.at < 60_000) {
+            return cached.checks;
+        }
+        try {
+            const checks = await detectChecks(root);
+            this.checksCache = { root, at: Date.now(), checks };
+            return checks;
+        } catch (error) {
+            this.errorLog.add({ kind: 'extension', source: 'Project checks', message: errorMessage(error), recovered: true, action: 'Continued without detected checks' });
+            return [];
+        }
+    }
+
+    /** A warning, before work starts, when today's remaining limits may not cover a task of this size. */
+    private forecast(shape: TaskShape): TurnPlan['capacity'] {
+        const left = this.lastSettings?.overview.promptsLeft;
+        if (!left) {
+            return undefined;
+        }
+        const { expected } = requestsNeeded(this.usage.taskStats(7), shape);
+        const risk = capacityRisk(left, expected);
+        // Quick questions are cheap: only speak up when they clearly won't fit.
+        if (!risk || risk === 'ok' || (shape.tier === 'fast' && risk === 'tight')) {
+            return undefined;
+        }
+        return { level: risk, ...capacityMessage(risk, left, expected) };
     }
 
     /** The reader models for a task's attachments, built from the keys that can serve each job. */
@@ -641,25 +730,37 @@ export class Controller implements vscode.Disposable {
             outputTokens: result.usage?.outputTokens ?? 0,
         });
         const error = result.error;
-        if (!error) {
+        const detail = error ? `${error.kind.replace(/_/g, ' ')}: ${error.message.replace(/^\w+:\s*/, '').slice(0, 200)}` : undefined;
+        this.usage.recordCall(key.id, result.model, { ok: result.ok, latencyMs: result.latencyMs, error: detail });
+        if (!error || !detail) {
             return;
         }
-        const detail = `${error.kind.replace(/_/g, ' ')}: ${error.message.replace(/^\w+:\s*/, '').slice(0, 200)}`;
         const auth = isAuthFailure(error);
+        const daily = error.kind === 'rate_limit' && isDailyLimit(error.message);
         this.usage.setLastError(key.id, detail);
         this.errorLog.add({
             kind: 'provider',
             source: `${providerLabel(key.provider)} · ${key.label}`,
             message: detail,
             recovered: !auth,
-            action: auth ? 'Marked the key invalid and stopped using it' : 'Handed the request to the next key or model',
+            action: auth
+                ? 'Marked the key invalid and stopped using it'
+                : daily
+                  ? 'Set the key aside until its daily limit resets; the next key took over'
+                  : 'Handed the request to the next key or model',
         });
         if (error.kind === 'rate_limit') {
             this.usage.recordRateLimit(key.id);
-            this.usage.setCooldown(key.id, Date.now() + (error.retryAfterMs ?? 60_000));
             const limit = dailyLimitFrom(error.message);
             if (limit) {
                 this.usage.learnDailyLimit(key.id, limit);
+            }
+            if (daily) {
+                // Without a retry time, look again in a few hours rather than hammering a spent key.
+                this.usage.markExhausted(key.id, Date.now() + (error.retryAfterMs ?? 4 * 3_600_000));
+                this.warnDailyLimit(key);
+            } else {
+                this.usage.setCooldown(key.id, Date.now() + (error.retryAfterMs ?? 60_000));
             }
         } else if (auth) {
             const reason = error.message.replace(/^\w+:\s*/, '').slice(0, 160);
@@ -671,6 +772,21 @@ export class Controller implements vscode.Disposable {
         }
     }
 
+    /** Says so once per task when a key runs out of daily quota, so the user can add one before the rest do too. */
+    private warnDailyLimit(key: RoutableKey): void {
+        const turnId = this.session.turnId;
+        if (!turnId || this.dailyWarned.has(key.id)) {
+            return;
+        }
+        this.dailyWarned.add(key.id);
+        this.post({
+            type: 'notice',
+            turnId,
+            level: 'warn',
+            message: `${providerLabel(key.provider)} · ${key.label} has used today's limit, so your other keys are taking over. If they run out too, the task pauses: adding a key from another provider now keeps it going.`,
+        });
+    }
+
     private logTask(entry: SessionLogEntry): void {
         this.errorLog.add(entry);
         if (entry.recovered) {
@@ -679,8 +795,16 @@ export class Controller implements vscode.Disposable {
     }
 
     private async afterTurn(end: Extract<ToWebview, { type: 'turnEnd' }>): Promise<void> {
-        this.usage.recordTask({ tokens: end.tokens, requests: this.turnRequests, completed: end.reason === 'completed', durationMs: end.durationMs });
+        this.usage.recordTask({
+            tokens: end.tokens,
+            requests: this.turnRequests,
+            completed: end.reason === 'completed',
+            durationMs: end.durationMs,
+            tier: this.session.lastTier ?? 'fast',
+        });
         this.turnRequests = 0;
+        this.dailyWarned.clear();
+        void vscode.commands.executeCommand('setContext', 'freeagentcoder.hasRunTask', true);
         const candidate = this.learning;
         this.learning = undefined;
         if (this.historyMode === 'on') {
@@ -1006,10 +1130,12 @@ export class Controller implements vscode.Disposable {
         }
 
         const usable = views.filter((k) => k.enabled && k.status !== 'invalid');
+        // Ticks off the "Add a free API key" step of the Get Started walkthrough.
+        void vscode.commands.executeCommand('setContext', 'freeagentcoder.hasKeys', usable.length > 0);
         const capacity = providerCapacity(views, this.usage.rateLimitsToday(), now);
         const recent = this.usage.taskStats(7);
         const promptsLeft = estimatePromptsLeft({ keys: views, learnedLimits: this.usage.learnedDailyLimits(), recent, now });
-        return {
+        const settings: SettingsView = {
             mode: this.mode,
             model: this.model,
             providers: providerViews(),
@@ -1020,11 +1146,96 @@ export class Controller implements vscode.Disposable {
             usableKeys: usable.length,
             capacity,
             suggestions: adviseKeys({ keys: views, capacity, weakFallbacksToday: this.usage.weakFallbacksToday(), recent, promptsLeft, now }),
-            overview: await this.overview(promptsLeft),
+            overview: await this.overview(promptsLeft, views),
+            health: this.healthView(usable, now),
+        };
+        this.lastSettings = settings;
+        return settings;
+    }
+
+    /** Every job FreeAgentCoder routes to its own models, and how each key and model serving it is doing. */
+    private healthView(usable: KeyView[], now: number): HealthView {
+        const load = (id: string) => this.usage.today(id).requests;
+        const byId = new Map(usable.map((k) => [k.id, k]));
+        const chain = (steps: { model: string; keys: { id: string }[] }[]) =>
+            steps.flatMap((step) => step.keys.flatMap((ref) => {
+                const key = byId.get(ref.id);
+                return key ? [this.healthEntry(key, step.model, now)] : [];
+            }));
+        const role = (id: RoleHealth['id'], label: string, description: string, entries: HealthEntry[]): RoleHealth => ({
+            id,
+            label,
+            description,
+            entries,
+            status: roleStatus(entries),
+        });
+        const quick = chain(planRoute(usable, this.model, 'fast', load).steps);
+        const stats = this.errorLog.stats();
+        return {
+            roles: [
+                role('quick', 'Quick tasks', 'Questions, explanations and small edits. Fastest models first.', quick),
+                role('complex', 'Complex tasks', 'Builds, debugging, corrections, tests and multi-file work. Strongest models first.', chain(planRoute(usable, this.model, 'deep', load).steps)),
+                role(
+                    'vision',
+                    'Screenshot reader',
+                    'Reads pasted screenshots and images before a task starts.',
+                    this.features.readAttachments ? chain(planVisionRoute(usable, load)) : [],
+                ),
+                role(
+                    'documents',
+                    'Scanned PDF reader',
+                    'Reads PDFs with no text layer. Other documents are read on this computer; very long ones are summarized by the complex-task models.',
+                    this.features.readAttachments ? usable.filter((k) => k.provider === 'gemini').map((k) => this.healthEntry(k, PDF_READER_MODEL, now)) : [],
+                ),
+                role('learning', 'Lesson writer', 'Turns your corrections into lessons for later tasks, using the quick-task models.', this.features.learning ? quick : []),
+            ],
+            recoveredToday: stats.handled,
+            unresolvedToday: stats.unresolved,
+            checkedAt: now,
         };
     }
 
-    private async overview(promptsLeft: PromptsLeft): Promise<OverviewView> {
+    private healthEntry(key: KeyView, model: string, now: number): HealthEntry {
+        const calls = this.usage.callHealth(key.id, model);
+        const exhausted = this.usage.exhaustedUntil(key.id);
+        let status: HealthStatus = 'healthy';
+        let statusDetail: string | undefined;
+        if (!key.enabled) {
+            status = 'disabled';
+        } else if (key.status === 'invalid') {
+            status = 'invalid';
+            statusDetail = key.statusDetail;
+        } else if (exhausted) {
+            status = 'exhausted';
+            statusDetail = `Daily limit used · checked again in ${formatDuration(exhausted - now)}`;
+        } else if (key.cooldownUntil && key.cooldownUntil > now) {
+            status = 'cooldown';
+            statusDetail = `Rate-limited · ready in ${formatDuration(key.cooldownUntil - now)}`;
+        } else if (calls && calls.consecutiveFailures >= 3) {
+            status = 'failing';
+            statusDetail = `${calls.consecutiveFailures} failed requests in a row`;
+        } else if (!calls) {
+            status = 'untested';
+        }
+        const successes = calls ? calls.calls - calls.failures : 0;
+        return {
+            keyId: key.id,
+            keyLabel: key.label,
+            provider: key.provider,
+            providerLabel: key.providerLabel,
+            model,
+            status,
+            statusDetail,
+            calls: calls?.calls ?? 0,
+            failures: calls?.failures ?? 0,
+            avgLatencyMs: calls && successes > 0 ? Math.round(calls.latencyTotalMs / successes) : undefined,
+            lastOkAt: calls?.lastOkAt,
+            lastError: calls?.lastError,
+            lastErrorAt: calls?.lastErrorAt,
+        };
+    }
+
+    private async overview(promptsLeft: PromptsLeft, views: KeyView[]): Promise<OverviewView> {
         const folder = vscode.workspace.workspaceFolders?.[0];
         const stats = this.usage.taskStats(7);
         const average = (total: number) => (stats.tasks ? Math.round(total / stats.tasks) : 0);
@@ -1039,6 +1250,7 @@ export class Controller implements vscode.Disposable {
                 avgDurationMs: average(stats.durationMs),
                 recoveries: stats.recoveries,
             },
+            savings: estimateSavings(views),
             features: featureViews(this.features),
             lessons: this.memory.list(folder?.uri.fsPath).map(lessonView),
         };

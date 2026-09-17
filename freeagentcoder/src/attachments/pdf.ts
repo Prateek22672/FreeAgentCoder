@@ -1,5 +1,25 @@
 /** PDF text-layer extraction via unpdf's serverless pdf.js build (no worker file needed). */
 
+import { existsSync } from 'node:fs';
+import { createRequire } from 'node:module';
+import * as path from 'node:path';
+
+type PdfJsModule = Pick<typeof import('unpdf'), 'getResolvedPDFJS'>;
+
+/**
+ * pdf.js is most of the extension's size, so the build puts it in its own
+ * dist/pdf.js next to extension.js: it is read only when a PDF is attached,
+ * which keeps opening the panel fast. Outside the build (tests, scripts) the
+ * package is loaded directly.
+ */
+async function loadPdfJs(): Promise<PdfJsModule> {
+    const bundled = path.join(__dirname, 'pdf.js');
+    if (existsSync(bundled)) {
+        return createRequire(__filename)(bundled) as PdfJsModule;
+    }
+    return import('unpdf');
+}
+
 export type PdfExtract =
     | { kind: 'text'; text: string; pages: number; pagesRead: number; stoppedEarly: boolean; failedPages: number[] }
     | { kind: 'needs-vision'; reason: string; pages: number }
@@ -17,8 +37,7 @@ interface PdfTextItem {
 const MIN_CHARS_PER_PAGE = 40;
 
 export async function extractPdf(bytes: Uint8Array, maxChars: number): Promise<PdfExtract> {
-    // Lazily loaded: esbuild wraps the dynamic import so pdf.js is only evaluated on first use.
-    const { getResolvedPDFJS } = await import('unpdf');
+    const { getResolvedPDFJS } = await loadPdfJs();
     const pdfjs = await getResolvedPDFJS();
     const task = pdfjs.getDocument({
         data: bytes.slice(), // pdf.js may take ownership of the buffer

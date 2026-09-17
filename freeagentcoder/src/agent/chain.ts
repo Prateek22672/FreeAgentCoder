@@ -16,6 +16,9 @@ export interface RoutableKey extends KeyRef {
 
 export interface CallResult {
     ok: boolean;
+    model: string;
+    /** From sending the request to the end of the reply. */
+    latencyMs: number;
     usage?: Usage;
     error?: ProviderError;
 }
@@ -44,6 +47,7 @@ class TrackedProvider implements Provider {
 
     async *stream(req: ChatRequest): AsyncGenerator<StreamEvent> {
         this.hooks.onAttempt(this.key, req.model);
+        const started = Date.now();
         let usage: Usage | undefined;
         let finished = false;
         let failure: unknown;
@@ -61,17 +65,18 @@ class TrackedProvider implements Provider {
             failure = error;
             throw error;
         } finally {
+            const timing = { model: req.model, latencyMs: Date.now() - started };
             if (req.signal?.aborted) {
                 // Stopped by the user: not the key's fault, nothing to record.
             } else if (failure !== undefined) {
                 const error = failure instanceof ProviderError ? failure : new ProviderError(String((failure as Error)?.message ?? failure), 'network');
                 if (error.kind !== 'aborted') {
-                    this.hooks.onResult(this.key, { ok: false, usage, error });
+                    this.hooks.onResult(this.key, { ok: false, usage, error, ...timing });
                 }
             } else {
                 this.hooks.onResult(
                     this.key,
-                    finished ? { ok: true, usage } : { ok: false, usage, error: new ProviderError('stream ended early', 'network') },
+                    finished ? { ok: true, usage, ...timing } : { ok: false, usage, error: new ProviderError('stream ended early', 'network'), ...timing },
                 );
             }
         }

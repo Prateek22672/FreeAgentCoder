@@ -195,6 +195,10 @@ export class Transcript {
             case 'learned':
                 this.turn(message.turnId).learned(message.lessons);
                 break;
+            case 'capacity':
+                this.turn(message.turnId).append(capacityCard(message));
+                this.scroll(true);
+                return;
             default:
                 return;
         }
@@ -265,6 +269,12 @@ class TurnView {
         if (message.correction) {
             this.header.insertBefore(
                 h('span', { class: 'chip correction', title: 'Correction mode: each point you raised is fixed and verified separately' }, icon('target'), 'Correction'),
+                this.modelChip,
+            );
+        }
+        if (message.test) {
+            this.header.insertBefore(
+                h('span', { class: 'chip test', title: "Test mode: runs your project's own checks and explains every failure" }, icon('shield'), 'Test run'),
                 this.modelChip,
             );
         }
@@ -1053,18 +1063,41 @@ function approvalCard(approval: ApprovalView): HTMLElement {
 }
 
 function errorCard(message: Msg<'error'>): HTMLElement {
+    // Chats saved before errors had a separate title carry the raw text in `message`.
     const [title, ...rest] = message.message.split('\n');
+    const details = (message.details ?? rest.join('\n')).trim();
     const body = h('div', { class: 'card-body' });
-    if (rest.join('\n').trim()) {
-        body.append(h('pre', { class: 'error-text', text: rest.join('\n').trim() }));
-    }
     if (message.hint) {
-        body.append(h('p', { class: 'hint', text: message.hint }));
+        body.append(h('p', { class: 'error-hint', text: message.hint }));
     }
     if (message.action === 'openKeys') {
-        body.append(button('Open API Keys', 'primary small', () => openSettingsEvent('keys'), 'key'));
+        body.append(button('Add or check API keys', 'primary small', () => openSettingsEvent('keys'), 'key'));
     } else if (message.action === 'openFolder') {
         body.append(button('Open Folder', 'primary small', () => send({ type: 'openFolder' }), 'folder'));
     }
-    return h('div', { class: 'card error-card' }, h('div', { class: 'card-head' }, icon('alert'), h('span', { class: 'card-title', text: title })), body);
+    if (details && details !== title) {
+        body.append(h('details', { class: 'error-details' }, h('summary', {}, icon('chevron', 'caret'), 'Technical details'), h('pre', { class: 'error-text', text: details })));
+    }
+    // Key and limit problems are fixable in a click, so they read as a warning, not a crash.
+    const tone = message.action === 'openKeys' ? ' limits' : '';
+    return h('div', { class: `card error-card${tone}` }, h('div', { class: 'card-head' }, icon('alert'), h('span', { class: 'card-title', text: title })), body);
+}
+
+function capacityCard(message: Msg<'capacity'>): HTMLElement {
+    return h(
+        'div',
+        { class: `card capacity-warning ${message.level}` },
+        h('div', { class: 'card-head' }, icon('gauge'), h('span', { class: 'card-title', text: message.title })),
+        h(
+            'div',
+            { class: 'card-body' },
+            h('p', { text: message.detail }),
+            h(
+                'div',
+                { class: 'turn-actions' },
+                button('Add a key', 'primary small', () => openSettingsEvent('keys'), 'plus'),
+                button('See limits', 'ghost small', () => openSettingsEvent('overview'), 'gauge'),
+            ),
+        ),
+    );
 }

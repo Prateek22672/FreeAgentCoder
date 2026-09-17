@@ -45,7 +45,17 @@ async function main() {
 			platform: 'node',
 			target: 'node20',
 			outfile: 'dist/extension.js',
-			external: ['vscode'],
+			// unpdf lives in dist/pdf.js (below), so opening the panel doesn't parse pdf.js.
+			external: ['vscode', 'unpdf'],
+		}),
+		// pdf.js on its own: most of the size, needed only when a PDF is attached.
+		esbuild.context({
+			...shared,
+			entryPoints: ['src/attachments/pdfjs.ts'],
+			format: 'cjs',
+			platform: 'node',
+			target: 'node20',
+			outfile: 'dist/pdf.js',
 		}),
 		// Chat UI (webview). Also emits dist/webview.css from its CSS import.
 		esbuild.context({

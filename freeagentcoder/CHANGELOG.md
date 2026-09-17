@@ -1,18 +1,32 @@
 # Changelog
 
-## 0.1.2 — Clearer positioning
+## 0.2.0 — Checked work, clear limits, easy to find
 
-### Fixed
+### Added
 
-- The "Get a free key" button and the "Save key" button showed overlapping, cut-off text: updating a button's label replaced its icon instead. Button labels are now targeted directly.
+- **Right side bar.** FreeAgentCoder now opens in the right side bar, next to your code.
+- **Get started guide.** Opens right after install and shows where FreeAgentCoder is, how to add keys and how to ask for a first task. Reopen it with **FreeAgentCoder: Get Started**.
+- **Test my project.** Runs the project's own type check, lint, tests and build, and explains every failure in plain words with a fix. Also available as **FreeAgentCoder: Test My Project**.
+- **Checked before done.** Complex tasks that change code must pass one of the project's own checks after their last edit before they can finish. Checks are detected for Node.js, Python, Flutter/Dart, Rust, Go, .NET and Java.
+- **Project layout map** given to complex tasks at the start of a chat.
+- **Health** in Settings: every job FreeAgentCoder routes to its own models, and each key and model's status, requests, failures, response time and last error.
+- **Limit warnings before a task starts** when today's remaining limits look too small, with an Add a key button.
+- **Savings** in Overview: what your free-key usage would have cost on a paid model.
+- **Recommended key setup** with a direct, underlined link for each free provider, and a clear note to get one key per account.
 
 ### Changed
 
+- Daily limits are recognized: the key is set aside until it resets, the next key takes over, and the task no longer waits pointlessly for a limit that resets hours later.
+- A conversation too large for every model is summarized and the task continues.
+- Errors show a plain-language title and next step, with technical details folded away. Key and limit problems appear as warnings, not failures.
+- The chat panel opens faster: pdf.js is loaded only when a PDF is attached.
 - New orange brand color throughout the chat panel, buttons, switches and icon.
-- Adding a key: "Get a free Gemini key" (named for the selected provider) is now a clear full-width button, a pasted key selects its provider automatically, and a Paste button reads the clipboard in one click.
-- Screenshots on the Marketplace page.
+- Adding a key: "Get a free Gemini key" (named for the selected provider) is a clear full-width button, a pasted key selects its provider automatically, and a Paste button reads the clipboard in one click.
+- Marketplace description and keywords use the terms people search for, plus screenshots and a support link.
 
-- Description and keywords now use the terms people actually search for ("AI pair programmer", "vibe coding", "agentic AI", "open source", "BYOK") alongside every supported provider and model name. Added a SUPPORT.md so the Marketplace page shows a support link.
+### Fixed
+
+- The "Get a free key" and "Save key" buttons showed overlapping, cut-off text: updating a button's label replaced its icon instead.
 
 ## 0.1.1 — Easier to find
 

@@ -1,7 +1,9 @@
-import { compactNumber, formatAgo, formatDate, formatDuration, fullNumber } from '../../shared/format';
-import { detectProvider, KEY_STEPS } from '../../shared/keyFormat';
+import { compactNumber, formatAgo, formatDate, formatDuration, formatLatency, formatUsd, fullNumber } from '../../shared/format';
+import { detectProvider, KEY_STEPS, RECOMMENDED_SETUP } from '../../shared/keyFormat';
 import type {
     CapacityWindow,
+    HealthEntry,
+    HealthStatus,
     KeyView,
     LessonView,
     LogEntry,
@@ -9,6 +11,7 @@ import type {
     PermissionMode,
     ProviderView,
     QuotaWindow,
+    RoleHealth,
     SettingsSection,
     SettingsView,
     ToWebview,
@@ -23,6 +26,7 @@ const TABS: [SettingsSection, string, IconName][] = [
     ['overview', 'Overview', 'grid'],
     ['keys', 'API Keys', 'key'],
     ['usage', 'Usage', 'gauge'],
+    ['health', 'Health', 'health'],
     ['memory', 'Memory', 'brain'],
     ['history', 'History', 'history'],
     ['model', 'Model', 'layers'],
@@ -35,6 +39,7 @@ const DESCRIPTIONS: Record<SettingsSection, string> = {
     memory: "Lessons from your corrections, added to future tasks so the same mistake isn't repeated.",
     keys: 'Add several keys per provider: when one hits its limit, the next takes over.',
     usage: 'Counted on this machine from every provider response, with advice on how many keys you need.',
+    health: 'Each job FreeAgentCoder gives to its own models, and whether every key and model serving it is working right now.',
     history: 'Reopen, search and delete your past conversations.',
     model: 'How each request picks a model.',
     permissions: 'What FreeAgentCoder may do without asking first.',
@@ -187,6 +192,136 @@ function suggestionCard(s: SettingsView['suggestions'][number], onAddKey: (provi
     );
 }
 
+/** Placed before every key link: one key per account, and why. */
+export function oneKeyNote(): HTMLElement {
+    return h(
+        'div',
+        { class: 'one-key-note' },
+        icon('alert'),
+        h(
+            'div',
+            {},
+            h('strong', { text: 'Get one key per account.' }),
+            h('span', {
+                text: " A second key from the same account shares that account's limits, so it adds nothing. Add a different provider instead. Provider terms don't allow making extra accounts to get around limits.",
+            }),
+        ),
+    );
+}
+
+function usableProviders(data: SettingsView): Set<string> {
+    return new Set(data.keys.filter((k) => k.enabled && k.status !== 'invalid').map((k) => k.provider));
+}
+
+export function setupCount(data: SettingsView): number {
+    const have = usableProviders(data);
+    return RECOMMENDED_SETUP.filter(({ id }) => have.has(id)).length;
+}
+
+/** One free key from each provider, with direct links. Undefined once all of them are added. */
+export function setupGuide(data: SettingsView, onAdd: (provider: string) => void): HTMLElement | undefined {
+    const have = usableProviders(data);
+    const count = setupCount(data);
+    if (count === RECOMMENDED_SETUP.length) {
+        return undefined;
+    }
+    const rows = RECOMMENDED_SETUP.flatMap(({ id, goodFor }) => {
+        const provider = data.providers.find((p) => p.id === id);
+        if (!provider) {
+            return [];
+        }
+        const done = have.has(id);
+        const host = provider.signupUrl.replace(/^https?:\/\//, '').replace(/\/$/, '');
+        return [
+            h(
+                'div',
+                { class: `setup-row${done ? ' done' : ''}` },
+                h('span', { class: 'setup-check' }, icon(done ? 'check' : 'key')),
+                h(
+                    'div',
+                    { class: 'setup-text' },
+                    h('strong', { text: provider.label }),
+                    h('span', { class: 'muted', text: goodFor }),
+                    done ? null : h('a', { class: 'setup-link', text: `${host} ↗`, title: `Opens ${provider.signupUrl} in your browser`, attrs: { href: provider.signupUrl, 'data-external': '1' } }),
+                ),
+                done ? h('span', { class: 'tag free', text: 'ADDED' }) : button('Add', 'secondary small', () => onAdd(id), 'plus'),
+            ),
+        ];
+    });
+    return h(
+        'div',
+        { class: 'card setup-guide' },
+        h(
+            'div',
+            { class: 'card-head' },
+            icon('bulb'),
+            h('span', { class: 'card-title', text: 'Best free setup: one key from each provider' }),
+            h('span', { class: 'setup-progress', text: `${count} of ${RECOMMENDED_SETUP.length}` }),
+        ),
+        h(
+            'div',
+            { class: 'card-body' },
+            h('p', { class: 'muted small', text: "Each provider has its own separate free limits, so every provider you add is extra capacity, and when one is busy the next takes over. Click a link, sign in, copy the key, then click Add and paste it." }),
+            oneKeyNote(),
+            h('div', { class: 'setup-rows' }, ...rows),
+        ),
+    );
+}
+
+const HEALTH_TEXT: Record<HealthStatus, string> = {
+    healthy: 'Healthy',
+    untested: 'Not used yet',
+    cooldown: 'Rate-limited',
+    exhausted: 'Daily limit used',
+    failing: 'Failing',
+    invalid: 'Key rejected',
+    disabled: 'Disabled',
+};
+
+const HEALTH_DOT: Record<HealthStatus, string> = {
+    healthy: 'active',
+    untested: 'unverified',
+    cooldown: 'cooldown',
+    exhausted: 'cooldown',
+    failing: 'invalid',
+    invalid: 'invalid',
+    disabled: 'disabled',
+};
+
+const ROLE_TEXT: Record<RoleHealth['status'], string> = {
+    ok: 'Working',
+    degraded: 'Working · some keys unavailable',
+    down: 'Not working right now',
+    unconfigured: 'Not set up',
+};
+
+const ROLE_DOT: Record<RoleHealth['status'], string> = { ok: 'active', degraded: 'cooldown', down: 'invalid', unconfigured: 'disabled' };
+
+function healthEntryRow(entry: HealthEntry): HTMLElement {
+    const model = entry.model.split('/').pop() ?? entry.model;
+    const stats = entry.calls
+        ? `${fullNumber(entry.calls)} request${entry.calls === 1 ? '' : 's'} · ${fullNumber(entry.failures)} failed${
+              entry.avgLatencyMs !== undefined ? ` · ${formatLatency(entry.avgLatencyMs)} average` : ''
+          }`
+        : 'No requests since VS Code started';
+    const troubled = entry.status !== 'healthy' && entry.status !== 'untested';
+    return h(
+        'div',
+        { class: `health-entry ${entry.status}` },
+        h('span', { class: `status-dot ${HEALTH_DOT[entry.status]}` }),
+        h(
+            'div',
+            { class: 'health-entry-main' },
+            h('div', { class: 'health-entry-line' }, h('span', { class: 'health-model', text: `${entry.providerLabel} · ${model}`, title: entry.model }), h('span', { class: 'muted', text: entry.keyLabel })),
+            h('div', { class: 'muted small', text: entry.statusDetail ? `${entry.statusDetail} · ${stats}` : stats }),
+            troubled && entry.lastError
+                ? h('div', { class: 'health-error', text: `${entry.lastErrorAt ? `${formatAgo(entry.lastErrorAt)}: ` : ''}${entry.lastError}`, title: entry.lastError })
+                : null,
+        ),
+        h('span', { class: `health-pill ${entry.status}`, text: HEALTH_TEXT[entry.status] }),
+    );
+}
+
 function groupLabel(time: number, now: number): string {
     const start = new Date(now);
     start.setHours(0, 0, 0, 0);
@@ -264,7 +399,7 @@ class AddKeyForm {
                 'div',
                 { class: 'card-body form' },
                 field('Provider', this.provider),
-                h('div', { class: 'provider-note' }, this.note, this.steps, this.getKey),
+                h('div', { class: 'provider-note' }, this.note, this.steps, oneKeyNote(), this.getKey),
                 field('Name', this.name, 'So you can tell your keys apart.'),
                 field('API key', h('div', { class: 'secret-field' }, this.secret, this.paste, this.reveal), 'Checked with the provider, then stored encrypted on this device.'),
                 this.detected,
@@ -461,6 +596,7 @@ export class SettingsPanel {
             overview: make('overview'),
             keys: make('keys', trustCard(), this.keySummary, button('Add API key', 'primary block', () => this.form.open(), 'plus'), this.form.el, this.keyGroups),
             usage: make('usage'),
+            health: make('health'),
             memory: make('memory'),
             history: make('history'),
             model: make('model'),
@@ -490,8 +626,14 @@ export class SettingsPanel {
         this.renderMemory();
         this.renderKeys();
         this.renderUsage();
+        this.renderHealth();
         this.renderModel();
         this.renderPermissions();
+    }
+
+    /** Opens the add-key form for a provider, from anywhere in the panel. */
+    addKey(provider?: string): void {
+        this.openAddKey(provider);
     }
 
     history(message: Msg<'history'>): void {
@@ -619,24 +761,14 @@ export class SettingsPanel {
             );
         }
 
-        const missing = data.providers.filter((p) => p.free && !keys.some((k) => k.provider === p.id));
-        if (missing.length) {
-            groups.push(
-                h(
-                    'div',
-                    { class: 'available' },
-                    h('div', { class: 'subhead', text: keys.length ? 'Add more free capacity' : 'Free providers' }),
-                    ...missing.map((p) =>
-                        h(
-                            'div',
-                            { class: 'available-row' },
-                            h('div', { class: 'available-text' }, h('strong', { text: p.label }), h('span', { class: 'muted', text: p.note, title: p.note })),
-                            h('a', { class: 'link', text: 'Get key ↗', attrs: { href: p.signupUrl, 'data-external': '1' } }),
-                            button('Add', 'secondary small', () => this.form.open(p.id)),
-                        ),
-                    ),
-                ),
-            );
+        // The setup guide leads while there are free providers left to add, and moves below the keys once there are a few.
+        const guide = setupGuide(data, (provider) => this.form.open(provider));
+        if (guide) {
+            if (setupCount(data) < 2) {
+                groups.unshift(guide);
+            } else {
+                groups.push(guide);
+            }
         }
         this.keyGroups.replaceChildren(...groups);
     }
@@ -1035,6 +1167,18 @@ export class SettingsPanel {
                 tile('Active keys', fullNumber(data.usableKeys), `of ${fullNumber(data.keys.length)} added`),
             ),
             h('div', { class: 'callout' }, icon('info'), h('span', { text: left.basis })),
+            h(
+                'div',
+                { class: 'savings-card' },
+                h(
+                    'div',
+                    { class: 'savings-main' },
+                    h('span', { class: 'savings-label', text: 'Saved with your free keys · last 30 days' }),
+                    h('span', { class: 'savings-value', text: `≈ ${formatUsd(overview.savings.usd30d)}` }),
+                    h('span', { class: 'savings-sub', text: `${formatUsd(overview.savings.usdToday)} today · no subscription, no caps of ours` }),
+                ),
+                h('p', { class: 'savings-basis', text: overview.savings.basis }),
+            ),
             ...data.suggestions.filter((s) => s.level === 'warn').slice(0, 2).map((s) => suggestionCard(s, (provider) => this.openAddKey(provider))),
             h('div', { class: 'subhead', text: 'This project' }),
         ];
@@ -1070,7 +1214,7 @@ export class SettingsPanel {
                       { class: 'tiles' },
                       tile('Tasks', fullNumber(stats.tasks), `${Math.round((stats.completed / stats.tasks) * 100)}% completed`),
                       tile('Per task', formatDuration(stats.avgDurationMs), `${compactNumber(stats.avgTokens)} tokens · ${fullNumber(stats.avgRequests)} requests`),
-                      tile('Auto-recovered', fullNumber(stats.recoveries), 'problems handled without stopping'),
+                      tile('Auto-recovered', fullNumber(stats.recoveries), 'handled without stopping'),
                   )
                 : h('p', { class: 'muted small', text: 'Stats appear after your first task.' }),
         );
@@ -1140,6 +1284,77 @@ export class SettingsPanel {
         }
         send({ type: 'addLesson', text, scope: this.lessonScope.value === 'global' ? 'global' : 'project' });
         this.lessonInput.value = '';
+    }
+
+    private renderHealth(): void {
+        const data = this.data;
+        if (!data) {
+            return;
+        }
+        const { health } = data;
+        const featureOn = (id: string) => data.overview.features.find((f) => f.id === id)?.on !== false;
+        const configured = health.roles.filter((r) => r.status !== 'unconfigured');
+        const working = configured.filter((r) => r.status === 'ok' || r.status === 'degraded').length;
+        const tile = (label: string, value: string, sub: string, tone = '') =>
+            h('div', { class: `tile${tone}` }, h('div', { class: 'tile-label', text: label }), h('div', { class: 'tile-value', text: value }), h('div', { class: 'tile-sub', text: sub }));
+
+        const roleCard = (role: RoleHealth) => {
+            let empty: HTMLElement | null = null;
+            if (!role.entries.length) {
+                const off =
+                    ((role.id === 'vision' || role.id === 'documents') && !featureOn('readAttachments')) || (role.id === 'learning' && !featureOn('learning'));
+                const needs =
+                    role.id === 'vision'
+                        ? 'No active key can read images. A free Gemini key does this best (Mistral, OpenAI and Anthropic keys work too).'
+                        : role.id === 'documents'
+                          ? 'Scanned PDFs need a Gemini key.'
+                          : 'No active key can serve this yet.';
+                empty = h(
+                    'div',
+                    { class: 'health-empty' },
+                    h('span', { class: 'muted small', text: off ? 'Turned off in Overview → Features.' : needs }),
+                    off ? null : button('Add a key', 'secondary small', () => this.openAddKey(role.id === 'quick' ? 'groq' : 'gemini'), 'plus'),
+                );
+            }
+            return h(
+                'div',
+                { class: `health-role ${role.status}` },
+                h(
+                    'div',
+                    { class: 'health-role-head' },
+                    h('span', { class: `status-dot ${ROLE_DOT[role.status]}` }),
+                    h('strong', { text: role.label }),
+                    h('span', { class: 'health-role-status', text: ROLE_TEXT[role.status] }),
+                ),
+                h('p', { class: 'muted small health-role-desc', text: role.description }),
+                empty ?? h('div', { class: 'health-entries' }, ...role.entries.map(healthEntryRow)),
+            );
+        };
+
+        this.sections.health.content.replaceChildren(
+            h(
+                'div',
+                { class: 'tiles' },
+                tile('Jobs working', `${working} of ${configured.length || health.roles.length}`, 'have a ready key', working < configured.length ? ' warn' : ''),
+                tile('Recovered today', fullNumber(health.recoveredToday), 'handled without stopping'),
+                tile('Need attention', fullNumber(health.unresolvedToday), 'not recovered today', health.unresolvedToday ? ' warn' : ''),
+            ),
+            ...health.roles.map(roleCard),
+            h(
+                'div',
+                { class: 'key-actions' },
+                button('Open logs', 'secondary small', () => this.setActive('logs'), 'pulse'),
+                button('Manage keys', 'secondary small', () => this.setActive('keys'), 'key'),
+            ),
+            h(
+                'div',
+                { class: 'callout' },
+                icon('info'),
+                h('span', {
+                    text: 'Requests, failures and response times are counted on this computer since VS Code started. When a key fails or hits a limit, the next one in the same job takes over automatically.',
+                }),
+            ),
+        );
     }
 
     private renderModel(): void {

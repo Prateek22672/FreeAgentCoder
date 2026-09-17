@@ -10,6 +10,19 @@ interface DayEvents {
     taskRequests: number;
     taskDurationMs: number;
     recoveries: number;
+    deepTasks?: number;
+    deepRequests?: number;
+}
+
+/** How one key is doing with one model since VS Code started. */
+export interface CallHealth {
+    calls: number;
+    failures: number;
+    latencyTotalMs: number;
+    consecutiveFailures: number;
+    lastOkAt?: number;
+    lastError?: string;
+    lastErrorAt?: number;
 }
 
 interface LearnedLimit {
@@ -32,6 +45,9 @@ export interface TaskStats {
     requests: number;
     durationMs: number;
     recoveries: number;
+    /** Complex tasks and their model requests, to size the next complex task. */
+    deepTasks: number;
+    deepRequests: number;
 }
 
 const STORAGE_KEY = 'freeagentcoder.usage.v1';
@@ -57,7 +73,7 @@ export function dayKey(time = Date.now()): string {
 }
 
 function emptyEvents(): DayEvents {
-    return { rateLimits: {}, weakFallbacks: 0, tasks: 0, completed: 0, taskTokens: 0, taskRequests: 0, taskDurationMs: 0, recoveries: 0 };
+    return { rateLimits: {}, weakFallbacks: 0, tasks: 0, completed: 0, taskTokens: 0, taskRequests: 0, taskDurationMs: 0, recoveries: 0, deepTasks: 0, deepRequests: 0 };
 }
 
 /**
@@ -74,6 +90,9 @@ export class UsageStore implements vscode.Disposable {
     private readonly cooldowns = new Map<string, number>();
     private readonly invalid = new Map<string, string>();
     private readonly lastErrors = new Map<string, { message: string; at: number }>();
+    private readonly health = new Map<string, CallHealth>();
+    /** Keys that hit a daily limit, until it resets: waiting a minute won't bring them back. */
+    private readonly exhausted = new Map<string, number>();
     private readonly changed = new vscode.EventEmitter<void>();
     readonly onDidChange = this.changed.event;
     private saveTimer?: ReturnType<typeof setTimeout>;
@@ -93,8 +112,43 @@ export class UsageStore implements vscode.Disposable {
         this.data.lastUsed[keyId] = Date.now();
         if (call.ok) {
             this.cooldowns.delete(keyId);
+            this.exhausted.delete(keyId);
         }
         this.touch();
+    }
+
+    /** Outcome and speed of one call, for the Health view. */
+    recordCall(keyId: string, model: string, call: { ok: boolean; latencyMs: number; error?: string }): void {
+        const id = `${keyId}|${model}`;
+        const entry = this.health.get(id) ?? { calls: 0, failures: 0, latencyTotalMs: 0, consecutiveFailures: 0 };
+        entry.calls++;
+        if (call.ok) {
+            entry.latencyTotalMs += Math.max(0, call.latencyMs);
+            entry.consecutiveFailures = 0;
+            entry.lastOkAt = Date.now();
+        } else {
+            entry.failures++;
+            entry.consecutiveFailures++;
+            entry.lastError = call.error;
+            entry.lastErrorAt = Date.now();
+        }
+        this.health.set(id, entry);
+        this.touch();
+    }
+
+    callHealth(keyId: string, model: string): CallHealth | undefined {
+        return this.health.get(`${keyId}|${model}`);
+    }
+
+    markExhausted(keyId: string, until: number): void {
+        this.exhausted.set(keyId, until);
+        this.cooldowns.set(keyId, until);
+        this.touch();
+    }
+
+    exhaustedUntil(keyId: string): number | undefined {
+        const until = this.exhausted.get(keyId);
+        return until && until > Date.now() ? until : undefined;
     }
 
     recordQuota(keyId: string, windows: QuotaWindow[]): void {
@@ -122,9 +176,13 @@ export class UsageStore implements vscode.Disposable {
         this.touch();
     }
 
-    recordTask(task: { tokens: number; requests: number; completed: boolean; durationMs: number }): void {
+    recordTask(task: { tokens: number; requests: number; completed: boolean; durationMs: number; tier: 'fast' | 'deep' }): void {
         const events = this.todayEvents();
         events.tasks++;
+        if (task.tier === 'deep') {
+            events.deepTasks = (events.deepTasks ?? 0) + 1;
+            events.deepRequests = (events.deepRequests ?? 0) + Math.max(0, task.requests);
+        }
         events.completed = (events.completed ?? 0) + (task.completed ? 1 : 0);
         events.taskTokens += Math.max(0, task.tokens);
         events.taskRequests += Math.max(0, task.requests);
@@ -156,7 +214,7 @@ export class UsageStore implements vscode.Disposable {
 
     /** Tasks finished over the last `days` days: how many, how many completed, and their totals. */
     taskStats(days: number): TaskStats {
-        const result: TaskStats = { tasks: 0, completed: 0, tokens: 0, requests: 0, durationMs: 0, recoveries: 0 };
+        const result: TaskStats = { tasks: 0, completed: 0, tokens: 0, requests: 0, durationMs: 0, recoveries: 0, deepTasks: 0, deepRequests: 0 };
         for (let i = 0; i < days; i++) {
             const events = this.data.events[dayKey(Date.now() - i * 86_400_000)];
             if (events) {
@@ -166,6 +224,8 @@ export class UsageStore implements vscode.Disposable {
                 result.requests += events.taskRequests ?? 0;
                 result.durationMs += events.taskDurationMs ?? 0;
                 result.recoveries += events.recoveries ?? 0;
+                result.deepTasks += events.deepTasks ?? 0;
+                result.deepRequests += events.deepRequests ?? 0;
             }
         }
         return result;
@@ -250,6 +310,12 @@ export class UsageStore implements vscode.Disposable {
         this.cooldowns.delete(keyId);
         this.invalid.delete(keyId);
         this.lastErrors.delete(keyId);
+        this.exhausted.delete(keyId);
+        for (const id of [...this.health.keys()]) {
+            if (id.startsWith(`${keyId}|`)) {
+                this.health.delete(id);
+            }
+        }
         this.touch();
     }
 

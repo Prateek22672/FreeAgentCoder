@@ -3,7 +3,7 @@ import { compactNumber } from '../../shared/format';
 import type { AttachmentInput, PermissionMode, SettingsSection, SettingsView, ToWebview } from '../../shared/protocol';
 import { button, fill, h, iconButton, send } from './dom';
 import { icon, type IconName } from './icons';
-import { SettingsPanel } from './settings';
+import { SettingsPanel, setupGuide } from './settings';
 import { Transcript } from './transcript';
 
 const MODES: Record<PermissionMode, { label: string; icon: IconName; description: string }> = {
@@ -114,25 +114,17 @@ function renderWelcome(): void {
                   h('div', { class: 'card-body' }, h('p', { class: 'muted', text: 'FreeAgentCoder works inside a folder so it can read, create and run files.' }), button('Open Folder', 'primary small', () => send({ type: 'openFolder' }), 'folder')),
               )
             : null,
-        needsKey
-            ? h(
-                  'div',
-                  { class: 'card setup' },
-                  h('div', { class: 'card-head' }, icon('key'), h('span', { class: 'card-title', text: 'Add your first API key' })),
-                  h(
-                      'div',
-                      { class: 'card-body' },
-                      h('p', {
-                          class: 'muted',
-                          text: 'Gemini, Groq and Cerebras have free tiers. Add several keys and FreeAgentCoder switches between them when one hits its limit. Keys stay on this device, encrypted in VS Code Secret Storage.',
-                      }),
-                      button('Add API key', 'primary small', () => openSettings('keys'), 'plus'),
-                  ),
-              )
+        needsKey && settings
+            ? setupGuide(settings, (provider) => {
+                  openSettings('keys');
+                  settingsPanel.addKey(provider);
+              })
             : null,
+        needsKey ? h('p', { class: 'welcome-note' }, icon('lock'), 'Keys stay on this device, encrypted in VS Code Secret Storage.') : null,
         h(
             'div',
             { class: 'suggestions' },
+            hasWorkspace && !needsKey ? testSuggestion() : null,
             ...SUGGESTIONS.map((text) => {
                 const suggestion = h('button', { class: 'suggestion', attrs: { type: 'button' } }, icon('spark'), h('span', { text }));
                 suggestion.addEventListener('click', () => {
@@ -153,6 +145,18 @@ function renderWelcome(): void {
               )
             : null,
     );
+}
+
+/** Runs the project's own checks and explains any failure, without the user having to know the commands. */
+function testSuggestion(): HTMLElement {
+    const el = h(
+        'button',
+        { class: 'suggestion test', attrs: { type: 'button' }, title: 'Detects your build, type check, lint and tests, runs them, and explains every failure with a fix' },
+        icon('shield'),
+        h('span', { text: 'Test my project and explain any failures' }),
+    );
+    el.addEventListener('click', () => send({ type: 'testProject' }));
+    return el;
 }
 
 function updateEmpty(): void {
@@ -188,7 +192,7 @@ function renderFoot(): void {
         usageLink.addEventListener('click', () => openSettings('usage'));
         parts.push(keys, usageLink);
         const left = settings.overview.promptsLeft;
-        if (left.value !== undefined) {
+        if (left.value !== undefined && settings.usableKeys > 0) {
             const low = !left.atLeast && left.value < 15;
             const leftLink = h(
                 'button',

@@ -82,7 +82,7 @@ export function estimatePromptsLeft(input: { keys: KeyView[]; learnedLimits: Rec
         : `about ${rounded} model requests per prompt (a typical figure; it becomes yours after a few tasks)`;
 
     if (!usable.length) {
-        return { value: 0, atLeast: false, requestsPerPrompt: rounded, basis: 'No active keys.' };
+        return { value: 0, requestsLeft: 0, atLeast: false, requestsPerPrompt: rounded, basis: 'No active keys.' };
     }
     let remaining = 0;
     let known = 0;
@@ -108,6 +108,7 @@ export function estimatePromptsLeft(input: { keys: KeyView[]; learnedLimits: Rec
     const partial = known < usable.length;
     return {
         value: Math.floor(remaining / perPrompt),
+        requestsLeft: remaining,
         atLeast: partial,
         requestsPerPrompt: rounded,
         basis: `${remaining.toLocaleString('en-US')} requests left today across ${known} of ${plural(usable.length, 'active key')} with a known daily limit, at ${rate}.${

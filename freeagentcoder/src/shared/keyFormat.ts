@@ -18,6 +18,19 @@ export function detectProvider(secret: string): string | undefined {
     return PREFIXES.find(([prefix]) => key.startsWith(prefix))?.[1];
 }
 
+/**
+ * The recommended free setup: one key from each provider, most useful first.
+ * Different providers have separate limits; a second key from the same
+ * account shares that account's limits, so it adds little or nothing.
+ */
+export const RECOMMENDED_SETUP: { id: string; goodFor: string }[] = [
+    { id: 'gemini', goodFor: 'Complex builds and big projects: a 1M-token context' },
+    { id: 'groq', goodFor: 'Very fast answers and small edits' },
+    { id: 'cerebras', goodFor: 'Fast backup for quick tasks' },
+    { id: 'openrouter', goodFor: 'Free models from several makers behind one key' },
+    { id: 'mistral', goodFor: 'One more free provider to share the load' },
+];
+
 /** What the user will see on the provider's site, so they don't have to hunt for it. */
 export const KEY_STEPS: Record<string, string[]> = {
     gemini: ['Sign in with your Google account.', 'Click "Create API key" and pick any project.', 'Copy the key — it starts with AIza.'],

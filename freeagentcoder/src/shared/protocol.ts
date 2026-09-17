@@ -2,7 +2,7 @@ export type PermissionMode = 'ask' | 'auto-edit' | 'auto';
 export type Tier = 'fast' | 'deep';
 export type KeyStatus = 'active' | 'cooldown' | 'invalid' | 'disabled' | 'unverified';
 export type KeySource = 'extension' | 'env' | 'config';
-export type SettingsSection = 'overview' | 'keys' | 'usage' | 'memory' | 'history' | 'model' | 'permissions' | 'logs';
+export type SettingsSection = 'overview' | 'keys' | 'usage' | 'health' | 'memory' | 'history' | 'model' | 'permissions' | 'logs';
 export type HistoryMode = 'ask' | 'on' | 'off';
 export type LogKind = 'provider' | 'agent' | 'extension';
 export type TurnEndReason = 'completed' | 'max_steps' | 'aborted' | 'error';
@@ -98,6 +98,51 @@ export interface SettingsView {
     capacity: ProviderCapacity[];
     suggestions: Suggestion[];
     overview: OverviewView;
+    health: HealthView;
+}
+
+export type HealthStatus = 'healthy' | 'untested' | 'cooldown' | 'exhausted' | 'failing' | 'invalid' | 'disabled';
+
+/** One key serving one model, as the model router sees it. */
+export interface HealthEntry {
+    keyId: string;
+    keyLabel: string;
+    provider: string;
+    providerLabel: string;
+    model: string;
+    status: HealthStatus;
+    statusDetail?: string;
+    /** Since VS Code started. */
+    calls: number;
+    failures: number;
+    avgLatencyMs?: number;
+    lastOkAt?: number;
+    lastError?: string;
+    lastErrorAt?: number;
+}
+
+/** A job FreeAgentCoder routes to a dedicated chain of models. */
+export interface RoleHealth {
+    id: 'quick' | 'complex' | 'vision' | 'documents' | 'learning';
+    label: string;
+    description: string;
+    status: 'ok' | 'degraded' | 'down' | 'unconfigured';
+    entries: HealthEntry[];
+}
+
+export interface HealthView {
+    roles: RoleHealth[];
+    recoveredToday: number;
+    unresolvedToday: number;
+    checkedAt: number;
+}
+
+export interface SavingsView {
+    usdToday: number;
+    usd30d: number;
+    tokens30d: number;
+    /** How the estimate was worked out, shown next to it. */
+    basis: string;
 }
 
 export interface CapacityWindow {
@@ -133,6 +178,8 @@ export interface Suggestion {
 export interface PromptsLeft {
     /** Undefined when none of the active keys has a known daily request limit. */
     value?: number;
+    /** Model requests left today on keys with a known daily limit. */
+    requestsLeft?: number;
     /** Some active keys don't report a daily limit, so the real number is higher. */
     atLeast: boolean;
     requestsPerPrompt: number;
@@ -178,6 +225,7 @@ export interface OverviewView {
     project?: ProjectStatus;
     promptsLeft: PromptsLeft;
     efficiency: EfficiencyStats;
+    savings: SavingsView;
     features: FeatureView[];
     lessons: LessonView[];
 }
@@ -290,7 +338,11 @@ export type ToWebview =
           attachments?: AttachmentView[];
           correction?: boolean;
           lessons?: number;
+          /** A "Test my project" run. */
+          test?: boolean;
       }
+    /** Posted before work starts when today's remaining limits may not cover the task. */
+    | { type: 'capacity'; turnId: string; level: 'tight' | 'short'; title: string; detail: string }
     | { type: 'model'; turnId: string; providerLabel: string; model: string; keyLabel: string }
     | { type: 'text'; turnId: string; delta: string }
     | { type: 'reasoning'; turnId: string; delta: string }
@@ -316,7 +368,16 @@ export type ToWebview =
     | { type: 'approvalResolved'; turnId: string; id: string; allowed: boolean }
     | { type: 'todos'; turnId: string; todos: TodoView[] }
     | { type: 'notice'; turnId: string; message: string; level: 'info' | 'warn' }
-    | { type: 'error'; turnId?: string; message: string; hint?: string; action?: 'openKeys' | 'openFolder' }
+    | {
+          type: 'error';
+          turnId?: string;
+          /** A plain-language title. */
+          message: string;
+          hint?: string;
+          /** The raw error, shown folded away. */
+          details?: string;
+          action?: 'openKeys' | 'openFolder';
+      }
     | {
           type: 'turnEnd';
           turnId: string;
@@ -345,6 +406,7 @@ export type ToWebview =
 export type FromWebview =
     | { type: 'ready' }
     | { type: 'send'; text: string; attachments?: AttachmentInput[]; correction?: boolean }
+    | { type: 'testProject' }
     | { type: 'stop' }
     | { type: 'continue' }
     | { type: 'newChat' }

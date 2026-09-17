@@ -2,7 +2,7 @@
   "name": "freeagentcoder",
   "displayName": "Free Agent Coder — Free AI Coding Agent",
   "description": "FreeAgentCoder: a free, open-source AI coding agent and pair programmer for VS Code. Plans, edits, runs and verifies code using your own free Gemini, Groq, Cerebras, Mistral or OpenRouter API keys — no subscription, ever.",
-  "version": "0.1.2",
+  "version": "0.2.0",
   "publisher": "PrateekKoratala",
   "license": "MIT",
   "icon": "media/icon.png",
@@ -87,10 +87,20 @@
         "command": "freeagentcoder.stop",
         "title": "Stop Current Task",
         "category": "FreeAgentCoder"
+      },
+      {
+        "command": "freeagentcoder.testProject",
+        "title": "Test My Project",
+        "category": "FreeAgentCoder"
+      },
+      {
+        "command": "freeagentcoder.getStarted",
+        "title": "Get Started",
+        "category": "FreeAgentCoder"
       }
     ],
     "viewsContainers": {
-      "activitybar": [
+      "secondarySidebar": [
         {
           "id": "freeagentcoder",
           "title": "FreeAgentCoder",
@@ -106,7 +116,63 @@
           "name": "FreeAgentCoder"
         }
       ]
-    }
+    },
+    "walkthroughs": [
+      {
+        "id": "getStarted",
+        "title": "Get started with FreeAgentCoder",
+        "description": "A free AI coding agent in the right side bar. Three steps and you're coding.",
+        "steps": [
+          {
+            "id": "open",
+            "title": "Find FreeAgentCoder in the right side bar",
+            "description": "FreeAgentCoder opens in the **right side bar**, next to your code. Click below to open it. Later, run **FreeAgentCoder: Open Chat** from the Command Palette (Ctrl+Shift+P) or use the layout button at the top right to show the side bar.\n[Open FreeAgentCoder](command:freeagentcoder.open)",
+            "media": {
+              "svg": "media/walkthrough/where.svg",
+              "altText": "The VS Code window with FreeAgentCoder in the right side bar"
+            },
+            "completionEvents": [
+              "onView:freeagentcoder.chat"
+            ]
+          },
+          {
+            "id": "keys",
+            "title": "Add a free API key",
+            "description": "Get one free key from each provider (Gemini, Groq, Cerebras, OpenRouter, Mistral). The settings page has a direct link for each.\n**One key per account:** a second key from the same account shares its limits and adds nothing.\nKeys stay on this device, encrypted in VS Code Secret Storage.\n[Add a free key](command:freeagentcoder.manageKeys)",
+            "media": {
+              "image": "media/walkthrough/keys.png",
+              "altText": "The API Keys page, with a direct link to get a free key from each provider"
+            },
+            "completionEvents": [
+              "onContext:freeagentcoder.hasKeys"
+            ]
+          },
+          {
+            "id": "ask",
+            "title": "Ask for your first task",
+            "description": "Describe what you want in plain words: build a feature, fix a bug, or explain the code. Paste screenshots or PDFs if they help. FreeAgentCoder plans, edits, runs and checks the work, and shows every step.\n[Open the chat](command:freeagentcoder.open)",
+            "media": {
+              "image": "media/walkthrough/chat.png",
+              "altText": "FreeAgentCoder working on a task: a plan, a file edit and live status"
+            },
+            "completionEvents": [
+              "onContext:freeagentcoder.hasRunTask"
+            ]
+          },
+          {
+            "id": "test",
+            "title": "Test your project",
+            "description": "One click runs your project's own build, type check, lint and tests, then explains every failure in plain words with a fix.\n[Test my project](command:freeagentcoder.testProject)",
+            "media": {
+              "markdown": "media/walkthrough/test.md"
+            },
+            "completionEvents": [
+              "onCommand:freeagentcoder.testProject"
+            ]
+          }
+        ]
+      }
+    ]
   },
   "scripts": {
     "vscode:prepublish": "npm run package",
@@ -121,7 +187,8 @@
     "pretest": "npm run compile-tests && npm run compile && npm run lint",
     "check-types": "tsc --noEmit && tsc --noEmit -p src/webview/app",
     "lint": "eslint src",
-    "test": "vscode-test"
+    "test": "vscode-test",
+    "test:unit": "vitest run"
   },
   "devDependencies": {
     "@types/mocha": "^10.0.10",
@@ -133,7 +200,8 @@
     "eslint": "^10.5.0",
     "npm-run-all": "^4.1.5",
     "typescript": "^6.0.3",
-    "typescript-eslint": "^8.61.1"
+    "typescript-eslint": "^8.61.1",
+    "vitest": "^5.0.0"
   },
   "overrides": {
     "diff": "^8.0.4",

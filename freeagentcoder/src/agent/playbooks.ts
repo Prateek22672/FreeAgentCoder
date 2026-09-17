@@ -280,7 +280,7 @@ const CHANGE_INTENT = /\b(?:fix|debug|refactor|upgrade|migrate|implement|add|int
 const RELEASE_INTENT = /\b(?:publish\w*|release|production|deploy\w*|play\s*store|app\s*store|apk|aab|ready\s+to\s+(?:ship|launch))\b/i;
 const MOBILE = /\b(?:mobile|android|ios|iphone|cross-platform)\s+(?:app|application)\b|\bapp\s+for\s+(?:android|ios)\b/i;
 const OTHER_MOBILE = /\b(?:react\s*native|expo|kotlin|swift(?:ui)?|jetpack\s+compose|ionic|capacitor|xamarin|maui)\b/i;
-const EXPLAINS_BLOCKER = /\b(?:not installed|isn't installed|is not installed|missing|cannot run|can't run|couldn't run|could not run|unable to run|not available)\b/i;
+export const EXPLAINS_BLOCKER = /\b(?:not installed|isn't installed|is not installed|missing|cannot run|can't run|couldn't run|could not run|unable to run|not available)\b/i;
 
 export function releaseIntent(prompt: string): boolean {
     return RELEASE_INTENT.test(prompt);

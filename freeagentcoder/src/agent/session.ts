@@ -18,8 +18,11 @@ import { compactNumber, errorMessage } from '../shared/format';
 import type { ApprovalView, AttachmentView, ChangedFile, PermissionMode, Tier, ToolDisplayView, ToWebview, TurnEndReason } from '../shared/protocol';
 import type { DiffDocuments } from './diffDocuments';
 import { EXTRA_INSTRUCTIONS } from './instructions';
-import { evaluateGates, reviewMessage, type CommandRun, type Playbook } from './playbooks';
+import { evaluateGates, reviewMessage, type Playbook } from './playbooks';
+import type { ProjectCheck } from './projectChecks';
 import { projectSnapshot } from './projectSnapshot';
+import { explainError, isContextTooLarge, recoveryFor } from './recovery';
+import { codeChanged, verificationReview, type SequencedRun } from './testing';
 
 type ToolEndEvent = Extract<AgentEvent, { type: 'tool_end' }>;
 type RawDisplay = NonNullable<ToolEndEvent['result']['display']>;
@@ -28,28 +31,8 @@ const MAX_STEPS = 150;
 const DIFF_LINES = 400;
 const OUTPUT_CHARS = 8_000;
 const RESUME_PROMPT = 'Continue the task from where you stopped. (The editor resumed it automatically after a temporary problem reaching the AI providers.)';
-const TEMPORARY =
-    /rate limit|rate-limited|cooling down|too many requests|timed out|timeout|network|fetch failed|ECONNRESET|ECONNREFUSED|ENOTFOUND|ETIMEDOUT|EAI_AGAIN|socket hang up|server error|overloaded|unavailable|stream ended early|\b50[0-4]\b/i;
-const OFFLINE = /fetch failed|ECONN|ENOTFOUND|ETIMEDOUT|EAI_AGAIN|socket hang up|network/i;
-const FINAL = /larger than any configured model|declined to continue|No model is configured/i;
-
-/** Whether a turn-ending error is temporary enough to wait out and resume automatically. */
-export function recoveryFor(message: string, attempt: number): { delayMs: number; explanation: string; action: string } | undefined {
-    if (attempt >= 2 || FINAL.test(message)) {
-        return undefined;
-    }
-    const reasons = message.startsWith('Every model failed') ? message.split('\n').slice(1) : [message];
-    if (!reasons.some((line) => TEMPORARY.test(line))) {
-        return undefined;
-    }
-    const delayMs = attempt === 0 ? 30_000 : 90_000;
-    return {
-        delayMs,
-        explanation: reasons.every((line) => OFFLINE.test(line)) ? 'The connection to the AI providers dropped.' : 'Every model is busy or rate-limited right now.',
-        action: `Waited ${delayMs / 1000}s and resumed the task`,
-    };
-}
-
+const COMPACTED_PROMPT =
+    'Continue the task from where you stopped. (The editor summarized the earlier conversation because it had grown too large for the models; re-read any file you need rather than relying on memory of its contents.)';
 export interface TurnPlan {
     tier: Tier;
     tierReason: string;
@@ -68,6 +51,12 @@ export interface TurnPlan {
     lessons: number;
     /** Reads attachments inside the turn (so progress shows and Stop works), returning the final prompt and images. */
     prepare?: (turnId: string, signal: AbortSignal) => Promise<{ agentPrompt: string; images: ImagePart[] }>;
+    /** A warning that today's limits may not cover this task. */
+    capacity?: { level: 'tight' | 'short'; title: string; detail: string };
+    /** A "Test my project" run. */
+    test?: boolean;
+    /** The project's own checks; a complex task that changes code must pass one before it may finish. */
+    checks?: ProjectCheck[];
 }
 
 export interface SessionLogEntry {
@@ -90,10 +79,15 @@ interface ActiveTurn {
     startedAt: number;
     tokensAtStart: number;
     files: Map<string, TouchedFile>;
-    runs: CommandRun[];
+    runs: SequencedRun[];
     playbooks: Playbook[];
     release: boolean;
     stopRequested: boolean;
+    deep: boolean;
+    checks: ProjectCheck[];
+    /** Order of edits and command runs, so a check can be matched to the edit before it. */
+    seq: number;
+    lastEditSeq: number;
     /** Ends an automatic-retry wait early (when the user stops the task). */
     wake?: () => void;
 }
@@ -279,6 +273,10 @@ export class AgentSession implements vscode.Disposable {
             playbooks: plan.playbooks,
             release: plan.release,
             stopRequested: false,
+            deep: plan.tier === 'deep',
+            checks: plan.checks ?? [],
+            seq: 0,
+            lastEditSeq: 0,
         };
         this.turn = turn;
         this.lastTier = plan.tier;
@@ -296,7 +294,11 @@ export class AgentSession implements vscode.Disposable {
             attachments: plan.attachments.length ? plan.attachments : undefined,
             correction: plan.correction || undefined,
             lessons: plan.lessons || undefined,
+            test: plan.test || undefined,
         });
+        if (plan.capacity) {
+            this.options.post({ type: 'capacity', turnId: turn.id, ...plan.capacity });
+        }
         for (const note of plan.notes) {
             this.options.post({ type: 'notice', turnId: turn.id, message: note, level: 'info' });
         }
@@ -326,26 +328,48 @@ export class AgentSession implements vscode.Disposable {
                 images = prepared.images;
             }
 
-            for (let attempt = 0; ; attempt++) {
-                const outcome = await this.runAgent(agent, input, turn.id, attempt === 0 ? images : undefined);
+            let compacted = false;
+            for (let attempt = 0, first = true; ; first = false) {
+                const outcome = await this.runAgent(agent, input, turn.id, first ? images : undefined);
                 steps += outcome.steps;
                 reason = outcome.reason;
                 if (reason !== 'error' || outcome.error === undefined) {
                     break;
                 }
                 const recoveryOn = this.options.features().autoRecovery;
-                const recovery = turn.stopRequested || !recoveryOn ? undefined : recoveryFor(outcome.error, attempt);
+                // Too big for every model: summarize the earlier conversation once and carry on.
+                if (recoveryOn && !compacted && !turn.stopRequested && isContextTooLarge(outcome.error) && this.abort) {
+                    compacted = true;
+                    this.options.post({
+                        type: 'notice',
+                        turnId: turn.id,
+                        level: 'info',
+                        message: "The conversation grew larger than your models accept. Summarizing the earlier part and continuing…",
+                    });
+                    try {
+                        for await (const event of agent.compact(this.abort.signal, 'forced')) {
+                            this.forward(turn.id, event);
+                        }
+                        this.options.log({ kind: 'agent', source: 'Task', message: outcome.error, recovered: true, action: 'Summarized the conversation and resumed' });
+                        input = COMPACTED_PROMPT;
+                        continue;
+                    } catch (error) {
+                        this.options.log({ kind: 'agent', source: 'Task', message: errorMessage(error), recovered: false, action: 'Summarizing the conversation failed' });
+                    }
+                }
+                const recovery = turn.stopRequested || !recoveryOn ? undefined : recoveryFor(outcome.error, attempt++);
                 if (!recovery) {
                     this.postError(turn.id, outcome.error);
+                    const retries = attempt - 1;
                     this.options.log({
                         kind: 'agent',
                         source: 'Task',
                         message: outcome.error,
                         recovered: false,
-                        action: attempt
-                            ? `Stopped after ${attempt} automatic ${attempt === 1 ? 'retry' : 'retries'}`
+                        action: retries > 0
+                            ? `Stopped after ${retries} automatic ${retries === 1 ? 'retry' : 'retries'}`
                             : recoveryOn
-                              ? 'Stopped the task and showed the error'
+                              ? 'Stopped the task and explained what to do'
                               : 'Stopped the task (automatic recovery is off)',
                     });
                     break;
@@ -521,8 +545,9 @@ export class AgentSession implements vscode.Disposable {
         if (ok && raw?.type === 'diff') {
             diffId = this.recordFile(raw.path, raw.before, raw.after, raw.created);
         }
-        if (raw?.type === 'command' && event.call.name === 'run_command') {
-            this.turn?.runs.push({ command: raw.command, exitCode: raw.exitCode, background: !!raw.background });
+        const turn = this.turn;
+        if (raw?.type === 'command' && event.call.name === 'run_command' && turn) {
+            turn.runs.push({ command: raw.command, exitCode: raw.exitCode, background: !!raw.background, seq: ++turn.seq });
         }
         this.options.post({
             type: 'toolEnd',
@@ -578,17 +603,30 @@ export class AgentSession implements vscode.Disposable {
         const previous = turn.files.get(path);
         const file: TouchedFile = previous ? { ...previous, after } : { created, before, after, diffId: `${turn.id}-${turn.files.size + 1}` };
         turn.files.set(path, file);
+        turn.lastEditSeq = ++turn.seq;
         this.options.diffs.set(file.diffId, file.before, file.after);
         return file.diffId;
     }
 
-    /** Before the agent ends a turn, required quality gates must have passed. */
+    /**
+     * Before the agent ends a turn: a playbook's required gates must have
+     * passed, and any other complex task that changed code must have passed
+     * one of the project's own checks since its last edit.
+     */
     private readonly reviewCompletion = (message: AssistantMessage): string | undefined => {
         const turn = this.turn;
-        if (!turn?.playbooks.length || (!turn.files.size && !turn.runs.length)) {
+        if (!turn) {
             return undefined;
         }
-        return reviewMessage(evaluateGates(turn.playbooks, turn.runs, turn.release), message.content);
+        if (turn.playbooks.length) {
+            return turn.files.size || turn.runs.length || turn.playbooks.some((p) => p.id === 'test')
+                ? reviewMessage(evaluateGates(turn.playbooks, turn.runs, turn.release), message.content)
+                : undefined;
+        }
+        if (turn.deep && turn.checks.length && turn.files.size && codeChanged(turn.files.keys())) {
+            return verificationReview(turn.checks, turn.runs, turn.lastEditSeq, message.content);
+        }
+        return undefined;
     };
 
     private readonly approve = (request: ApprovalRequest): Promise<ApprovalDecision> => {
@@ -660,16 +698,7 @@ export class AgentSession implements vscode.Disposable {
     }
 
     private postError(turnId: string, message: string): void {
-        let hint: string | undefined;
-        let action: 'openKeys' | undefined;
-        if (/Every model failed|No model is configured/.test(message)) {
-            hint = "None of your keys could complete this request. Check each key's status and last error in Settings → API Keys, or add another key.";
-            action = 'openKeys';
-        } else if (/larger than any configured model/.test(message)) {
-            hint = 'This conversation no longer fits your models. Start a new chat, or add a Gemini key for its 1M-token context.';
-        } else if (OFFLINE.test(message)) {
-            hint = 'Check your internet connection and try again.';
-        }
-        this.options.post({ type: 'error', turnId, message, hint, action });
+        const explained = explainError(message);
+        this.options.post({ type: 'error', turnId, message: explained.title, hint: explained.hint, action: explained.action, details: message });
     }
 }

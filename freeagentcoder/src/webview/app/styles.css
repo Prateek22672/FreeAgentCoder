@@ -492,7 +492,7 @@ select.input { background: var(--vscode-dropdown-background, var(--vscode-input-
 
 .status-dot { display: inline-block; flex: none; width: 7px; height: 7px; border-radius: 50%; background: var(--muted); }
 .status-dot.active { background: var(--ok); }
-.status-dot.unverified { background: var(--info); }
+.status-dot.unverified { background: var(--muted); }
 .status-dot.cooldown { background: var(--warn); }
 .status-dot.invalid { background: var(--bad); }
 .status-dot.disabled { border: 1.5px solid var(--muted); background: transparent; }
@@ -808,6 +808,83 @@ select.input { background: var(--vscode-dropdown-background, var(--vscode-input-
 
 .lesson-item.forgotten { opacity: 0.55; }
 .lesson-item.forgotten .lesson-main > div:first-child { text-decoration: line-through; }
+
+/* Errors in plain language; key and limit problems read as warnings, not crashes */
+.error-hint { margin: 0; color: var(--fg); font-size: 12.5px; line-height: 1.5; }
+.card.error-card .card-body { gap: 8px; padding-top: 2px; }
+.card.error-card .card-body > .btn { align-self: flex-start; }
+.card.error-card.limits { border-color: color-mix(in srgb, var(--warn) 55%, transparent); background: color-mix(in srgb, var(--warn) 7%, var(--surface-2)); }
+.card.error-card.limits .card-head > .icon { color: var(--warn); }
+.error-details summary { display: flex; align-items: center; gap: 4px; color: var(--muted); font-size: 11px; cursor: pointer; list-style: none; }
+.error-details summary::-webkit-details-marker { display: none; }
+.error-details summary .caret { width: 11px; height: 11px; transition: transform 0.15s ease; }
+.error-details[open] summary .caret { transform: rotate(90deg); }
+.error-details .error-text { margin-top: 6px; border-radius: var(--radius-sm); background: var(--surface-3); color: var(--muted); }
+
+/* Warning before a task that today's limits may not cover */
+.card.capacity-warning { border-color: color-mix(in srgb, var(--warn) 55%, transparent); background: color-mix(in srgb, var(--warn) 7%, var(--surface-2)); }
+.card.capacity-warning.short { border-color: color-mix(in srgb, var(--bad) 45%, transparent); background: color-mix(in srgb, var(--bad) 6%, var(--surface-2)); }
+.card.capacity-warning .card-head > .icon { color: var(--warn); }
+.card.capacity-warning .card-body p { margin: 0; font-size: 12.5px; line-height: 1.5; }
+.chip.test .icon { color: var(--ok); }
+
+/* Recommended key setup */
+.card.setup-guide { border-color: color-mix(in srgb, var(--accent) 45%, transparent); background: var(--surface); text-align: left; }
+.card.setup-guide .card-head > .icon { color: var(--accent); }
+.card.setup-guide .card-title { white-space: normal; }
+.setup-progress { flex: none; padding: 0 7px; border-radius: 999px; background: color-mix(in srgb, var(--accent) 16%, transparent); color: var(--accent); font-size: 11px; font-weight: 600; }
+.setup-rows { display: flex; flex-direction: column; gap: 4px; }
+.setup-row { display: flex; align-items: center; gap: 9px; padding: 8px 9px; border: 1px solid var(--border-soft); border-radius: var(--radius-sm); background: var(--surface-2); }
+.setup-row.done { opacity: 0.7; }
+.setup-check { display: inline-flex; flex: none; align-items: center; justify-content: center; width: 22px; height: 22px; border-radius: 50%; background: var(--surface-3); color: var(--muted); }
+.setup-check .icon { width: 12px; height: 12px; }
+.setup-row.done .setup-check { background: color-mix(in srgb, var(--ok) 18%, transparent); color: var(--ok); }
+.setup-text { display: flex; flex: 1; flex-direction: column; gap: 1px; min-width: 0; font-size: 12px; }
+.setup-text .muted { font-size: 11px; line-height: 1.4; }
+.setup-link { align-self: flex-start; margin-top: 2px; color: var(--accent); font-size: 11.5px; text-decoration: underline; text-underline-offset: 2px; overflow-wrap: anywhere; cursor: pointer; }
+.setup-link:hover { color: var(--accent-hover); }
+.setup-row .btn { flex: none; }
+.one-key-note { display: flex; align-items: flex-start; gap: 8px; margin: 2px 0; padding: 8px 10px; border: 1px solid color-mix(in srgb, var(--warn) 50%, transparent); border-radius: var(--radius-sm); background: color-mix(in srgb, var(--warn) 9%, var(--surface-2)); color: var(--fg); font-size: 11.5px; line-height: 1.45; text-align: left; }
+.one-key-note > .icon { flex: none; width: 14px; height: 14px; margin-top: 1px; color: var(--warn); }
+.one-key-note strong { color: var(--warn); }
+.provider-note .one-key-note { margin-top: 8px; }
+.welcome-note { display: flex; align-items: center; justify-content: center; gap: 5px; margin: 4px 0 0; color: var(--muted); font-size: 11.5px; }
+.welcome-note .icon { width: 12px; height: 12px; }
+.welcome .card.setup-guide { width: 100%; max-width: 440px; }
+.suggestion.test { border-color: color-mix(in srgb, var(--ok) 40%, transparent); }
+.suggestion.test .icon { color: var(--ok); }
+
+/* Savings */
+.savings-card { display: flex; flex-direction: column; gap: 6px; padding: 12px; border: 1px solid color-mix(in srgb, var(--ok) 40%, transparent); border-radius: var(--radius); background: color-mix(in srgb, var(--ok) 7%, var(--surface-2)); }
+.savings-main { display: flex; flex-direction: column; gap: 1px; }
+.savings-label { color: var(--muted); font-size: 11px; }
+.savings-value { color: var(--ok); font-size: 24px; font-weight: 700; font-variant-numeric: tabular-nums; line-height: 1.25; }
+.savings-sub { font-size: 12px; }
+.savings-basis { margin: 0; color: var(--muted); font-size: 11px; line-height: 1.45; }
+
+/* Health */
+.tile.warn { border-color: color-mix(in srgb, var(--warn) 45%, transparent); }
+.tile.warn .tile-value { color: var(--warn); }
+.health-role { display: flex; flex-direction: column; gap: 6px; padding: 10px; border: 1px solid var(--border-soft); border-radius: var(--radius); background: var(--surface-2); }
+.health-role.down { border-color: color-mix(in srgb, var(--bad) 45%, transparent); }
+.health-role.degraded { border-color: color-mix(in srgb, var(--warn) 40%, transparent); }
+.health-role-head { display: flex; align-items: center; gap: 7px; font-size: 12.5px; }
+.health-role-status { margin-left: auto; color: var(--muted); font-size: 11px; text-align: right; }
+.health-role.down .health-role-status { color: var(--bad); }
+.health-role.degraded .health-role-status { color: var(--warn); }
+.health-role-desc { margin: 0; }
+.health-entries { display: flex; flex-direction: column; gap: 3px; }
+.health-entry { display: flex; align-items: flex-start; gap: 8px; padding: 6px 8px; border-radius: var(--radius-sm); background: var(--surface); }
+.health-entry > .status-dot { margin-top: 5px; }
+.health-entry-main { flex: 1; min-width: 0; }
+.health-entry-line { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 8px; font-size: 12px; }
+.health-model { overflow-wrap: anywhere; }
+.health-error { overflow: hidden; margin-top: 2px; color: var(--bad); font-family: var(--mono); font-size: 10.5px; text-overflow: ellipsis; white-space: nowrap; }
+.health-pill { flex: none; padding: 1px 7px; border-radius: 999px; background: var(--surface-3); color: var(--muted); font-size: 10.5px; white-space: nowrap; }
+.health-pill.healthy { background: color-mix(in srgb, var(--ok) 16%, transparent); color: var(--ok); }
+.health-pill.cooldown, .health-pill.exhausted { background: color-mix(in srgb, var(--warn) 16%, transparent); color: var(--warn); }
+.health-pill.failing, .health-pill.invalid { background: color-mix(in srgb, var(--bad) 14%, transparent); color: var(--bad); }
+.health-empty { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; }
 
 @media (max-width: 300px) {
     .tiles { grid-template-columns: 1fr; }

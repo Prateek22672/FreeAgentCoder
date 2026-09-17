@@ -37,6 +37,18 @@ export function formatDuration(ms: number): string {
     return `${Math.floor(hours / 24)}d`;
 }
 
+/** A response time: "850ms", "2.4s". */
+export function formatLatency(ms: number): string {
+    return ms < 1000 ? `${Math.round(ms)}ms` : `${trimZero((ms / 1000).toFixed(1))}s`;
+}
+
+export function formatUsd(amount: number): string {
+    if (amount > 0 && amount < 0.01) {
+        return '<$0.01';
+    }
+    return amount >= 100 ? `$${Math.round(amount).toLocaleString('en-US')}` : `$${amount.toFixed(2)}`;
+}
+
 export function formatAgo(time: number, now = Date.now()): string {
     const diff = now - time;
     if (diff < 45_000) {

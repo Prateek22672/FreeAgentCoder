@@ -34,18 +34,29 @@ It is a free alternative to paid AI coding assistants: no subscription, no per-s
   </tr>
   <tr>
     <td align="center"><b>Your keys stay on your device</b> — usage and limits per key</td>
-    <td align="center"><b>Prompts left today</b> — and every feature switch</td>
+    <td align="center"><b>Prompts left today</b> — savings and every feature switch</td>
+  </tr>
+  <tr>
+    <td colspan="2" align="center"><img src="https://raw.githubusercontent.com/Prateek22672/FreeAgentCoder/main/freeagentcoder/media/screenshots/health.png" width="50%" alt="Health: every job, the models serving it, and whether each key is working"></td>
+  </tr>
+  <tr>
+    <td colspan="2" align="center"><b>Health</b> — every job, the models serving it, and whether each key is working right now</td>
   </tr>
 </table>
 
 ## Quick start
 
-1. Install FreeAgentCoder, then click the **FreeAgentCoder** icon in the activity bar.
-2. Open **Settings → API Keys → Add API key** and paste a free key. Each key is checked with the provider before it's saved.
+1. **Install.** A **Get started** guide opens by itself and shows you where everything is.
+2. **Find it in the right side bar.** FreeAgentCoder opens next to your code, like a pair programmer. Open it any time with **FreeAgentCoder: Open Chat** from the Command Palette (`Ctrl+Shift+P`).
+3. **Add free keys.** Settings → API Keys lists a direct link for each free provider. The best setup is **one key from each provider**:
    - Google Gemini: https://aistudio.google.com/apikey
    - Groq: https://console.groq.com/keys
    - Cerebras: https://cloud.cerebras.ai
-3. Open a project folder and ask something, for example: *"Explain how this project is structured and how to run it."*
+   - OpenRouter: https://openrouter.ai/keys
+   - Mistral: https://console.mistral.ai/api-keys
+
+   **One key per account.** A second key from the same account shares that account's limits, so it adds nothing; add a different provider instead. Provider terms don't allow making extra accounts to get around limits.
+4. **Ask.** Open a project folder and describe what you want, for example *"Explain how this project is structured and how to run it."* Or click **Test my project**.
 
 ## What you can ask it to do
 
@@ -62,9 +73,24 @@ It is a free alternative to paid AI coding assistants: no subscription, no per-s
 - **Correction mode.** Click **Point out a fix** under a reply, or just say what's wrong. Each point you raise becomes its own item that is fixed with the smallest change and verified separately, and the reply ends with what was wrong, what changed and how it was checked.
 - **Memory.** After a correction, FreeAgentCoder saves a short lesson (for example *"Use Riverpod for state, not setState"*) and follows it in later tasks. Type *"remember that …"* to teach it directly. Review, add or delete lessons in **Settings → Memory**, or turn learning off. Lessons are instructions stored on your computer; they don't retrain the models.
 
-## Overview: know where you stand
+## Checked before it says "done"
 
-**Settings → Overview** shows prompts left today (worked out from the daily limits your providers report and your own average requests per prompt), the project's detected stack and status, your last 7 days (tasks, completion rate, time and tokens per task, problems recovered automatically), and a switch for every feature: senior mode, attachment reading, learning, relevant-file search and automatic recovery.
+- **Your project's own checks.** FreeAgentCoder finds how your project is verified: type check, lint, tests and build from `package.json` scripts; `pytest`, `ruff` or `mypy` for Python; `flutter analyze` and `flutter test`; `cargo`, `go`, `dotnet`, Maven or Gradle. It uses your package manager and virtualenv.
+- **No "done" on broken code.** A complex task that changed code can't finish until one of those checks has passed *after its last edit*, or it explains exactly why none can run.
+- **Test my project.** One click runs every check it found and writes a report in plain words: what passed, and for each failure *what failed, why, and how to fix it*. It changes nothing unless you ask. For machine-learning projects it runs a small smoke check, never a full training run.
+- **Knows your project's layout.** Complex tasks start with a compact map of your folders, so changes land in the right place.
+
+## Never stops without telling you why
+
+- **Warned before, not halfway.** When today's remaining limits look too small for a task, a card says so *before* work starts, with an **Add a key** button.
+- **Daily limits handled.** A key that reaches its daily limit is set aside until it resets, the next key takes over, and you're told once.
+- **Recovers on its own.** Rate limits and dropped connections are waited out and the task resumes. A conversation that outgrows your models is summarized and continued.
+- **Plain-language errors.** If something truly can't continue, you see what happened and what to do, with the technical details folded away.
+
+## Overview, savings and health
+
+- **Settings → Overview** shows prompts left today (from the daily limits your providers report and your own average requests per prompt), **how much you saved** by using free keys instead of a paid model (an estimate with its basis shown), your project's stack and status, your last 7 days, and a switch for every feature.
+- **Settings → Health** lists every job FreeAgentCoder routes to its own models (quick tasks, complex tasks, screenshot reader, scanned-PDF reader, lesson writer) and, for each key and model, whether it's healthy, rate-limited, out of daily quota or failing, with request counts, failures, average response time and the last error.
 
 ## Smart routing across all your keys
 
@@ -133,6 +159,8 @@ Free-tier limits change often, so check each provider's site. Keys you already h
 - **FreeAgentCoder: Manage API Keys**
 - **FreeAgentCoder: Show Usage**
 - **FreeAgentCoder: Stop Current Task**
+- **FreeAgentCoder: Test My Project**
+- **FreeAgentCoder: Get Started**: reopens the setup guide
 
 In the chat box, **Enter** sends, **Shift+Enter** adds a new line, **Esc** stops the current task, and **↑** brings back your last prompt.
 

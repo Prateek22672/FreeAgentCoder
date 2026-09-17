@@ -1,0 +1,40 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 480 300" font-family="Segoe UI, system-ui, sans-serif">
+  <style>
+    .frame { fill: var(--vscode-editor-background, #1f1f1f); stroke: var(--vscode-foreground, #cccccc); stroke-opacity: 0.35; }
+    .bar { fill: var(--vscode-foreground, #cccccc); fill-opacity: 0.08; }
+    .line { fill: var(--vscode-foreground, #cccccc); fill-opacity: 0.22; }
+    .dim { fill: var(--vscode-foreground, #cccccc); fill-opacity: 0.55; font-size: 11px; }
+    .panel { fill: #d97757; fill-opacity: 0.14; stroke: #d97757; stroke-width: 2.5; }
+    .accent { fill: #d97757; }
+    .label { fill: var(--vscode-foreground, #cccccc); font-size: 13px; font-weight: 600; }
+    .bubble { fill: var(--vscode-foreground, #cccccc); fill-opacity: 0.16; }
+  </style>
+  <rect class="frame" x="8" y="8" width="464" height="284" rx="8"/>
+  <rect class="bar" x="9" y="9" width="462" height="22" rx="7"/>
+  <rect class="bar" x="9" y="31" width="26" height="260"/>
+  <rect class="bar" x="35" y="31" width="92" height="260"/>
+  <text class="dim" x="44" y="50">Explorer</text>
+  <rect class="line" x="44" y="62" width="60" height="6" rx="3"/>
+  <rect class="line" x="52" y="76" width="54" height="6" rx="3"/>
+  <rect class="line" x="52" y="90" width="44" height="6" rx="3"/>
+  <text class="dim" x="140" y="50">Your code</text>
+  <rect class="line" x="140" y="62" width="120" height="6" rx="3"/>
+  <rect class="line" x="152" y="76" width="96" height="6" rx="3"/>
+  <rect class="line" x="152" y="90" width="130" height="6" rx="3"/>
+  <rect class="line" x="140" y="104" width="80" height="6" rx="3"/>
+  <rect class="line" x="152" y="118" width="110" height="6" rx="3"/>
+  <rect class="line" x="140" y="132" width="60" height="6" rx="3"/>
+  <rect class="panel" x="318" y="33" width="150" height="256" rx="6"/>
+  <g transform="translate(330 44)">
+    <path class="accent" fill-rule="evenodd" d="M0 0h8.7v2.7H2.7v6H0zM12 12H3.3V9.3h6v-6H12zM4.7 4.7h2.6v2.6H4.7z"/>
+  </g>
+  <text class="label" x="348" y="54">FreeAgentCoder</text>
+  <rect class="bubble" x="356" y="72" width="102" height="26" rx="6"/>
+  <rect class="bubble" x="328" y="106" width="118" height="42" rx="6"/>
+  <rect class="bubble" x="328" y="156" width="96" height="20" rx="6"/>
+  <rect class="frame" x="326" y="246" width="134" height="34" rx="6"/>
+  <text class="dim" x="336" y="267">Ask anything…</text>
+  <path class="accent" d="M300 222c-22 0-34-10-38-26" fill="none" stroke="#d97757" stroke-width="2"/>
+  <path class="accent" d="M312 222l-12 -6v12z"/>
+  <text class="label" x="176" y="240">Right side bar</text>
+</svg>
