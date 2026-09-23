@@ -109,6 +109,17 @@
         "category": "FreeAgentCoder"
       }
     ],
+    "configuration": {
+      "title": "FreeAgentCoder",
+      "properties": {
+        "freeagentcoder.usageDataEndpoint": {
+          "type": "string",
+          "default": "",
+          "scope": "application",
+          "markdownDescription": "Where anonymous usage counts are sent, if you have agreed to send any. Leave empty to use the project's own site. Nothing is sent unless you said yes in **FreeAgentCoder: Anonymous Usage Data**."
+        }
+      }
+    },
     "viewsContainers": {
       "secondarySidebar": [
         {

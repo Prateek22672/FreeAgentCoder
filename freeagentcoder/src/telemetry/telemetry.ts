@@ -18,12 +18,26 @@ const COUNTERS = 'freeagentcoder.telemetry.counters';
 const SINCE = 'freeagentcoder.telemetry.since';
 const SENT = 'freeagentcoder.telemetry.sent';
 
-/** Must match the deployed site. */
-const ENDPOINT = process.env.FREEAGENTCODER_STATS_URL || 'https://freeagentcoder.com/api/stats';
+/** The project's own site, unless someone points this elsewhere. */
+const DEFAULT_ENDPOINT = 'https://freeagentcoder.com/api/stats';
+
 const SEND_EVERY_MS = 12 * 60 * 60 * 1000;
 const SEND_TIMEOUT_MS = 8_000;
 /** Asked only once there is something worth reporting. */
 const ASK_AFTER_TASKS = 3;
+
+/**
+ * Settable, so the site can move without stranding published releases. The
+ * setting is application-scoped, so a project cannot redirect it, and only
+ * https is accepted, so it cannot be downgraded.
+ */
+function endpoint(): string {
+    const configured = vscode.workspace.getConfiguration('freeagentcoder').get<string>('usageDataEndpoint')?.trim();
+    if (configured && /^https:\/\//i.test(configured)) {
+        return configured;
+    }
+    return process.env.FREEAGENTCODER_STATS_URL || DEFAULT_ENDPOINT;
+}
 
 export type TelemetryState = 'on' | 'off' | 'unasked' | 'blocked';
 
@@ -162,7 +176,7 @@ export class Telemetry {
         }
         const report = this.report();
         try {
-            const response = await fetch(ENDPOINT, {
+            const response = await fetch(endpoint(), {
                 method: 'POST',
                 headers: { 'content-type': 'application/json' },
                 body: JSON.stringify(report),
