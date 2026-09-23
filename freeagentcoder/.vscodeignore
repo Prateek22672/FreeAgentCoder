@@ -15,9 +15,13 @@ vsc-extension-quickstart.md
 *.vsix
 # Screenshots are served from GitHub in the README, so they don't need to ship in the package.
 media/screenshots/**
-# Ship only the three build outputs, so a stray file in dist/ can never be packaged.
+# Language data downloaded while testing the reader; users download their own.
+*.traineddata
+# Ship only the build outputs, so a stray file in dist/ can never be packaged.
 dist/**
 !dist/extension.js
 !dist/pdf.js
+!dist/ocr.js
+!dist/ocr-worker.js
 !dist/webview.js
 !dist/webview.css

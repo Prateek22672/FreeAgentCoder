@@ -638,6 +638,18 @@ window.addEventListener('message', (event: MessageEvent<ToWebview>) => {
             break;
         case 'focusInput':
             closeSettings();
+            if (message.prefill) {
+                // Written in, never sent: the user reads it and presses Send themselves.
+                input.value = message.prefill;
+                autosize();
+                renderComposer();
+                input.focus();
+                input.setSelectionRange(0, 0);
+                input.scrollTop = 0;
+            }
+            if (message.note) {
+                showToast(message.note, 'info');
+            }
             break;
         default:
             if (message.type === 'turnStart') {

@@ -57,7 +57,11 @@ export function describeImages(images: readonly ImagePart[]): string {
 export function imagePlaceholder(images: readonly ImagePart[]): string {
   const names = images.map((img) => img.name?.trim()).filter((n): n is string => !!n);
   const count = `${images.length} image${images.length === 1 ? '' : 's'} attached`;
-  return `[${names.length ? `${count} (${names.join(', ')})` : count} — this model can't view images; rely on the description in the message.]`;
+  // Spelled out, because a model that is told only "you can't see images" will
+  // still describe them from the file name rather than admit it cannot.
+  return `[${names.length ? `${count} (${names.join(', ')})` : count} — you cannot see ${
+    images.length === 1 ? 'it' : 'them'
+  }. Use only a description given elsewhere in this message; if there is none, tell the user the image could not be read and ask them to describe it or paste the text. Never guess what an image shows.]`;
 }
 
 /** Images on a message that can actually be sent (saved sessions keep names, not data). */

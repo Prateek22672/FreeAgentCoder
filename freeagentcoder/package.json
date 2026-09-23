@@ -1,8 +1,8 @@
 {
   "name": "freeagentcoder",
   "displayName": "Free Agent Coder — Free AI Coding Agent",
-  "description": "FreeAgentCoder: a free, open-source AI coding agent and pair programmer for VS Code. Plans, edits, runs and verifies code using your own free Gemini, Groq, Cerebras, Mistral or OpenRouter API keys — no subscription, ever.",
-  "version": "0.2.0",
+  "description": "Free AI coding agent for VS Code: a free alternative to Copilot, Cursor and Claude Code. Plans, edits, runs and verifies your code on free Gemini, Groq, Cerebras, Mistral or OpenRouter API keys. No subscription, open source.",
+  "version": "0.3.0",
   "publisher": "PrateekKoratala",
   "license": "MIT",
   "icon": "media/icon.png",
@@ -27,7 +27,6 @@
     "ai coding",
     "ai assistant",
     "code assistant",
-    "ai chat",
     "ai pair programmer",
     "vibe coding",
     "agentic ai",
@@ -36,12 +35,9 @@
     "free",
     "byok",
     "bring your own key",
-    "code generation",
     "refactor",
     "debugging",
     "code review",
-    "unit tests",
-    "llm",
     "gpt",
     "gemini",
     "groq",
@@ -50,7 +46,11 @@
     "openrouter",
     "openai",
     "anthropic",
-    "claude"
+    "claude",
+    "copilot alternative",
+    "cursor alternative",
+    "claude code alternative",
+    "free ai agent"
   ],
   "engines": {
     "vscode": "^1.137.0"
@@ -59,6 +59,9 @@
     "AI",
     "Chat",
     "Other"
+  ],
+  "activationEvents": [
+    "onUri"
   ],
   "main": "./dist/extension.js",
   "contributes": {
@@ -199,6 +202,7 @@
     "esbuild": "^0.28.1",
     "eslint": "^10.5.0",
     "npm-run-all": "^4.1.5",
+    "tesseract.js": "^7.0.0",
     "typescript": "^6.0.3",
     "typescript-eslint": "^8.61.1",
     "vitest": "^5.0.0"
@@ -209,6 +213,7 @@
   },
   "dependencies": {
     "@agentic/core": "file:../packages/core",
+    "@agentic/project-brain": "file:../packages/project-brain",
     "fflate": "^0.8.3",
     "unpdf": "^1.8.1"
   }

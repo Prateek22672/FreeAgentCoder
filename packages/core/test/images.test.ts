@@ -140,8 +140,10 @@ describe('OpenAI-compatible body', () => {
     const body = p.buildBody(req('openai/gpt-oss-120b', [{ role: 'user', content: 'what is wrong?', images: [PNG, JPG] }]));
     const sent = (body.messages as { content: unknown }[])[1]!;
     expect(sent.content).toBe(
-      "what is wrong?\n\n[2 images attached (screen.png, error.png) — this model can't view images; rely on the description in the message.]",
+      'what is wrong?\n\n[2 images attached (screen.png, error.png) — you cannot see them. Use only a description given elsewhere in this message; if there is none, tell the user the image could not be read and ask them to describe it or paste the text. Never guess what an image shows.]',
     );
+    // The point of the wording: a model with no description must refuse, not invent one.
+    expect(sent.content).toMatch(/Never guess what an image shows/);
     expect(JSON.stringify(body)).not.toContain(PNG.data);
   });
 

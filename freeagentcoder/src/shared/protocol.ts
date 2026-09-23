@@ -6,7 +6,7 @@ export type SettingsSection = 'overview' | 'keys' | 'usage' | 'health' | 'memory
 export type HistoryMode = 'ask' | 'on' | 'off';
 export type LogKind = 'provider' | 'agent' | 'extension';
 export type TurnEndReason = 'completed' | 'max_steps' | 'aborted' | 'error';
-export type FeatureId = 'seniorMode' | 'autoRecovery' | 'codeSearch' | 'readAttachments' | 'learning';
+export type FeatureId = 'seniorMode' | 'autoRecovery' | 'codeSearch' | 'readAttachments' | 'localOcr' | 'learning';
 export type AttachmentKind = 'image' | 'document' | 'text';
 export type LessonScope = 'project' | 'global';
 
@@ -401,7 +401,8 @@ export type ToWebview =
     | { type: 'clipboard'; text: string }
     | { type: 'keyTest'; id: string; ok: boolean; message: string }
     | { type: 'showSettings'; section?: SettingsSection }
-    | { type: 'focusInput' };
+    /** Focus the chat input; `prefill` writes text into it (never sends it), `note` explains where it came from. */
+    | { type: 'focusInput'; prefill?: string; note?: string };
 
 export type FromWebview =
     | { type: 'ready' }

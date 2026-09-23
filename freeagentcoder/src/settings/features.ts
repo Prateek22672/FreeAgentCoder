@@ -17,6 +17,11 @@ export const FEATURE_INFO: { id: FeatureId; label: string; description: string }
         description: 'A dedicated model reads screenshots and scanned PDFs, and summarizes very long documents, before the task starts. Uses one extra request per task with attachments.',
     },
     {
+        id: 'localOcr',
+        label: 'Read images on this computer',
+        description: 'Reads the text in screenshots here, with no API request and no model, so your free limits go to the coding. Downloads about 6 MB the first time, then works offline. A vision model is asked only when an image has little readable text.',
+    },
+    {
         id: 'learning',
         label: 'Learn from corrections',
         description: 'After you correct its work, it saves a short lesson and follows it in later tasks. Review or delete lessons in Memory.',

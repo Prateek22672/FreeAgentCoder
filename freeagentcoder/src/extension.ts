@@ -1,5 +1,6 @@
 import * as vscode from 'vscode';
 import { Controller } from './controller';
+import { readHandoff } from './handoff/task';
 import { ChatViewProvider } from './webview/chatView';
 
 export function activate(context: vscode.ExtensionContext): void {
@@ -22,6 +23,17 @@ export function activate(context: vscode.ExtensionContext): void {
         vscode.commands.registerCommand('freeagentcoder.testProject', async () => {
             await view.show({ type: 'focusInput' });
             await controller.handle({ type: 'testProject' });
+        }),
+        // vscode://PrateekKoratala.freeagentcoder/task?p=… from Project Brain.
+        vscode.window.registerUriHandler({
+            handleUri: async (uri) => {
+                const result = readHandoff(uri.path, uri.query, vscode.workspace.workspaceFolders?.[0]?.name);
+                if (!result.ok) {
+                    void vscode.window.showErrorMessage(`FreeAgentCoder: ${result.error}`);
+                    return;
+                }
+                await view.show({ type: 'focusInput', prefill: result.task.brief, note: result.note });
+            },
         }),
         vscode.commands.registerCommand('freeagentcoder.getStarted', () =>
             vscode.commands.executeCommand('workbench.action.openWalkthrough', `${context.extension.id}#getStarted`, false),

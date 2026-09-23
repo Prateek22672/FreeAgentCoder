@@ -14,6 +14,7 @@ import { structureBlock, TEST_PROMPT, testBrief, testPlaybook } from './agent/te
 import { AgentSession, type SessionLogEntry, type TurnPlan } from './agent/session';
 import { PDF_READER_MODEL, planVisionRoute } from './agent/visionRoute';
 import { attachmentViews, prepareAttachments, type AttachmentReaders } from './attachments/prepare';
+import { readImagesLocally } from './attachments/ocr';
 import { complete, describeImages, digestDocument, readPdfWithGemini } from './attachments/reader';
 import { HistoryStore, newChatId } from './history/historyStore';
 import { KeyStore } from './keys/keyStore';
@@ -538,12 +539,19 @@ export class Controller implements vscode.Disposable {
         if (attachments.length) {
             const base = agentPrompt;
             const readers: AttachmentReaders = this.features.readAttachments ? this.attachmentReaders(keys, prompt) : {};
+            if (this.features.localOcr) {
+                readers.localImages = this.localImageReader();
+            }
             const hasImages = attachments.some((a) => a.kind === 'image');
-            if (hasImages && !this.features.readAttachments) {
-                notes.push('Reading attachments with a vision model is off, so screenshots go only to models that can see images. Turn it on in Settings → Overview.');
+            if (hasImages && !readers.localImages && !readers.images) {
+                notes.push(
+                    this.features.readAttachments
+                        ? 'None of your active keys has a model that reads images, and reading them on this computer is off, so text-only models will only see the file names. Add a free Gemini key, or turn on "Read images on this computer" in Settings → Overview.'
+                        : 'Reading attachments is off, so screenshots go only to models that can see images. Turn it on in Settings → Overview.',
+                );
             } else if (hasImages && !readers.images) {
                 notes.push(
-                    'None of your active keys has a model that reads images (Gemini, Mistral, OpenAI or Anthropic), so text-only models will only see the file names. Add a free Gemini key for the best results.',
+                    "No key of yours reads images, so their text is read on this computer instead. That costs no quota, but says nothing about layout, colours or what an arrow points at — add a free Gemini key for that.",
                 );
             }
             const learning = this.learning;
@@ -609,6 +617,31 @@ export class Controller implements vscode.Disposable {
     }
 
     /** The reader models for a task's attachments, built from the keys that can serve each job. */
+    /** Reads the text in images on this computer: no key, no request, no quota. */
+    private localImageReader(): AttachmentReaders['localImages'] {
+        const dir = path.join(this.context.globalStorageUri.fsPath, 'ocr');
+        return async (images, signal, progress) => {
+            try {
+                return await readImagesLocally(
+                    images.map((image, index) => ({ name: image.name ?? `image ${index + 1}`, bytes: Buffer.from(image.data, 'base64') })),
+                    { dir, progress, signal },
+                );
+            } catch (error) {
+                if (signal.aborted) {
+                    throw error;
+                }
+                this.errorLog.add({
+                    kind: 'extension',
+                    source: 'Text reader',
+                    message: errorMessage(error),
+                    recovered: true,
+                    action: 'Asked a vision model to read the image instead',
+                });
+                return [];
+            }
+        };
+    }
+
     private attachmentReaders(keys: RoutableKey[], request: string): AttachmentReaders {
         const load = (id: string) => this.usage.today(id).requests;
         const readers: AttachmentReaders = {};

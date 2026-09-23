@@ -68,10 +68,16 @@ It is a free alternative to paid AI coding assistants: no subscription, no per-s
 
 ## Attachments, corrections and memory
 
-- **Paste or drop anything.** Screenshots, PDFs (including scanned ones), Word, PowerPoint and Excel files, or long pasted text. Documents are read locally; a vision model (Gemini, Mistral, OpenAI or Anthropic) reads screenshots and scanned pages first, so every model in the chain works from the exact details.
+- **Paste or drop anything.** Screenshots, PDFs (including scanned ones), Word, PowerPoint and Excel files, or long pasted text. Documents are read on your computer, and so is the text in screenshots — no API request, no model, nothing sent anywhere. A vision model (Gemini, Mistral, OpenAI or Anthropic) is asked only when an image has little readable text, or when the layout, colours or a highlighted area are what matter.
 - **Very long documents** are summarized for the agent and saved in `.freeagentcoder/attachments/` (git-ignored), so it can read the exact parts it needs.
 - **Correction mode.** Click **Point out a fix** under a reply, or just say what's wrong. Each point you raise becomes its own item that is fixed with the smallest change and verified separately, and the reply ends with what was wrong, what changed and how it was checked.
 - **Memory.** After a correction, FreeAgentCoder saves a short lesson (for example *"Use Riverpod for state, not setState"*) and follows it in later tasks. Type *"remember that …"* to teach it directly. Review, add or delete lessons in **Settings → Memory**, or turn learning off. Lessons are instructions stored on your computer; they don't retrain the models.
+
+## Plan in Project Brain, build here
+
+[Project Brain](https://github.com/Prateek22672/FreeAgentCoder/tree/main/apps/brain) is the website half of FreeAgentCoder. Paste a GitHub repository and it maps the stack and architecture, answers questions with real file references, and shows what a change would touch.
+
+Describe the change there and click **Work on this in VS Code**. FreeAgentCoder opens with the plan written into the chat: the files involved and the steps in order. **Nothing runs until you press Send.**
 
 ## Checked before it says "done"
 
@@ -172,6 +178,7 @@ In the chat box, **Enter** sends, **Shift+Enter** adds a new line, **Esc** stops
 - Your prompts and code are sent only to the providers whose keys you add, directly from your editor. Their terms apply, and some free tiers may use requests to improve their models, so check a provider's data policy before working on sensitive code.
 - Chat history is saved only if you agree, and only on your computer. Turn it off or delete saved chats any time in Settings → History.
 - Errors are logged locally in Settings → Logs. **Copy diagnostics** removes API keys, tokens and your username from paths before copying.
+- Reading images on this computer downloads the reader once (about 6 MB) from a public CDN, and checks it against a fixed checksum before running it. Your image is never part of that: it is read on your machine and never uploaded.
 - FreeAgentCoder has no server of its own and collects no telemetry.
 
 ## Requirements

@@ -25,6 +25,20 @@ const esbuildProblemMatcherPlugin = {
 	},
 };
 
+/**
+ * The OCR engine itself is downloaded on first use, not shipped, so every
+ * `tesseract.js-core/...` import inside the worker is pointed at a small shim
+ * that loads the downloaded file.
+ * @type {import('esbuild').Plugin}
+ */
+const ocrCorePlugin = {
+	name: 'ocr-core',
+	setup(build) {
+		const shim = require('path').join(__dirname, 'src', 'attachments', 'ocr-core.js');
+		build.onResolve({ filter: /^tesseract\.js-core/ }, () => ({ path: shim }));
+	},
+};
+
 /** @type {import('esbuild').BuildOptions} */
 const shared = {
 	bundle: true,
@@ -45,8 +59,9 @@ async function main() {
 			platform: 'node',
 			target: 'node20',
 			outfile: 'dist/extension.js',
-			// unpdf lives in dist/pdf.js (below), so opening the panel doesn't parse pdf.js.
-			external: ['vscode', 'unpdf'],
+			// unpdf and tesseract.js live in dist/pdf.js and dist/ocr.js (below), so
+			// opening the panel parses neither pdf.js nor the text reader.
+			external: ['vscode', 'unpdf', 'tesseract.js'],
 		}),
 		// pdf.js on its own: most of the size, needed only when a PDF is attached.
 		esbuild.context({
@@ -56,6 +71,25 @@ async function main() {
 			platform: 'node',
 			target: 'node20',
 			outfile: 'dist/pdf.js',
+		}),
+		// The local text reader, used only when an image is attached.
+		esbuild.context({
+			...shared,
+			entryPoints: ['src/attachments/ocr-engine.ts'],
+			format: 'cjs',
+			platform: 'node',
+			target: 'node20',
+			outfile: 'dist/ocr.js',
+		}),
+		// Its worker thread, which Tesseract runs the recognition in.
+		esbuild.context({
+			...shared,
+			entryPoints: ['node_modules/tesseract.js/src/worker-script/node/index.js'],
+			format: 'cjs',
+			platform: 'node',
+			target: 'node20',
+			outfile: 'dist/ocr-worker.js',
+			plugins: [...shared.plugins, ocrCorePlugin],
 		}),
 		// Chat UI (webview). Also emits dist/webview.css from its CSS import.
 		esbuild.context({
