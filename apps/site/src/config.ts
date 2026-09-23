@@ -15,8 +15,6 @@ export const config = {
   extension: 'freeagentcoder',
   /** Public repository URL. */
   github: 'https://github.com/Prateek22672/FreeAgentCoder',
-  /** Foliofyx website, linked from the "Imperium × Foliofyx" credits. */
-  foliofyx: 'https://foliofyx.in',
   /**
    * Flip to true once the extension has actually been uploaded to the
    * Marketplace (publisher + repo can be filled in beforehand; the install
@@ -47,7 +45,6 @@ export const links = {
   openVsx: released ? `https://open-vsx.org/extension/${config.publisher}/${config.extension}` : '',
   github: config.github,
   releases: config.github ? `${config.github}/releases/latest` : '',
-  foliofyx: config.foliofyx,
 };
 
 export function installCommand(cli: 'code' | 'cursor'): string {

@@ -80,8 +80,8 @@ export function App() {
           id="about"
           index="07"
           label="Credits"
-          title="Built by Imperium × Foliofyx"
-          lead="FreeAgentCoder is an Imperium × Foliofyx product, a collaboration between Imperium and Foliofyx."
+          title="Built by Kodenza"
+          lead="FreeAgentCoder is a Kodenza product."
         >
           <Credits />
         </Section>
@@ -454,23 +454,13 @@ function Credits() {
   return (
     <div className="credits">
       <p className="credits-mark" aria-hidden="true">
-        Imperium <span>×</span> Foliofyx
+        Kodenza
       </p>
-      <div className="cells cols-3">
+      <div className="cells cols-2">
         <article className="cell">
-          <p className="label">Collaborator</p>
-          <h3>Imperium</h3>
-          <p>Builds FreeAgentCoder in collaboration with Foliofyx.</p>
-        </article>
-        <article className="cell">
-          <p className="label">Collaborator</p>
-          <h3>Foliofyx</h3>
-          <p>Builds FreeAgentCoder in collaboration with Imperium.</p>
-          <p className="cell-link">
-            <a href={links.foliofyx} target="_blank" rel="noopener">
-              foliofyx.in<span className="sr-only"> (opens in a new tab)</span>
-            </a>
-          </p>
+          <p className="label">Studio</p>
+          <h3>Kodenza</h3>
+          <p>Builds FreeAgentCoder and Project Brain.</p>
         </article>
         <article className="cell">
           <p className="label">Creator</p>
@@ -551,13 +541,7 @@ function Footer() {
               <Mark size={18} /> FreeAgentCoder
             </span>
             <p>A free AI coding agent for VS Code.</p>
-            <p className="footer-product">
-              An{' '}
-              <a href={links.foliofyx} target="_blank" rel="noopener">
-                Imperium × Foliofyx
-              </a>{' '}
-              product.
-            </p>
+            <p className="footer-product">A Kodenza product.</p>
           </div>
           <nav className="footer-cols" aria-label="Footer">
             <div>
@@ -615,12 +599,7 @@ function Footer() {
             <div>
               <p className="label">Made by</p>
               <ul>
-                <li>Imperium</li>
-                <li>
-                  <a href={links.foliofyx} target="_blank" rel="noopener">
-                    Foliofyx
-                  </a>
-                </li>
+                <li>Kodenza</li>
                 <li>{config.creator}</li>
               </ul>
             </div>

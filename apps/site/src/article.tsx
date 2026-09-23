@@ -122,11 +122,7 @@ function ArticlePage({ article }: { article: Article }) {
       <footer className="footer">
         <div className="wrap footer-bottom">
           <p>
-            An{' '}
-            <a href={links.foliofyx} target="_blank" rel="noopener">
-              Imperium × Foliofyx
-            </a>{' '}
-            product. <a href={href('/')}>Back to FreeAgentCoder</a>.
+            A Kodenza product. <a href={href('/')}>Back to FreeAgentCoder</a>.
           </p>
         </div>
       </footer>

@@ -140,14 +140,14 @@ export function Section({ id, index, label, title, lead, alt, children }: Sectio
   );
 }
 
-/** The "Imperium × Foliofyx" product badge. */
+/** The "A Kodenza product" badge. */
 export function BrandBadge({ compact }: { compact?: boolean }) {
   return (
-    <a className={`brand-badge${compact ? ' is-compact' : ''}`} href={links.foliofyx} target="_blank" rel="noopener">
+    <span className={`brand-badge${compact ? ' is-compact' : ''}`}>
       {!compact && <span className="brand-badge-pre">An</span>}
-      <strong>Imperium × Foliofyx</strong>
+      <strong>Kodenza</strong>
       {!compact && <span className="brand-badge-post">product</span>}
-    </a>
+    </span>
   );
 }
 

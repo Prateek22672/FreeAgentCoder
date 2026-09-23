@@ -36,13 +36,7 @@ function InstallPage() {
         )}
       </div>
       <a href="../">← Back to the website</a>
-      <p className="redirect-by">
-        An{' '}
-        <a href={links.foliofyx} target="_blank" rel="noopener">
-          Imperium × Foliofyx
-        </a>{' '}
-        product
-      </p>
+      <p className="redirect-by">A Kodenza product</p>
     </main>
   );
 }
