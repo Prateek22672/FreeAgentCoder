@@ -179,7 +179,8 @@ In the chat box, **Enter** sends, **Shift+Enter** adds a new line, **Esc** stops
 - Chat history is saved only if you agree, and only on your computer. Turn it off or delete saved chats any time in Settings → History.
 - Errors are logged locally in Settings → Logs. **Copy diagnostics** removes API keys, tokens and your username from paths before copying.
 - Reading images on this computer downloads the reader once (about 6 MB) from a public CDN, and checks it against a fixed checksum before running it. Your image is never part of that: it is read on your machine and never uploaded.
-- FreeAgentCoder has no server of its own and collects no telemetry.
+- **Nothing is collected unless you say yes.** After a few tasks FreeAgentCoder asks, once, whether it may send anonymous counts: how many keys you have and which providers, how many tasks ran and how they ended, and short causes for failures such as `gemini:daily-limit`. Never your code, prompts, file or project names, keys, or anything identifying you or your machine. It is off until you agree, the question is never asked if you have turned telemetry off in VS Code, and **FreeAgentCoder: Anonymous Usage Data** shows the exact text that would be sent and lets you stop at any time.
+- FreeAgentCoder has no account system and no server that holds your work.
 
 ## Requirements
 

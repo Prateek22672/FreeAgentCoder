@@ -15,6 +15,7 @@ import { AgentSession, type SessionLogEntry, type TurnPlan } from './agent/sessi
 import { PDF_READER_MODEL, planVisionRoute } from './agent/visionRoute';
 import { attachmentViews, prepareAttachments, type AttachmentReaders } from './attachments/prepare';
 import { readImagesLocally } from './attachments/ocr';
+import { Telemetry } from './telemetry/telemetry';
 import { complete, describeImages, digestDocument, readPdfWithGemini } from './attachments/reader';
 import { HistoryStore, newChatId } from './history/historyStore';
 import { KeyStore } from './keys/keyStore';
@@ -171,6 +172,9 @@ export class Controller implements vscode.Disposable {
     /** Keys already reported as out of daily quota in the current task. */
     private readonly dailyWarned = new Set<string>();
     private checksCache?: { root: string; at: number; checks: ProjectCheck[] };
+    private readonly telemetry: Telemetry;
+    /** Why the last request failed in the current task, as a short cause. */
+    private lastFailure?: string;
 
     constructor(private readonly context: vscode.ExtensionContext) {
         this.keys = new KeyStore(context);
@@ -179,6 +183,10 @@ export class Controller implements vscode.Disposable {
         this.errorLog = new ErrorLog(context);
         this.memory = new MemoryStore(context.globalState);
         this.features = loadFeatures(context.globalState);
+        this.telemetry = new Telemetry(context, () => {
+            const keys = this.keys.list();
+            return { count: keys.length, providers: keys.map((key) => key.provider) };
+        });
 
         const savedMode = context.globalState.get<string>(MODE_KEY);
         this.mode = savedMode === 'ask' || savedMode === 'auto-edit' || savedMode === 'auto' ? savedMode : 'auto-edit';
@@ -237,9 +245,15 @@ export class Controller implements vscode.Disposable {
         }
     }
 
+    /** The command: what anonymous counts are, and whether to send them. */
+    chooseTelemetry(): Promise<void> {
+        return this.telemetry.choose();
+    }
+
     dispose(): void {
         clearTimeout(this.settingsTimer);
         clearTimeout(this.logsTimer);
+        this.telemetry.dispose();
         for (const disposable of this.disposables) {
             disposable.dispose();
         }
@@ -564,6 +578,9 @@ export class Controller implements vscode.Disposable {
                 if (learning) {
                     learning.evidence = prepared.evidence;
                 }
+                if (prepared.imageSource) {
+                    this.telemetry.imageRead(prepared.imageSource === 'local' ? 'locally' : 'model');
+                }
                 return { agentPrompt: prepared.block ? `${base}\n\n${prepared.block}` : base, images: prepared.images };
             };
         }
@@ -770,6 +787,7 @@ export class Controller implements vscode.Disposable {
         }
         const auth = isAuthFailure(error);
         const daily = error.kind === 'rate_limit' && isDailyLimit(error.message);
+        this.lastFailure = `${key.provider}:${daily ? 'daily-limit' : error.kind.replace(/_/g, '-')}`;
         this.usage.setLastError(key.id, detail);
         this.errorLog.add({
             kind: 'provider',
@@ -837,6 +855,11 @@ export class Controller implements vscode.Disposable {
         });
         this.turnRequests = 0;
         this.dailyWarned.clear();
+        this.telemetry.taskFinished(
+            end.reason === 'completed' ? 'done' : end.reason === 'aborted' ? 'stopped' : 'failed',
+            end.reason === 'max_steps' ? 'max-steps' : (this.lastFailure ?? 'unknown'),
+        );
+        this.lastFailure = undefined;
         void vscode.commands.executeCommand('setContext', 'freeagentcoder.hasRunTask', true);
         const candidate = this.learning;
         this.learning = undefined;

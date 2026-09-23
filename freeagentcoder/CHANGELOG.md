@@ -4,6 +4,7 @@
 
 ### Added
 
+- **Anonymous counts, if you say yes.** Asked once, after a few tasks, and off until then: how many keys you have and which providers, how many tasks ran and how they ended, and short causes such as `gemini:daily-limit`. Never code, prompts, file names or keys. The question is skipped entirely when VS Code's own telemetry is off, and **FreeAgentCoder: Anonymous Usage Data** shows exactly what would be sent, and turns it off again.
 - **Screenshots are read on your computer.** A text reader runs locally and pulls the text out of a screenshot — an error, a stack trace, a terminal, a block of code — with no API request at all, so your free limits go to the coding instead. It downloads about 6 MB the first time and works offline after that. A vision model is asked only when an image holds little readable text, or when what matters is the layout rather than the words. Turn it off in **Settings → Overview**.
 - Anything read locally is marked as such in the prompt, with a warning that a reader gets capitals, quotes and spacing wrong, so the agent looks names up in your project instead of trusting the spelling.
 - **Project Brain handoff.** Plan a change on the Project Brain website, click **Work on this in VS Code**, and FreeAgentCoder opens with the plan written into the chat: the goal, the files involved, and the steps in order. Nothing runs until you read it and press Send, and every edit still follows your permission mode.

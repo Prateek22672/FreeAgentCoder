@@ -13,49 +13,43 @@ live in memory for an hour, so a single Vercel project is all it needs.
 
 | Variable | Needed | What it does |
 | --- | --- | --- |
-| `NEXT_PUBLIC_SITE_URL` | Yes | The canonical URL, `https://freeagentcoder.in`. Used for canonical tags, the sitemap and link previews. |
+| `NEXT_PUBLIC_SITE_URL` | Yes | The canonical URL, `https://freeagentcoder.com`. Used for canonical tags, the sitemap and link previews. |
 | `GITHUB_TOKEN` | Strongly recommended | Raises GitHub's rate limit from 60 requests an hour (shared by every visitor!) to 5,000. A fine-grained token with **no permissions** is enough for public repositories. |
 | `GEMINI_API_KEY` | For the free trial | The key that answers visitors' free questions. Without it, everyone brings their own key. |
 | `BRAIN_TRIAL_QUESTIONS` | Optional (default 2) | Free questions per visitor per day. |
 | `BRAIN_TRIAL_DAILY_CAP` | Optional (default 200) | Free questions across everyone per day, so the key is never drained. |
 | `BRAIN_TRIAL_SALT` | Optional | Any random string; used to hash visitor addresses for the trial count. |
+| `ADMIN_TOKEN` | For the admin page | Any long random string. `/admin?token=…` shows installs, keys per user, provider mix and what stops tasks. Until it is set, the page shows nothing at all. |
+| `KV_REST_API_URL`, `KV_REST_API_TOKEN` | For keeping counts | Any Upstash-compatible Redis REST endpoint (Vercel KV is one). Without them the counts from the extension are held in memory and reset on every deployment. |
 
 Visitors' own keys are never stored: they stay in the visitor's browser and are
 used for one request.
 
 ## 3. Domain
 
-The home is **freeagentcoder.in** — an exact match for the brand, which is the
-search people are most likely to win.
+Buy **freeagentcoder.com**. A `.in` address is read by Google as a site meant
+for India: country domains are geo-targeted, `.in` is not on Google's list of
+country domains treated as generic (`.io`, `.ai`, `.co`, `.me` and a handful of
+others are), and the Search Console setting that used to override that was
+removed in 2022 and never applied to country domains anyway. The audience here
+is worldwide — the same searches appear in the US, UK, Germany, India,
+Singapore and Brazil in almost the same order — so a neutral domain is worth
+the few hundred rupees a year.
 
-1. Point the domain at Vercel: add `freeagentcoder.in` (and `www`) in the project's
-   **Domains**, then set the DNS records the dashboard shows at your registrar.
-2. Set `NEXT_PUBLIC_SITE_URL=https://freeagentcoder.in`.
-3. Keep **freeagentcoder.foliofyx.in** as a permanent redirect: add it as a domain
-   too and mark it *Redirect to freeagentcoder.in* (308). Anything already linked
-   or indexed then follows to the new home instead of splitting the signals.
-4. The three guide URLs (`/free-copilot-alternative`, `/gemini-api-key-vscode`,
-   `/best-free-ai-for-coding`) exist here with the same paths, so nothing indexed breaks.
+- If `.com` is gone, use `.dev`, `.io` or `.co`; all are treated as generic.
+- Keep any older address alive as a 308 redirect. The redirect carries the
+  ranking across; nothing is wasted.
+- Set `NEXT_PUBLIC_SITE_URL` to the final address before the first deploy, so
+  canonical tags and the sitemap never point at a name you are leaving.
 
-### What .in costs you, honestly
+## 4. The stats endpoint
 
-`.in` is India's country domain, and Google reads a country domain as a signal
-that the site is *for* that country. Expect a small lift in India and a small
-disadvantage elsewhere. It does not stop the site ranking anywhere, and it is not
-a penalty — but it cannot be turned off either: Search Console's international
-targeting setting is locked for country domains.
+The extension sends its anonymous counts to `https://freeagentcoder.com/api/stats`,
+which is written into `freeagentcoder/src/telemetry/telemetry.ts`. **Confirm the
+domain matches before publishing the extension**: a published extension cannot be
+pointed somewhere else without a new release.
 
-What softens it:
-
-- The **Marketplace listing** and the **GitHub repository** are the global entry
-  points, both on global domains, and both already rank for the brand.
-- Content stays plainly global (English, no country-specific pricing or claims).
-- If `.com` becomes affordable later, buy it, make it canonical, and 308-redirect
-  `.in` to it. The redirect carries the ranking across; nothing is wasted.
-
-## 4. After the first deploy
-
-## 4. After the first deploy
+## 5. After the first deploy
 
 - Add the site in **Google Search Console** and submit `https://<domain>/sitemap.xml`.
 - Check `https://<domain>/robots.txt` and the link preview at `https://<domain>/opengraph-image`.

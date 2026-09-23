@@ -8,7 +8,7 @@ export default function robots(): MetadataRoute.Robots {
                 userAgent: '*',
                 allow: '/',
                 // Analyses are built for one visitor, live an hour, and would be thin, duplicate pages.
-                disallow: ['/api/', '/r/'],
+                disallow: ['/api/', '/r/', '/admin'],
             },
         ],
         sitemap: `${SITE_URL}/sitemap.xml`,

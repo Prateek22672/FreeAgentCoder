@@ -33,6 +33,8 @@ export interface PreparedAttachments {
     notes: string[];
     /** What the attachments showed, for learning from corrections. */
     evidence: string;
+    /** Which reader actually read the images, if any. */
+    imageSource?: 'local' | 'model';
 }
 
 export function attachmentViews(inputs: AttachmentInput[]): AttachmentView[] {
@@ -155,6 +157,7 @@ export async function prepareAttachments(
         sections.push(`### Images\n${listed.join('\n')}`);
     }
     let evidence = '';
+    let imageSource: PreparedAttachments['imageSource'];
     if (images.length) {
         const one = images.length === 1;
         const label = one ? 'the image' : `${images.length} images`;
@@ -168,8 +171,9 @@ export async function prepareAttachments(
             local = (await opts.readers.localImages(images, opts.signal, opts.progress).catch((error: unknown) => failed(label, error))) ?? [];
         }
         const readable = local.filter(isUsable);
-        if (readable.length === images.length) {
+        if (readable.length === images.length && images.length > 0) {
             evidence = localEvidence(local);
+            imageSource = 'local';
             sections.push(localSection(local, false));
             opts.progress(`Read ${label} here, without an API request.`);
         } else if (opts.readers.images) {
@@ -177,12 +181,14 @@ export async function prepareAttachments(
             const read = await opts.readers.images(images, opts.signal).catch((error: unknown) => failed(label, error));
             if (read?.text) {
                 evidence = read.text;
+                imageSource = 'model';
                 sections.push(`### What the image${one ? ' shows' : 's show'} (read by ${read.model ?? 'a vision model'})\n${read.text}`);
             }
         }
         if (!evidence && readable.length) {
             // No model could be reached, but some text was read here anyway.
             evidence = localEvidence(readable);
+            imageSource = 'local';
             sections.push(localSection(readable, true));
         }
     }
@@ -226,5 +232,6 @@ export async function prepareAttachments(
         images,
         notes,
         evidence,
+        imageSource,
     };
 }

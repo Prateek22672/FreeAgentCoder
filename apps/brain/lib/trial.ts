@@ -95,3 +95,14 @@ export function refundTrial(request: Request, visitorId: string): void {
     address.count = Math.max(0, address.count - 1);
     state.day.count = Math.max(0, state.day.count - 1);
 }
+
+/** Today's trial usage across everyone, for the admin page. */
+export function trialUsage(): { used: number; cap: number; perVisitor: number; visitors: number } {
+    const fresh = Date.now() - state.day.since < DAY_MS;
+    return {
+        used: fresh ? state.day.count : 0,
+        cap: DAILY_CAP,
+        perVisitor: TRIAL_LIMIT,
+        visitors: state.visitors.size,
+    };
+}

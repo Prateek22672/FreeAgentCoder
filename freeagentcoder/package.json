@@ -1,6 +1,6 @@
 {
   "name": "freeagentcoder",
-  "displayName": "Free Agent Coder — Free AI Coding Agent",
+  "displayName": "Free Agent Coder: Free AI Coding Agent, Copilot Alternative",
   "description": "Free AI coding agent for VS Code: a free alternative to Copilot, Cursor and Claude Code. Plans, edits, runs and verifies your code on free Gemini, Groq, Cerebras, Mistral or OpenRouter API keys. No subscription, open source.",
   "version": "0.3.0",
   "publisher": "PrateekKoratala",
@@ -24,13 +24,10 @@
     "ai",
     "ai agent",
     "coding agent",
-    "ai coding",
     "ai assistant",
-    "code assistant",
     "ai pair programmer",
     "vibe coding",
     "agentic ai",
-    "agent mode",
     "open source",
     "free",
     "byok",
@@ -50,7 +47,10 @@
     "copilot alternative",
     "cursor alternative",
     "claude code alternative",
-    "free ai agent"
+    "free ai agent",
+    "windsurf alternative",
+    "cline alternative",
+    "free api key"
   ],
   "engines": {
     "vscode": "^1.137.0"
@@ -58,6 +58,8 @@
   "categories": [
     "AI",
     "Chat",
+    "Programming Languages",
+    "Machine Learning",
     "Other"
   ],
   "activationEvents": [
@@ -99,6 +101,11 @@
       {
         "command": "freeagentcoder.getStarted",
         "title": "Get Started",
+        "category": "FreeAgentCoder"
+      },
+      {
+        "command": "freeagentcoder.telemetry",
+        "title": "Anonymous Usage Data",
         "category": "FreeAgentCoder"
       }
     ],

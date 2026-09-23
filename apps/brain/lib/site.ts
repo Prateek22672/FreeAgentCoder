@@ -6,7 +6,7 @@
  * https://freeagentcoder.foliofyx.in if the old subdomain is kept), so canonical
  * tags, the sitemap and link previews all point at one address.
  */
-export const SITE_URL = (process.env.NEXT_PUBLIC_SITE_URL ?? 'https://freeagentcoder.in').replace(/\/$/, '');
+export const SITE_URL = (process.env.NEXT_PUBLIC_SITE_URL ?? 'https://freeagentcoder.com').replace(/\/$/, '');
 export const MARKETPLACE = 'https://marketplace.visualstudio.com/items?itemName=PrateekKoratala.freeagentcoder';
 export const GITHUB = 'https://github.com/Prateek22672/FreeAgentCoder';
 export const PRODUCT = 'FreeAgentCoder';
