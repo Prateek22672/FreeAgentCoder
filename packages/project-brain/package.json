@@ -1,0 +1,15 @@
+{
+  "name": "@agentic/project-brain",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "main": "src/index.ts",
+  "types": "src/index.ts",
+  "scripts": {
+    "typecheck": "tsc --noEmit -p ."
+  },
+  "description": "Pure repository analysis for Project Brain: no I/O, no dependencies. Shared by the website and the VS Code extension.",
+  "exports": {
+    ".": "./src/index.ts"
+  }
+}

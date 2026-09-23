@@ -1,0 +1,121 @@
+@import "tailwindcss";
+
+:root {
+  --bg: #0b0b0d;
+  --panel: #121215;
+  --panel-2: #18181c;
+  --border: #25252b;
+  --border-strong: #34343c;
+  --text: #ececef;
+  --muted: #a1a1aa;
+  --faint: #71717a;
+  --accent: #d97757;
+  --accent-fg: #1a0f0a;
+  --ok: #4ade80;
+  --warn: #e8b44a;
+  --bad: #f87171;
+  --code-bg: #0f0f12;
+  --mark: rgba(217, 119, 87, 0.16);
+  --tk-kw: #c586c0;
+  --tk-str: #ce9178;
+  --tk-com: #6a9955;
+  --tk-num: #b5cea8;
+  --tk-fn: #dcdcaa;
+  --tk-type: #4ec9b0;
+  --role-api: #4fc1ff;
+  --role-component: #c586c0;
+  --role-model: #e8b44a;
+  --role-service: #4ec9b0;
+  --role-test: #8fbf6a;
+  color-scheme: dark;
+}
+
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme="dark"]) {
+    --bg: #fafafa;
+    --panel: #ffffff;
+    --panel-2: #f4f4f5;
+    --border: #e4e4e7;
+    --border-strong: #d4d4d8;
+    --text: #18181b;
+    --muted: #52525b;
+    --faint: #71717a;
+    --accent: #b4552f;
+    --accent-fg: #ffffff;
+    --ok: #15803d;
+    --warn: #a16207;
+    --bad: #b91c1c;
+    --code-bg: #f7f7f8;
+    --mark: rgba(180, 85, 47, 0.12);
+    --tk-kw: #af00db;
+    --tk-str: #a31515;
+    --tk-com: #008000;
+    --tk-num: #098658;
+    --tk-fn: #795e26;
+    --tk-type: #267f99;
+    --role-api: #0070c1;
+    --role-component: #9b2fae;
+    --role-model: #a16207;
+    --role-service: #0f766e;
+    --role-test: #3f7d20;
+    color-scheme: light;
+  }
+}
+
+@theme inline {
+  --color-bg: var(--bg);
+  --color-panel: var(--panel);
+  --color-panel-2: var(--panel-2);
+  --color-line: var(--border);
+  --color-line-strong: var(--border-strong);
+  --color-fg: var(--text);
+  --color-muted: var(--muted);
+  --color-faint: var(--faint);
+  --color-accent: var(--accent);
+  --color-accent-fg: var(--accent-fg);
+  --color-ok: var(--ok);
+  --color-warn: var(--warn);
+  --color-bad: var(--bad);
+  --color-code: var(--code-bg);
+  --color-mark: var(--mark);
+  --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-display: var(--font-montserrat), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: ui-monospace, "Cascadia Code", "JetBrains Mono", "SF Mono", Menlo, Consolas, monospace;
+}
+
+/* In a layer, so utility classes always win over these defaults. */
+@layer base {
+  html, body { background: var(--bg); color: var(--text); }
+  body { font-family: var(--font-sans); -webkit-font-smoothing: antialiased; }
+  ::selection { background: var(--mark); }
+  a { color: inherit; }
+  :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 4px; }
+}
+.scroll-thin { scrollbar-width: thin; scrollbar-color: var(--border-strong) transparent; }
+@keyframes pulse-bar { 0% { transform: translateX(-100%); } 100% { transform: translateX(250%); } }
+.loading-bar { animation: pulse-bar 1.4s ease-in-out infinite; }
+
+.tk-kw { color: var(--tk-kw); }
+.tk-str { color: var(--tk-str); }
+.tk-com { color: var(--tk-com); font-style: italic; }
+.tk-num { color: var(--tk-num); }
+.tk-fn { color: var(--tk-fn); }
+.tk-type { color: var(--tk-type); }
+.role-api { background: var(--role-api); }
+.role-component { background: var(--role-component); }
+.role-model { background: var(--role-model); }
+.role-service { background: var(--role-service); }
+.role-test { background: var(--role-test); }
+.glow-warm { background: radial-gradient(60% 55% at 70% 100%, rgba(217, 119, 87, 0.38), transparent 70%), radial-gradient(45% 50% at 12% 100%, rgba(59, 91, 219, 0.28), transparent 70%); }
+.text-gradient { background: linear-gradient(180deg, var(--text) 30%, color-mix(in srgb, var(--text) 45%, transparent)); -webkit-background-clip: text; background-clip: text; color: transparent; }
+.grid-fade { background-image: linear-gradient(var(--border) 1px, transparent 1px), linear-gradient(90deg, var(--border) 1px, transparent 1px); background-size: 48px 48px; mask-image: radial-gradient(ellipse 70% 60% at 50% 0%, #000 30%, transparent 75%); }
+/* The iridescent wash behind the quote card. */
+.aurora {
+  background:
+    radial-gradient(30% 38% at 26% 30%, rgba(255, 138, 96, 0.95), transparent 68%),
+    radial-gradient(28% 36% at 56% 22%, rgba(120, 132, 255, 0.95), transparent 68%),
+    radial-gradient(32% 42% at 50% 74%, rgba(56, 232, 208, 0.85), transparent 68%),
+    radial-gradient(26% 34% at 80% 58%, rgba(255, 96, 176, 0.8), transparent 68%),
+    radial-gradient(22% 30% at 70% 88%, rgba(250, 204, 21, 0.55), transparent 70%);
+  filter: blur(52px) saturate(170%);
+}

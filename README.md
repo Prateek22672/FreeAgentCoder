@@ -78,13 +78,18 @@ packages/core   the engine: agent loop, tools, model router, providers, permissi
 packages/cli    the terminal app (bundled to one file with esbuild)
 apps/web        React platform: Builder (Sandpack live preview) + Admin panel
 apps/relay      tiny Cloudflare Worker so browsers can reach providers that block CORS
-docs/           DEPLOY.md: publishing the CLI, deploying the web app, VS Code
+freeagentcoder  the VS Code extension: chat panel, keys, routing, checks, health
+apps/site       the freeagentcoder.foliofyx.in website
+apps/brain      Project Brain: understand a repository before changing it (Next.js)
+packages/project-brain  pure repository analysis shared by the website and, later, the extension
+docs/           how-it-works.md: how the agent handles tasks and complexity
+                DEPLOY.md: publishing the CLI, deploying the web app, VS Code
 ```
 
 ## Development
 
 ```bash
-npm test          # 83 engine tests (fake models, fake HTTP provider, real shell)
+npm test          # 186 engine tests (fake models, fake HTTP provider, real shell)
 npm run typecheck
 npm run agentic   # run the CLI from source (tsx)
 ```

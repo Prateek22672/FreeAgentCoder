@@ -11,11 +11,13 @@
   "scripts": {
     "agentic": "tsx packages/cli/src/index.ts",
     "build": "npm run build -w @agentic/cli",
-    "typecheck": "tsc -p packages/core && tsc -p packages/cli",
+    "typecheck": "tsc -p packages/core && tsc -p packages/cli && tsc -p packages/project-brain",
     "test": "vitest run",
     "test:watch": "vitest",
     "web": "npm run dev -w @agentic/web",
-    "web:build": "npm run build -w @agentic/web"
+    "web:build": "npm run build -w @agentic/web",
+    "brain": "npm run dev -w @agentic/brain",
+    "brain:build": "npm run build -w @agentic/brain"
   },
   "engines": {
     "node": ">=20"
