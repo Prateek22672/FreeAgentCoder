@@ -159,11 +159,35 @@ Store), and paying for an EV certificate is wasted — Microsoft removed EV's in
 SmartScreen bypass in 2024. So the cost objection is weaker than it looks; a Mac
 build still needs Apple Developer at $99/year for notarized auto-update.
 
-The verdict rests on the other two things instead. **Maintenance:** Electron ships
-a major every 8 weeks and supports only the latest three, so you must upgrade
-roughly every 24 weeks or run an unpatched Chromium — and a VS Code-like workbench
-means maintaining a patch set against every upstream release, forever.
-**Evidence:**
+The verdict rests on the other two things instead.
+
+**Maintenance, measured.** Electron ships about 6.1 majors a year and supports
+only the latest three, so a solo developer owes a major upgrade roughly every
+5.5 months, forever. Counted from Electron's own breaking-changes file: **68
+breaking changes across the last 12 majors**, a mean of 5.7 each. 182 stable
+releases shipped in the last 365 days — the Electron 44 line alone put out 11 in
+30 days, each nominally a rebuild, re-sign, re-notarize and re-ship. Microsoft
+treats every major as a scheduled project (86 issues titled "Electron N update"
+in the vscode repo, with public regressions: blank screens on NVIDIA+Wayland,
+numpad keys broken in the terminal) and **even Microsoft runs a version behind**.
+A VS Code-like workbench adds a patch set to re-apply against every upstream
+release on top of that.
+
+*One thing I had wrong and the measurements corrected:* Electron is **not**
+shipping unpatched Chromium — it backports branch security fixes with a median
+lag of 6 days behind Chrome stable. The cost is displaced onto you instead: your
+users' real lag is those 6 days plus however long you take to bump, build, sign
+and push. A new risk did appear, though — **Chrome moved to a two-week release
+cycle in September 2026 and Electron did not**, so the version gap is widening
+for the first time.
+
+**Size, measured.** The Electron runtime alone is 367 MiB unpacked on Windows,
+up 67% in four years and still climbing. Real installers: VS Code 222 MiB,
+Cursor 202 MiB, Obsidian 316 MiB. The fact worth remembering: **Obsidian's entire
+application is an 8.4 MiB file inside a 316 MiB installer** — about 97% of what
+its users download is Chromium and Node, not Obsidian.
+
+**Evidence on adoption:**
 Homebrew 365-day installs are `claude-code` 1,130,098 and `codex` 811,583 — both
 CLIs — against `cursor` 120,556, the flagship desktop editor. Every standalone AI
 editor is VC-funded with a team; every solo project ships extension + CLI. **The
