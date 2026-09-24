@@ -31,7 +31,6 @@
     "open source",
     "free",
     "byok",
-    "bring your own key",
     "gpt",
     "gemini",
     "groq",
@@ -50,7 +49,8 @@
     "free api key",
     "claude alternative",
     "antigravity alternative",
-    "claude fable"
+    "claude fable",
+    "use your own api key"
   ],
   "engines": {
     "vscode": "^1.137.0"
