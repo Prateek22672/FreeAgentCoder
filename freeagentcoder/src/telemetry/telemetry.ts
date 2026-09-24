@@ -18,8 +18,12 @@ const COUNTERS = 'freeagentcoder.telemetry.counters';
 const SINCE = 'freeagentcoder.telemetry.since';
 const SENT = 'freeagentcoder.telemetry.sent';
 
-/** The project's own site, unless someone points this elsewhere. */
-const DEFAULT_ENDPOINT = 'https://freeagentcoder.com/api/stats';
+/**
+ * The project's own site, unless someone points this elsewhere. When the site
+ * moves to its own domain, keep a 308 redirect on this address: a 308 preserves
+ * the method and the body, so already-published releases keep reporting.
+ */
+const DEFAULT_ENDPOINT = 'https://brain-rho-roan.vercel.app/api/stats';
 
 const SEND_EVERY_MS = 12 * 60 * 60 * 1000;
 const SEND_TIMEOUT_MS = 8_000;
