@@ -13,10 +13,24 @@
 import 'server-only';
 import { createHash, randomUUID } from 'node:crypto';
 
+/**
+ * A variable that exists but is blank counts as unset. Hosting dashboards make
+ * empty variables easy to create, and Number('') is 0, which would silently
+ * turn the trial off rather than fall back to the default.
+ */
+function setting(name: string, fallback: number): number {
+    const raw = process.env[name]?.trim();
+    if (!raw) {
+        return fallback;
+    }
+    const value = Number(raw);
+    return Number.isFinite(value) && value >= 0 ? value : fallback;
+}
+
 /** Enough to see whether it answers your codebase well; after that, a visitor brings their own free key. */
-export const TRIAL_LIMIT = Math.max(0, Number(process.env.BRAIN_TRIAL_QUESTIONS ?? 2));
+export const TRIAL_LIMIT = setting('BRAIN_TRIAL_QUESTIONS', 2);
 const PER_ADDRESS_LIMIT = TRIAL_LIMIT * 6;
-const DAILY_CAP = Math.max(0, Number(process.env.BRAIN_TRIAL_DAILY_CAP ?? 200));
+const DAILY_CAP = setting('BRAIN_TRIAL_DAILY_CAP', 200);
 const DAY_MS = 24 * 60 * 60 * 1000;
 export const VISITOR_COOKIE = 'pb_visitor';
 

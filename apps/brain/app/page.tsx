@@ -72,7 +72,10 @@ export default function Home() {
             <header className="sticky top-0 z-30 border-b border-line/60 bg-bg/80 backdrop-blur">
                 <div className="mx-auto flex h-14 max-w-7xl items-center gap-6 px-4 sm:px-6">
                     <Link href="/" className="flex items-center gap-2 font-display text-[15px] font-semibold tracking-tight text-fg">
-                        <span className="text-lg text-accent">▣</span> FreeAgentCoder
+                        <svg viewBox="0 0 24 24" className="size-[18px] text-accent" fill="currentColor" aria-hidden>
+                            <path fillRule="evenodd" d="M3 3h13v4H7v9H3zM21 21H8v-4h9V8h4zM10 10h4v4h-4z" />
+                        </svg>
+                        FreeAgentCoder
                     </Link>
                     <nav className="hidden items-center gap-6 text-[14px] text-muted md:flex">
                         <a href="#brain" className="hover:text-fg">
@@ -103,13 +106,14 @@ export default function Home() {
                         <h1 className="font-display">
                             <span className="block text-[13px] font-semibold uppercase tracking-[0.18em] text-accent sm:text-[15px]">Free AI coding agent for VS Code</span>
                             <span className="text-gradient mt-4 block text-[2.6rem] font-semibold leading-[1.05] tracking-tight sm:text-6xl">
-                                Understand any codebase,
+                                Your codebase
                                 <br />
-                                then let AI build it.
+                                has a brain.
                             </span>
                         </h1>
                         <p className="mx-auto mt-6 max-w-xl text-lg leading-relaxed text-muted">
-                            Paste any GitHub repository and see how it is built, where things live, and what a change would break. Then hand the plan to a VS Code agent that does the work — free, on your own free API keys.
+                            Understand any codebase, then let AI build it. Paste a GitHub repository and see how it is built, where things live, and what a change
+                            would break — then hand the plan to a VS Code agent that does the work, free, on your own free API keys.
                         </p>
                     </div>
 
