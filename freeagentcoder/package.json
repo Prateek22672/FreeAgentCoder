@@ -32,9 +32,6 @@
     "free",
     "byok",
     "bring your own key",
-    "refactor",
-    "debugging",
-    "code review",
     "gpt",
     "gemini",
     "groq",
@@ -50,7 +47,10 @@
     "free ai agent",
     "windsurf alternative",
     "cline alternative",
-    "free api key"
+    "free api key",
+    "claude alternative",
+    "antigravity alternative",
+    "claude fable"
   ],
   "engines": {
     "vscode": "^1.137.0"

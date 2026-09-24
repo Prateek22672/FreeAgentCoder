@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 import { Montserrat } from 'next/font/google';
-import { DESCRIPTION, PRODUCT, SITE_URL } from '@/lib/site';
+import { DESCRIPTION, INDEXABLE, PRODUCT, SITE_URL } from '@/lib/site';
 import './globals.css';
 
 const display = Montserrat({ subsets: ['latin'], weight: ['500', '600', '700'], variable: '--font-montserrat', display: 'swap' });
@@ -41,7 +41,9 @@ export const metadata: Metadata = {
         locale: 'en_US',
     },
     twitter: { card: 'summary_large_image', title: 'Free AI Coding Agent for VS Code', description: DESCRIPTION },
-    robots: { index: true, follow: true, googleBot: { index: true, follow: true, 'max-image-preview': 'large', 'max-snippet': -1 } },
+    robots: INDEXABLE
+        ? { index: true, follow: true, googleBot: { index: true, follow: true, 'max-image-preview': 'large', 'max-snippet': -1 } }
+        : { index: false, follow: false },
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

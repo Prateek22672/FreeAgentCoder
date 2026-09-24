@@ -1,12 +1,30 @@
 /** One place for the facts every page needs: the canonical URL, the links, and the pitch. */
 
 /**
- * The canonical home: the exact-match brand domain. Override with
- * NEXT_PUBLIC_SITE_URL in the deployment (e.g. a preview URL, or
- * https://freeagentcoder.foliofyx.in if the old subdomain is kept), so canonical
- * tags, the sitemap and link previews all point at one address.
+ * The canonical home. Set NEXT_PUBLIC_SITE_URL in the deployment once the real
+ * domain is connected; until then a Vercel deployment uses its own address, so
+ * canonical tags, the sitemap and link previews always agree with where the
+ * site actually is.
  */
-export const SITE_URL = (process.env.NEXT_PUBLIC_SITE_URL ?? 'https://freeagentcoder.com').replace(/\/$/, '');
+function canonicalUrl(): string {
+    const configured = process.env.NEXT_PUBLIC_SITE_URL?.trim();
+    if (configured) {
+        return configured;
+    }
+    const vercel = process.env.VERCEL_PROJECT_PRODUCTION_URL?.trim() || process.env.VERCEL_URL?.trim();
+    return vercel ? `https://${vercel}` : 'https://freeagentcoder.com';
+}
+
+export const SITE_URL = canonicalUrl().replace(/\/$/, '');
+
+/**
+ * A deployment on its temporary Vercel address is kept out of search: pages
+ * indexed under a name the site is about to leave become duplicates of the
+ * real ones, and that is a mess to undo. Connecting the domain turns indexing
+ * on by itself.
+ */
+export const INDEXABLE = !/(^|\.)vercel\.app$/i.test(new URL(SITE_URL).hostname);
+
 export const MARKETPLACE = 'https://marketplace.visualstudio.com/items?itemName=PrateekKoratala.freeagentcoder';
 export const GITHUB = 'https://github.com/Prateek22672/FreeAgentCoder';
 export const PRODUCT = 'FreeAgentCoder';

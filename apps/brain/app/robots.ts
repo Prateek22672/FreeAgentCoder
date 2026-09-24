@@ -1,7 +1,12 @@
 import type { MetadataRoute } from 'next';
-import { SITE_URL } from '@/lib/site';
+import { INDEXABLE, SITE_URL } from '@/lib/site';
 
 export default function robots(): MetadataRoute.Robots {
+    if (!INDEXABLE) {
+        // A temporary address. Nothing here should be indexed under a name the
+        // site is about to leave.
+        return { rules: [{ userAgent: '*', disallow: '/' }] };
+    }
     return {
         rules: [
             {
