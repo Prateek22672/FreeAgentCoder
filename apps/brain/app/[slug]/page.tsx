@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import type { ReactNode } from 'react';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { StructuredData, faqPage, graph, organization, website } from '@/components/StructuredData';
@@ -28,10 +29,53 @@ export async function generateMetadata({ params }: { params: Params }): Promise<
     };
 }
 
+/** Inline links, bold and code in article text: [label](url), **bold**, `code`. */
+const TOKEN = /\[([^\]]+)\]\((https?:\/\/[^\s)]+|\/[^\s)]*)\)|\*\*([^*]+)\*\*|`([^`]+)`/g;
+
+function Rich({ text }: { text: string }) {
+    const parts: ReactNode[] = [];
+    let last = 0;
+    for (const match of text.matchAll(TOKEN)) {
+        const [whole, label, href, bold, code] = match;
+        const at = match.index ?? 0;
+        if (at > last) {
+            parts.push(text.slice(last, at));
+        }
+        if (href) {
+            parts.push(
+                href.startsWith('http') ? (
+                    <a key={at} href={href} target="_blank" rel="noreferrer noopener" className="font-medium text-accent underline underline-offset-2 hover:opacity-80">
+                        {label}
+                    </a>
+                ) : (
+                    <Link key={at} href={href} className="font-medium text-accent underline underline-offset-2 hover:opacity-80">
+                        {label}
+                    </Link>
+                ),
+            );
+        } else if (bold) {
+            parts.push(
+                <strong key={at} className="font-semibold text-fg">
+                    {bold}
+                </strong>,
+            );
+        } else if (code) {
+            parts.push(
+                <code key={at} className="rounded bg-code px-1 py-px font-mono text-[13px] text-fg">
+                    {code}
+                </code>,
+            );
+        }
+        last = at + whole.length;
+    }
+    parts.push(text.slice(last));
+    return <>{parts}</>;
+}
+
 function Content({ block }: { block: Block }) {
     switch (block.type) {
         case 'p':
-            return <p className="mt-4 text-[15px] leading-relaxed text-muted">{block.text}</p>;
+            return <p className="mt-4 text-[15px] leading-relaxed text-muted"><Rich text={block.text} /></p>;
         case 'h2':
             return <h2 className="mt-10 font-display text-xl font-semibold tracking-tight text-fg">{block.text}</h2>;
         case 'ul':
@@ -40,7 +84,7 @@ function Content({ block }: { block: Block }) {
                     {block.items.map((item) => (
                         <li key={item} className="flex gap-2.5 text-[15px] leading-relaxed text-muted">
                             <Icon name="check" size={15} className="mt-1 shrink-0 text-accent" />
-                            <span>{item}</span>
+                            <span><Rich text={item} /></span>
                         </li>
                     ))}
                 </ul>
@@ -51,7 +95,7 @@ function Content({ block }: { block: Block }) {
                     {block.items.map((item, i) => (
                         <li key={item} className="flex gap-3 text-[15px] leading-relaxed text-muted">
                             <span className="flex size-6 shrink-0 items-center justify-center rounded-full border border-line-strong font-mono text-[11px] text-faint">{i + 1}</span>
-                            <span>{item}</span>
+                            <span><Rich text={item} /></span>
                         </li>
                     ))}
                 </ol>
@@ -84,7 +128,11 @@ function Content({ block }: { block: Block }) {
                 </div>
             );
         case 'callout':
-            return <p className="mt-5 rounded-lg border border-line bg-panel px-4 py-3 text-[14px] leading-relaxed text-muted">{block.text}</p>;
+            return (
+                <p className="mt-5 rounded-lg border border-line bg-panel px-4 py-3 text-[14px] leading-relaxed text-muted">
+                    <Rich text={block.text} />
+                </p>
+            );
     }
 }
 
