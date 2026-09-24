@@ -76,10 +76,10 @@ export default function Home() {
                     </Link>
                     <nav className="hidden items-center gap-6 text-[14px] text-muted md:flex">
                         <a href="#brain" className="hover:text-fg">
-                            Project Brain
+                            Read a repo
                         </a>
                         <a href="#agent" className="hover:text-fg">
-                            VS Code agent
+                            Why this one
                         </a>
                         <a href="#how" className="hover:text-fg">
                             How it works
@@ -109,7 +109,7 @@ export default function Home() {
                             </span>
                         </h1>
                         <p className="mx-auto mt-6 max-w-xl text-lg leading-relaxed text-muted">
-                            Paste a GitHub repository and see how it is built, where things live, and what a change would break. Then hand the plan to the free VS Code agent.
+                            Paste any GitHub repository and see how it is built, where things live, and what a change would break. Then hand the plan to a VS Code agent that does the work — free, on your own free API keys.
                         </p>
                     </div>
 
@@ -160,7 +160,7 @@ export default function Home() {
             <section className="border-t border-line">
                 <div className="mx-auto max-w-7xl px-4 py-20 sm:px-6">
                     <p className="text-[12px] font-semibold uppercase tracking-wider text-accent">What you get</p>
-                    <h2 className="mt-2 max-w-2xl font-display text-3xl font-semibold tracking-tight text-fg sm:text-4xl">Built to be right, not just fluent.</h2>
+                    <h2 className="mt-2 max-w-2xl font-display text-3xl font-semibold tracking-tight text-fg sm:text-4xl">Answers you can check, not just answers.</h2>
                     <div className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                         {FEATURES.map((f) => (
                             <div key={f.title} className="rounded-xl border border-line bg-panel p-6 transition-colors hover:border-line-strong">
@@ -180,8 +180,12 @@ export default function Home() {
             {/* Two halves */}
             <section id="agent" className="border-t border-line">
                 <div className="mx-auto max-w-7xl px-4 py-20 sm:px-6">
-                    <p className="text-[12px] font-semibold uppercase tracking-wider text-accent">One product, two halves</p>
-                    <h2 className="mt-2 max-w-3xl font-display text-3xl font-semibold tracking-tight text-fg sm:text-4xl">Project Brain understands. Your agent builds.</h2>
+                    <p className="text-[12px] font-semibold uppercase tracking-wider text-accent">Why this one</p>
+                    <h2 className="mt-2 max-w-3xl font-display text-3xl font-semibold tracking-tight text-fg sm:text-4xl">Reading a repository is the easy half.</h2>
+                    <p className="mt-4 max-w-2xl text-[15px] leading-relaxed text-muted">
+                        Tools that write a wiki for a repository explain it and stop there. Assistants that change code want a subscription and run on a model you
+                        do not choose. This does both halves — and the part that costs money runs on free keys that belong to you, in the editor you already have.
+                    </p>
                     <div className="mt-10 grid items-stretch gap-4 lg:grid-cols-[1fr_auto_1fr]">
                         <div className="rounded-xl border border-line bg-panel p-6">
                             <p className="flex items-center gap-2 text-[15px] font-semibold text-fg">
