@@ -98,3 +98,23 @@ describe('untrusted links are refused', () => {
         expect(decoded).toMatchObject({ title: 'Fix login', brief: 'Line one\nLine two' });
     });
 });
+
+/**
+ * The extension decodes links with its own copy of the reader, so that it
+ * depends on nothing outside itself. This is the same payload its tests use:
+ * if the wire format changes on either side, one of the two fails.
+ */
+describe('the wire format the extension reads', () => {
+    it('has not drifted', () => {
+        const task: ProjectTask = {
+            v: 1,
+            kind: 'project-task',
+            repo: 'shadcn-ui/taxonomy',
+            ref: 'main',
+            title: 'Replace Prisma with Drizzle',
+            brief: '# Replace Prisma with Drizzle\n\nPlanned for `shadcn-ui/taxonomy` (branch main).\n\n## Plan\n1. **Update the data models** — change the shapes first.\n   Files: `lib/db.ts`\n\n## Rules\n- Read every file before changing it.',
+            files: ['lib/db.ts', 'app/api/users/route.ts'],
+        };
+        expect(encodeTask(task)).toBe('eyJ2IjoxLCJraW5kIjoicHJvamVjdC10YXNrIiwicmVwbyI6InNoYWRjbi11aS90YXhvbm9teSIsInJlZiI6Im1haW4iLCJ0aXRsZSI6IlJlcGxhY2UgUHJpc21hIHdpdGggRHJpenpsZSIsImJyaWVmIjoiIyBSZXBsYWNlIFByaXNtYSB3aXRoIERyaXp6bGVcblxuUGxhbm5lZCBmb3IgYHNoYWRjbi11aS90YXhvbm9teWAgKGJyYW5jaCBtYWluKS5cblxuIyMgUGxhblxuMS4gKipVcGRhdGUgdGhlIGRhdGEgbW9kZWxzKiog4oCUIGNoYW5nZSB0aGUgc2hhcGVzIGZpcnN0LlxuICAgRmlsZXM6IGBsaWIvZGIudHNgXG5cbiMjIFJ1bGVzXG4tIFJlYWQgZXZlcnkgZmlsZSBiZWZvcmUgY2hhbmdpbmcgaXQuIiwiZmlsZXMiOlsibGliL2RiLnRzIiwiYXBwL2FwaS91c2Vycy9yb3V0ZS50cyJdfQ');
+    });
+});

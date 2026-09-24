@@ -6,7 +6,7 @@
  * input for the user to read. Nothing runs until they press Send, and the
  * normal permission rules still apply to everything the agent then does.
  */
-import { decodeTask, type ProjectTask } from '@agentic/project-brain';
+import { decodeTask, type ProjectTask } from './decode';
 
 export type HandoffResult = { ok: true; task: ProjectTask; note: string } | { ok: false; error: string };
 

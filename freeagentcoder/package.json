@@ -231,7 +231,6 @@
   },
   "dependencies": {
     "@agentic/core": "file:../packages/core",
-    "@agentic/project-brain": "file:../packages/project-brain",
     "fflate": "^0.8.3",
     "unpdf": "^1.8.1"
   }
