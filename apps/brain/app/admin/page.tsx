@@ -1,9 +1,12 @@
 import type { Metadata } from 'next';
+import { adminPassword, isSignedIn } from '@/lib/admin';
 import { configuredProviders, providerLabel } from '@/lib/ai';
 import { kvConfigured } from '@/lib/kv';
 import { marketplaceStats } from '@/lib/marketplace';
 import { readStats, type Stats } from '@/lib/stats';
 import { trialUsage } from '@/lib/trial';
+import { signOutAction } from './actions';
+import { Login } from './login';
 
 export const metadata: Metadata = { title: 'Admin', robots: { index: false, follow: false } };
 export const dynamic = 'force-dynamic';
@@ -13,26 +16,14 @@ export const dynamic = 'force-dynamic';
  * extension, how many keys they have and from which providers, what stops
  * their tasks, and whether this site's own keys are close to their limits.
  *
- * Reached with ?token=… matching ADMIN_TOKEN. Everything shown is a count.
+ * Asks for ADMIN_PASSWORD and remembers the answer in a signed cookie.
+ * Everything shown is a count: no code, no prompts, no keys.
  */
-export default async function AdminPage({ searchParams }: { searchParams: Promise<{ token?: string }> }) {
-    const expected = process.env.ADMIN_TOKEN?.trim();
-    const { token } = await searchParams;
-
-    if (!expected) {
+export default async function AdminPage() {
+    if (!(await isSignedIn())) {
         return (
             <Shell>
-                <Note>
-                    Set <code className="font-mono text-fg">ADMIN_TOKEN</code> in the environment, then open this page with <code className="font-mono text-fg">?token=…</code>. Until
-                    it is set the page shows nothing, so it can never be left open by accident.
-                </Note>
-            </Shell>
-        );
-    }
-    if (!token || token !== expected) {
-        return (
-            <Shell>
-                <Note>Add ?token=… to see this page.</Note>
+                <Login configured={!!adminPassword()} />
             </Shell>
         );
     }
@@ -45,7 +36,14 @@ export default async function AdminPage({ searchParams }: { searchParams: Promis
 
     return (
         <Shell>
-            <h1 className="text-2xl font-semibold tracking-tight">FreeAgentCoder</h1>
+            <div className="flex items-start justify-between gap-4">
+                <h1 className="text-2xl font-semibold tracking-tight">FreeAgentCoder</h1>
+                <form action={signOutAction}>
+                    <button type="submit" className="rounded-md border border-line px-3 py-1.5 text-[13px] text-muted hover:border-accent hover:text-fg">
+                        Sign out
+                    </button>
+                </form>
+            </div>
             <p className="mt-1 text-sm text-muted">
                 Marketplace numbers cover everyone. The rest comes from installs whose owner agreed to send anonymous counts
                 {market?.installs ? `, about ${share}% of them` : ''}.

@@ -19,7 +19,7 @@ live in memory for an hour, so a single Vercel project is all it needs.
 | `BRAIN_TRIAL_QUESTIONS` | Optional (default 2) | Free questions per visitor per day. |
 | `BRAIN_TRIAL_DAILY_CAP` | Optional (default 200) | Free questions across everyone per day, so the key is never drained. |
 | `BRAIN_TRIAL_SALT` | Optional | Any random string; used to hash visitor addresses for the trial count. |
-| `ADMIN_TOKEN` | For the admin page | Any long random string. `/admin?token=…` shows installs, keys per user, provider mix and what stops tasks. Until it is set, the page shows nothing at all. |
+| `ADMIN_PASSWORD` | For the admin page | Any long random string. `/admin` asks for it and keeps you signed in for a week. It shows installs, keys per user, provider mix and what stops tasks. Until it is set, the page says only that. |
 | `KV_REST_API_URL`, `KV_REST_API_TOKEN` | For keeping counts | Any Upstash-compatible Redis REST endpoint (Vercel KV is one). Without them the counts from the extension are held in memory and reset on every deployment. |
 
 Visitors' own keys are never stored: they stay in the visitor's browser and are
