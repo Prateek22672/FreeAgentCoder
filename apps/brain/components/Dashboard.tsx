@@ -342,7 +342,7 @@ export function Dashboard({ repo, initialTab, initialQuery }: { repo: string; in
                             <Icon name="shield" size={19} />
                             <span className="text-[10px] leading-tight">{own ? 'Your key' : 'Add key'}</span>
                         </button>
-                        <Link href="/" title="Analyze another repository" className="flex w-full flex-col items-center gap-0.5 rounded-md py-1.5 text-faint hover:bg-panel-2/60 hover:text-fg">
+                        <Link href="/" title="Open another repository" className="flex w-full flex-col items-center gap-0.5 rounded-md py-1.5 text-faint hover:bg-panel-2/60 hover:text-fg">
                             <Icon name="arrowRight" size={19} className="rotate-180" />
                             <span className="text-[10px] leading-tight">New repo</span>
                         </Link>

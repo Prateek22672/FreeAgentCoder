@@ -43,7 +43,7 @@ export function RepoForm({ examples }: { examples: string[] }) {
           className="h-11 text-[15px]"
         />
         <Button type="submit" className="h-11 px-5">
-          Analyze
+          Start
         </Button>
       </form>
       {error && <p className="mt-2 text-sm text-bad">{error}</p>}

@@ -104,7 +104,7 @@ export function Progress({ repo, steps, error, onRetry }: { repo: string; steps:
                             Try again
                         </button>
                         <a href="/" className="text-muted underline underline-offset-4 hover:text-fg">
-                            Analyze another repository
+                            Open another repository
                         </a>
                     </div>
                 </div>

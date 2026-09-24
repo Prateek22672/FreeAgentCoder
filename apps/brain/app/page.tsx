@@ -61,8 +61,8 @@ const FEATURES: { icon: IconName; title: string; body: string }[] = [
     { icon: 'shield', title: 'Private by design', body: 'Read-only. Committed .env files and credentials are never sent to a model. Keys stay on the server.' },
 ];
 
-const BRAIN = ['Understand', 'Analyze', 'Search', 'Visualize', 'Impact', 'Plan'];
-const AGENT = ['Execute', 'Edit', 'Debug', 'Test', 'Review', 'Verify'];
+const BRAIN = ['Understand it', 'Read the code', 'Search', 'Map the structure', 'See what breaks', 'Write the plan'];
+const AGENT = ['Do the work', 'Edit files', 'Fix bugs', 'Run your tests', 'Show every diff', 'Undo in a click'];
 
 export default function Home() {
     return (
@@ -98,34 +98,25 @@ export default function Home() {
             <section id="brain" className="relative">
                 <div className="grid-fade pointer-events-none absolute inset-0 opacity-60" aria-hidden />
                 <div className="glow-warm pointer-events-none absolute inset-x-0 bottom-0 h-[70%]" aria-hidden />
-                <div className="relative mx-auto max-w-7xl px-4 pb-20 pt-16 sm:px-6 sm:pt-24">
-                    <Link
-                        href={`/r/${SAMPLE.meta.owner}/${SAMPLE.meta.repo}`}
-                        className="mx-auto flex w-fit items-center gap-2.5 rounded-lg border border-line-strong bg-panel/80 py-1.5 pl-1.5 pr-3 text-[13px] text-muted hover:border-accent hover:text-fg"
-                    >
-                        <span className="rounded bg-fg px-2 py-0.5 text-[10.5px] font-bold uppercase tracking-wider text-bg">New</span>
-                        Project Brain — understand any repository in seconds
-                        <Icon name="chevronRight" size={14} />
-                    </Link>
+                <div className="relative mx-auto max-w-7xl px-4 pb-20 pt-20 sm:px-6 sm:pt-28">
+                    <div className="mx-auto max-w-3xl text-center">
+                        <h1 className="font-display">
+                            <span className="block text-[13px] font-semibold uppercase tracking-[0.18em] text-accent sm:text-[15px]">Free AI coding agent for VS Code</span>
+                            <span className="text-gradient mt-4 block text-[2.6rem] font-semibold leading-[1.05] tracking-tight sm:text-6xl">
+                                Understand any codebase,
+                                <br />
+                                then let AI build it.
+                            </span>
+                        </h1>
+                        <p className="mx-auto mt-6 max-w-xl text-lg leading-relaxed text-muted">
+                            Paste a GitHub repository and see how it is built, where things live, and what a change would break. Then hand the plan to the free VS Code agent.
+                        </p>
+                    </div>
 
-                    <h1 className="mt-10 font-display">
-                        <span className="block text-[13px] font-semibold uppercase tracking-[0.18em] text-accent sm:text-[15px]">
-                            Free AI coding agent for VS Code · GitHub repo analyzer
-                        </span>
-                        <span className="text-gradient mt-3 block text-[2.6rem] font-semibold leading-[1.05] tracking-tight sm:text-6xl lg:text-7xl">
-                            Your codebase
-                            <br />
-                            has a brain.
-                        </span>
-                    </h1>
-                    <p className="mt-6 max-w-2xl text-lg leading-relaxed text-muted sm:text-xl">
-                        Understand a repository before you change it — how it is built, where things live, and what a change would break. Then let your AI agent build it in VS Code.
-                    </p>
-
-                    <div className="mt-9 max-w-2xl rounded-xl border border-line-strong bg-panel/90 p-3 shadow-2xl backdrop-blur sm:p-4">
+                    <div className="mx-auto mt-9 max-w-2xl rounded-xl border border-line-strong bg-panel/90 p-3 text-left shadow-2xl backdrop-blur sm:p-4">
                         <RepoForm examples={EXAMPLES} />
                     </div>
-                    <div className="mt-5 flex flex-wrap items-center gap-x-5 gap-y-2 text-[13px] text-faint">
+                    <div className="mt-5 flex flex-wrap items-center justify-center gap-x-5 gap-y-2 text-[13px] text-faint">
                         <span className="flex items-center gap-1.5">
                             <Icon name="shield" size={14} /> Read-only, nothing executed
                         </span>
