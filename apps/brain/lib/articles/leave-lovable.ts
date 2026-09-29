@@ -86,7 +86,7 @@ export const LEAVE_LOVABLE: Article = {
             'You now have the project running locally and an editor open. What you do not have is the thing that made the platform useful: something that writes the code for you. That is what [FreeAgentCoder](/) is — a free, open-source VS Code extension that plans a change, edits the files, runs your tests and fixes what fails.',
         ),
         p(
-            'The difference is where the intelligence comes from. Instead of buying credits, you bring a free API key — Google Gemini, Groq, Cerebras, Mistral or OpenRouter all give one away, no card — and the extension uses it. When one key hits its daily limit, it moves to the next and the task continues.',
+            'The difference is where the intelligence comes from. Instead of buying credits, you bring a free API key — Google Gemini, Groq, Mistral and OpenRouter all give one away, no card — and the extension uses it. When one key hits its daily limit, it moves to the next and the task continues.',
         ),
         ol([
             'Install [FreeAgentCoder from the Marketplace](https://marketplace.visualstudio.com/items?itemName=PrateekKoratala.freeagentcoder).',

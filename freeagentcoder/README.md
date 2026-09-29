@@ -6,7 +6,7 @@
 
 **An autonomous AI coding agent and chat that runs on your own free API keys.**
 
-FreeAgentCoder plans, writes, runs and verifies code in your project. Add free API keys from Gemini, Groq or Cerebras, and it sends each request to the right model, switching to your next key whenever one hits its limit.
+FreeAgentCoder plans, writes, runs and verifies code in your project. Add free API keys from Gemini, Groq or Mistral, and it sends each request to the right model, switching to your next key whenever one hits its limit.
 
 It is a free alternative to paid AI coding assistants: no subscription, no per-seat fee and no usage metering of ours. The only limits are the free tiers of the keys you bring, and you can add as many keys as you like.
 
@@ -150,7 +150,7 @@ When you ask for something big, such as *"build a Flutter wallpaper app that's r
 | --- | --- | --- |
 | Google Gemini | Free tier | 1M-token context; daily request quota |
 | Groq | Free tier | Very fast; small per-minute token limit |
-| Cerebras | Free tier | Fast; per-minute request limit |
+| Cerebras | $5 trial, card required, expires in 30 days | Fast; per-minute request limit |
 | Mistral | Free tier | "Experiment" plan, needs phone verification |
 | OpenRouter | Free models | Daily request limit |
 | OpenAI | Paid | Bring your own key |

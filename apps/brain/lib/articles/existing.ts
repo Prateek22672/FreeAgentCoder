@@ -35,7 +35,7 @@ export const COPILOT_ALTERNATIVE: Article = {
   slug: 'free-copilot-alternative',
   title: 'A Free GitHub Copilot Alternative for VS Code',
   description:
-    'Want a free alternative to GitHub Copilot? FreeAgentCoder is a free, open-source AI coding agent for VS Code that runs on your own free Gemini, Groq or Cerebras API key. No subscription.',
+    'Want a free alternative to GitHub Copilot? FreeAgentCoder is a free, open-source AI coding agent for VS Code that runs on your own free Gemini, Groq or Mistral API key. No subscription.',
   h1: 'A free alternative to GitHub Copilot',
   dek: "GitHub Copilot's free tier has monthly limits, and more means a subscription. FreeAgentCoder is free, open source, and runs on API keys you can get for free in about a minute.",
   updated: '2026-09-22',
@@ -62,16 +62,16 @@ export const COPILOT_ALTERNATIVE: Article = {
     ]),
     h2('What it costs you instead of money'),
     ul([
-      'A couple of minutes to create a free API key (Gemini, Groq or Cerebras all work).',
+      'A couple of minutes to create a free API key (Gemini, Groq or Mistral all work).',
       'You live inside each provider\'s free-tier limits, though adding a second or third key spreads the load — the extension tells you how many you probably need.',
       "It's newer and smaller than Copilot, with a much smaller team behind it.",
     ]),
     callout('FreeAgentCoder is not affiliated with, endorsed by, or a product of GitHub, Microsoft or any other company named on this page.'),
   ],
   faq: [
-    { q: 'Is FreeAgentCoder really free, unlike Copilot?', a: 'Yes. The extension itself is free and MIT licensed with no subscription. You run it on API keys from providers with free tiers (Gemini, Groq, Cerebras, Mistral, OpenRouter), so your only cost is whatever that provider charges — which is nothing on their free plans.' },
+    { q: 'Is FreeAgentCoder really free, unlike Copilot?', a: 'Yes. The extension itself is free and MIT licensed with no subscription. You run it on API keys from providers with free tiers (Gemini, Groq, Mistral, OpenRouter), so your only cost is whatever that provider charges — which is nothing on their free plans.' },
     { q: 'Can I use it alongside GitHub Copilot?', a: "Yes, they don't conflict. Some people keep Copilot for inline completions and use FreeAgentCoder for larger agentic tasks." },
-    { q: 'Do I need a credit card?', a: "No. Gemini, Groq and Cerebras all offer API keys with a free tier that doesn't require a card to start." },
+    { q: 'Do I need a credit card?', a: "No. Gemini, Groq, Mistral and OpenRouter all offer API keys with a free tier that needs no card. Cerebras used to, and no longer does — as of September 2026 it is a $5 trial that requires a card and expires after 30 days." },
   ],
 };
 
@@ -127,7 +127,7 @@ export const BEST_FREE_AI_CODING: Article = {
       [
         ['Gemini', 'Large, complex, multi-file work — 1M-token context', "Daily quota; doesn't report rate-limit headers"],
         ['Groq', 'Very fast answers to quick questions and small edits', 'Small per-minute token limit'],
-        ['Cerebras', 'Fast, similar use case to Groq', 'Per-minute request limit'],
+        ['Cerebras', 'Fast, but no longer free: $5 trial, card required, 30 days', 'Per-minute request limit'],
         ['Mistral', 'A second free key to spread load across', 'Free plan needs phone verification'],
         ['OpenRouter', 'Free models from several model makers behind one key', 'Daily request limit; quality varies by which free model is available'],
       ],

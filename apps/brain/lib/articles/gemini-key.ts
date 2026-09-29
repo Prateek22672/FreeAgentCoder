@@ -80,7 +80,7 @@ export const GEMINI_KEY: Article = {
             [
                 ['Google Gemini', 'Yes, no card', 'Long, multi-file work and reading screenshots'],
                 ['Groq', 'Yes, no card', 'Very fast replies on small tasks'],
-                ['Cerebras', 'Yes, no card', 'Fast replies, generous free limits'],
+                ['Cerebras', 'No — $5 trial, card required', 'Fast replies, while the trial lasts'],
                 ['Mistral', 'Yes, no card', 'A solid all-rounder and a second vision option'],
                 ['OpenRouter', 'Yes, no card', 'A pool of free community models as a last resort'],
             ],

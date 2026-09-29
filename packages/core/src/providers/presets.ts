@@ -85,7 +85,7 @@ export const PRESETS: Record<string, ProviderPreset> = {
     contextWindow: 65_536,
     maxRequestTokens: 28_000,
     signupUrl: 'https://cloud.cerebras.ai',
-    note: 'Free tier: 1M tokens/day but only 5 requests/minute and a 64K context.',
+    note: 'Trial, not a free tier: $5 of credits that need a card and expire after 30 days. 5 requests/minute, 64K context. Checked 2026-09-29.',
   },
   mistral: {
     id: 'mistral',

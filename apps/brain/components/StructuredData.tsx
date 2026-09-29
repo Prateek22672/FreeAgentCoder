@@ -45,7 +45,7 @@ export const extensionApp = {
     offers: { '@type': 'Offer', price: '0', priceCurrency: 'USD' },
     featureList: [
         'Plans, edits and verifies code across a project',
-        'Runs on free Gemini, Groq, Cerebras, Mistral and OpenRouter API keys',
+        'Runs on free Gemini, Groq, Mistral and OpenRouter API keys',
         'Automatic failover between keys when one hits its limit',
         "Finishes only when the project's own tests, type check or build pass",
         'API keys stay on your device, encrypted in VS Code Secret Storage',

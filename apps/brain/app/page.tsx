@@ -28,7 +28,7 @@ const FAQ = [
     },
     {
         q: 'Which AI models does it use?',
-        a: 'The free tiers of Google Gemini, Groq, Cerebras, Mistral and OpenRouter, with automatic failover when one hits its limit. You can add a paid OpenAI or Anthropic key, but you never have to.',
+        a: 'The free tiers of Google Gemini, Groq, Mistral and OpenRouter, with automatic failover when one hits its limit. Cerebras is supported too, though it is now a card-backed trial rather than a free tier. You can add a paid OpenAI or Anthropic key, but you never have to.',
     },
     {
         q: 'Is it unlimited?',
