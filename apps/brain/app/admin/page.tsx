@@ -45,8 +45,9 @@ export default async function AdminPage() {
                 </form>
             </div>
             <p className="mt-1 text-sm text-muted">
-                Marketplace numbers cover everyone. The rest comes from installs whose owner agreed to send anonymous counts
-                {market?.installs ? `, about ${share}% of them` : ''}.
+                Marketplace numbers cover everyone. The rest comes only from installs whose owner agreed to send anonymous counts
+                {reporting > 0 && market?.installs ? `, about ${share}% of them` : ''}
+                {reporting === 0 ? ' — none yet, which is expected until a version with counting in it is published.' : '.'}
             </p>
 
             <Section title="People">

@@ -27,8 +27,12 @@ const DEFAULT_ENDPOINT = 'https://brain-rho-roan.vercel.app/api/stats';
 
 const SEND_EVERY_MS = 12 * 60 * 60 * 1000;
 const SEND_TIMEOUT_MS = 8_000;
-/** Asked only once there is something worth reporting. */
-const ASK_AFTER_TASKS = 3;
+/**
+ * Asked after the first task, not the third. Someone who runs one task and
+ * never comes back is exactly the person worth hearing about, and waiting for
+ * a third means never hearing from them at all.
+ */
+const ASK_AFTER_TASKS = 1;
 
 /**
  * Settable, so the site can move without stranding published releases. The
