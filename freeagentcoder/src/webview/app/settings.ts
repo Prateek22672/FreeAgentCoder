@@ -481,7 +481,8 @@ class AddKeyForm {
     }
 
     private openSignup(): void {
-        const url = this.current()?.signupUrl;
+        const provider = this.current();
+        const url = provider?.getKeyUrl || provider?.signupUrl;
         if (url) {
             send({ type: 'openExternal', url });
         }

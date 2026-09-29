@@ -1,5 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import * as vscode from 'vscode';
+import { SITE_URL } from '../shared/site';
 import { addFailure, buildReport, describeReport, emptyCounters, type Counters, type Report } from './payload';
 
 /**
@@ -23,7 +24,7 @@ const SENT = 'freeagentcoder.telemetry.sent';
  * moves to its own domain, keep a 308 redirect on this address: a 308 preserves
  * the method and the body, so already-published releases keep reporting.
  */
-const DEFAULT_ENDPOINT = 'https://brain-rho-roan.vercel.app/api/stats';
+const DEFAULT_ENDPOINT = `${SITE_URL}/api/stats`;
 
 const SEND_EVERY_MS = 12 * 60 * 60 * 1000;
 const SEND_TIMEOUT_MS = 8_000;

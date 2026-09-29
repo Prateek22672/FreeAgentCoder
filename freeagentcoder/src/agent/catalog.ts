@@ -1,5 +1,6 @@
 import { PRESETS } from '@agentic/core';
 import { AUTO_MODEL, type ProviderView, type Tier } from '../shared/protocol';
+import { getKeyUrl } from '../shared/site';
 
 /** Providers a user adds keys for, in display order. */
 export const KEY_PROVIDERS = ['gemini', 'groq', 'cerebras', 'mistral', 'openrouter', 'openai', 'anthropic'];
@@ -35,7 +36,7 @@ export function providerLabel(id: string): string {
     return SHORT_LABELS[id] ?? PRESETS[id]?.label ?? id;
 }
 
-export function providerViews(): ProviderView[] {
+export function providerViews(version = '0.0.0'): ProviderView[] {
     return KEY_PROVIDERS.map((id) => PRESETS[id]).filter((p) => p !== undefined).map((p) => ({
         id: p.id,
         label: providerLabel(p.id),
@@ -43,6 +44,7 @@ export function providerViews(): ProviderView[] {
         models: p.models,
         defaultModel: p.defaultModel,
         signupUrl: p.signupUrl,
+        getKeyUrl: p.signupUrl ? getKeyUrl(p.id, version) : '',
         note: p.note,
     }));
 }

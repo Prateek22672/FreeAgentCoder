@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import { adminPassword, isSignedIn } from '@/lib/admin';
 import { configuredProviders, providerLabel } from '@/lib/ai';
+import { readKeyLinks } from '@/lib/keylinks';
 import { kvConfigured } from '@/lib/kv';
 import { marketplaceStats } from '@/lib/marketplace';
 import { readStats, type Stats } from '@/lib/stats';
@@ -28,7 +29,7 @@ export default async function AdminPage() {
         );
     }
 
-    const [market, stats] = await Promise.all([marketplaceStats(), readStats()]);
+    const [market, stats, keyLinks] = await Promise.all([marketplaceStats(), readStats(), readKeyLinks()]);
     const trial = trialUsage();
     const ownKeys = configuredProviders();
     const reporting = stats.active.month;
@@ -57,6 +58,16 @@ export default async function AdminPage() {
                 <Stat label="Active, 30 days" value={format(stats.active.month)} hint="Installs that reported" />
                 <Stat label="Active, 7 days" value={format(stats.active.week)} />
                 <Stat label="Active today" value={format(stats.active.today)} />
+            </Section>
+
+            <Section title="Did they get as far as a key?">
+                <Stat label="Key links clicked" value={format(keyLinks.total)} hint="Last 30 days" />
+                <Stat label="From the extension" value={format(keyLinks.fromExtension)} hint="People setting up" />
+                <Stat label="From the website" value={format(keyLinks.fromWeb)} />
+                {keyLinks.byProvider.map((row) => (
+                    <Stat key={row.provider} label={providerLabel(row.provider)} value={format(row.clicks)} />
+                ))}
+                {keyLinks.total === 0 ? <Empty>Nobody has clicked a key link yet, or the version with these links is not published.</Empty> : null}
             </Section>
 
             <Section title="Keys people have">

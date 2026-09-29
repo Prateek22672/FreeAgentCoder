@@ -63,7 +63,10 @@ export interface ProviderView {
     free: boolean;
     models: string[];
     defaultModel: string;
+    /** The provider's own page, shown as plain text so the destination is never hidden. */
     signupUrl: string;
+    /** Where the button goes: a redirect on the site, so reaching this step can be counted. */
+    getKeyUrl: string;
     note: string;
 }
 

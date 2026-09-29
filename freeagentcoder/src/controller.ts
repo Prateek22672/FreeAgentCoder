@@ -1194,7 +1194,7 @@ export class Controller implements vscode.Disposable {
         const settings: SettingsView = {
             mode: this.mode,
             model: this.model,
-            providers: providerViews(),
+            providers: providerViews(String(this.context.extension.packageJSON.version ?? '0.0.0')),
             keys: views,
             usage: { window: this.usage.window(), today: this.usage.today(), month: this.usage.month(), days: this.usage.days(7) },
             routes: this.routes(usable),
