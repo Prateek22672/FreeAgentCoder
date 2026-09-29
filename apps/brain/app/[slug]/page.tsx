@@ -54,9 +54,10 @@ function Rich({ text }: { text: string }) {
                 ),
             );
         } else if (bold) {
+            // Bold often wraps code, so its contents go through again.
             parts.push(
                 <strong key={at} className="font-semibold text-fg">
-                    {bold}
+                    <Rich text={bold} />
                 </strong>,
             );
         } else if (code) {
@@ -118,7 +119,7 @@ function Content({ block }: { block: Block }) {
                                 <tr key={i} className="border-t border-line align-top">
                                     {row.map((cell, j) => (
                                         <td key={j} className={j === 0 ? 'px-3 py-2 font-medium text-fg' : 'px-3 py-2 text-muted'}>
-                                            {cell}
+                                            <Rich text={cell} />
                                         </td>
                                     ))}
                                 </tr>
