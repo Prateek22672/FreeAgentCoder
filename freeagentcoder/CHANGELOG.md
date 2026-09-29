@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.3.1 — Honest about Cerebras
+
+### Fixed
+
+- **Cerebras is no longer described as a free tier**, because it is not one any more. Their documentation now says there is no permanently free tier: it is $5 of credits that need a card and expire after 30 days. The extension said otherwise in several places, which meant following its advice led to a payment wall. The providers that still need no card are Gemini, Groq, Mistral and OpenRouter.
+
+### Changed
+
+- The one-time question about sending anonymous counts now comes after your **first** task rather than the third. Someone who tries it once and moves on is exactly who it is worth hearing from.
+- **"Get a free key" buttons** now pass through a redirect on the project's site, which counts only the provider and the day, so it is possible to tell how many people reach the point of getting a key. The provider's own address is still shown beside the button as a direct link, and the redirect never blocks the way through.
+
 ## 0.3.0 — Work on tasks from Project Brain
 
 ### Added
