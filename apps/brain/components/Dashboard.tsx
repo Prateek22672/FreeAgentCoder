@@ -38,6 +38,7 @@ const VIEWS: { id: ViewId; label: string; short: string; icon: IconName; sidebar
 /** The rail, in groups: understand · explore · ask and plan · structure. */
 const RAIL: ViewId[][] = [['overview'], ['files', 'search'], ['ask', 'impact'], ['architecture', 'dependencies']];
 const SIDE_WIDTH = { min: 220, max: 520, fallback: 288, storage: 'projectBrain.sideWidth' };
+const CHAT_WIDTH = { min: 300, max: 680, fallback: 400, storage: 'projectBrain.chatWidth' };
 const isView = (value: string | undefined): value is ViewId => VIEWS.some((v) => v.id === value);
 const isDesktop = () => typeof window !== 'undefined' && window.matchMedia('(min-width: 768px)').matches;
 
@@ -178,15 +179,43 @@ export function Dashboard({ repo, initialTab, initialQuery }: { repo: string; in
     const [keysOpen, setKeysOpen] = useState(false);
     const { own } = useOwnKey();
     const [sideWidth, setSideWidth] = useState(SIDE_WIDTH.fallback);
+    const [chatOpen, setChatOpen] = useState(false);
+    const [chatWidth, setChatWidth] = useState(CHAT_WIDTH.fallback);
 
     useEffect(() => {
         try {
+            const savedChat = Number(window.localStorage.getItem(CHAT_WIDTH.storage));
+            if (savedChat >= CHAT_WIDTH.min && savedChat <= CHAT_WIDTH.max) {
+                setChatWidth(savedChat);
+            }
             const saved = Number(window.localStorage.getItem(SIDE_WIDTH.storage));
             if (saved >= SIDE_WIDTH.min && saved <= SIDE_WIDTH.max) setSideWidth(saved);
         } catch {
             // storage unavailable: keep the default width
         }
     }, []);
+
+    const startChatResize = (event: React.PointerEvent) => {
+        event.preventDefault();
+        const startX = event.clientX;
+        const startWidth = chatWidth;
+        let width = startWidth;
+        const move = (e: PointerEvent) => {
+            width = Math.max(CHAT_WIDTH.min, Math.min(CHAT_WIDTH.max, startWidth - (e.clientX - startX)));
+            setChatWidth(width);
+        };
+        const up = () => {
+            window.removeEventListener('pointermove', move);
+            window.removeEventListener('pointerup', up);
+            try {
+                window.localStorage.setItem(CHAT_WIDTH.storage, String(width));
+            } catch {
+                // not remembered this time
+            }
+        };
+        window.addEventListener('pointermove', move);
+        window.addEventListener('pointerup', up);
+    };
 
     const startResize = (event: React.PointerEvent) => {
         event.preventDefault();
@@ -307,7 +336,7 @@ export function Dashboard({ repo, initialTab, initialQuery }: { repo: string; in
                         <div key={g} className={cx('flex flex-col items-center gap-0.5 px-1.5', g > 0 && 'mt-1.5 border-t border-line pt-1.5')}>
                             {group.map((id) => {
                                 const v = VIEWS.find((view) => view.id === id)!;
-                                const selected = v.sidebar ? sidebar === v.sidebar : active === `view:${v.id}`;
+                                const selected = v.sidebar ? sidebar === v.sidebar : v.id === 'ask' ? chatOpen : active === `view:${v.id}`;
                                 return (
                                     <button
                                         key={v.id}
@@ -316,7 +345,15 @@ export function Dashboard({ repo, initialTab, initialQuery }: { repo: string; in
                                         title={v.label}
                                         aria-label={v.label}
                                         aria-pressed={selected}
-                                        onClick={() => (v.sidebar ? setSidebar(sidebar === v.sidebar ? null : v.sidebar) : goTo(v.id))}
+                                        onClick={() => {
+                                            if (v.sidebar) {
+                                                setSidebar(sidebar === v.sidebar ? null : v.sidebar);
+                                            } else if (v.id === 'ask') {
+                                                setChatOpen((openNow) => !openNow);
+                                            } else {
+                                                goTo(v.id);
+                                            }
+                                        }}
                                         className={cx(
                                             'relative flex w-full flex-col items-center gap-0.5 rounded-md py-1.5 transition-colors disabled:opacity-30',
                                             selected ? 'bg-panel-2 text-fg' : 'text-faint hover:bg-panel-2/60 hover:text-fg',
@@ -448,6 +485,28 @@ export function Dashboard({ repo, initialTab, initialQuery }: { repo: string; in
                         </>
                     )}
                 </main>
+
+                {/* Ask, docked on the right like a chat panel in the editor. */}
+                {chatOpen && data && (
+                    <aside className="relative hidden shrink-0 flex-col border-l border-line bg-panel md:flex" style={{ width: chatWidth }} aria-label="Ask">
+                        <div
+                            role="separator"
+                            aria-orientation="vertical"
+                            aria-label="Resize the chat panel"
+                            onPointerDown={startChatResize}
+                            className="absolute inset-y-0 -left-1 z-10 w-2 cursor-col-resize hover:bg-accent/30"
+                        />
+                        <div className="flex h-9 shrink-0 items-center justify-between border-b border-line px-3">
+                            <span className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-faint">
+                                <Icon name="ask" size={13} /> Ask this codebase
+                            </span>
+                            <button type="button" onClick={() => setChatOpen(false)} title="Close" aria-label="Close the chat panel" className="text-faint hover:text-fg">
+                                <Icon name="close" size={14} />
+                            </button>
+                        </div>
+                        <div className="scroll-thin min-h-0 flex-1 overflow-y-auto p-3">{props('ask') && <AskTab {...props('ask')!} />}</div>
+                    </aside>
+                )}
             </div>
 
             <StatusBar data={data} />
