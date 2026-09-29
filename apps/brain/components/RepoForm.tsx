@@ -37,6 +37,9 @@ export function RepoForm({ examples }: { examples: string[] }) {
 
   return (
     <div>
+      <p className="mb-2 flex items-center gap-2 text-[12px] font-semibold uppercase tracking-wider text-accent">
+        Tell it what you want built
+      </p>
       <form
         onSubmit={(e) => {
           e.preventDefault();
@@ -62,10 +65,14 @@ export function RepoForm({ examples }: { examples: string[] }) {
       <TextInput
         value={task}
         onChange={(e) => setTask(e.target.value)}
-        placeholder="What do you want to change? (optional) — e.g. replace Prisma with Drizzle"
+        placeholder="What do you want to change? e.g. add Stripe checkout, replace Prisma with Drizzle"
         aria-label="What do you want to change"
         className="mt-2 h-11 text-[15px]"
       />
+      <p className="mt-2 text-[13px] leading-relaxed text-faint">
+        Say what you want and it reads the repository, shows you what the change would break, and writes the plan — then hands it to the agent in VS Code. Leave it
+        empty to just look around.
+      </p>
       {error && <p className="mt-2 text-sm text-bad">{error}</p>}
       {examples.length > 0 && <div className="mt-3 flex flex-wrap items-center gap-2 text-sm">
         <span className="text-faint">Try</span>
