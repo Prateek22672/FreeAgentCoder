@@ -22,6 +22,7 @@ import { RunPanel } from './workbench/RunPanel';
 import { Explorer } from './workbench/Explorer';
 import { Progress, advance, initialSteps, type StepState } from './workbench/Progress';
 import { SearchPanel } from './workbench/SearchPanel';
+import { Logo } from '@/components/Logo';
 
 type Range = { start: number; end: number };
 type Tab = { kind: 'view'; id: ViewId } | { kind: 'file'; path: string; lines?: Range };
@@ -124,8 +125,8 @@ function TitleBar({
     return (
         <header className="flex h-10 shrink-0 items-center gap-3 border-b border-line bg-panel px-3">
             <Link href="/" className="flex shrink-0 items-center gap-1.5 text-[13px] font-semibold text-fg">
-                <span className="text-accent">▣</span>
-                <span className="hidden lg:inline">Project Brain</span>
+                <Logo size={15} />
+                <span className="hidden lg:inline">FreeAgentCoder</span>
             </Link>
             <span className="hidden min-w-0 items-center gap-1 truncate font-mono text-[12.5px] text-muted sm:flex">
                 <span className="text-faint">/</span>

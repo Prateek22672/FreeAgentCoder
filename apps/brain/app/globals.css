@@ -123,3 +123,32 @@
 /* The landing page scrolls through 3D space; keep sideways swings from
    creating a horizontal scrollbar. */
 body:has([data-reveal]) { overflow-x: clip; }
+
+/* Guides stack like cards as you scroll: each one sticks a little lower than
+   the last and the next slides over it. */
+.guide-stack { display: grid; gap: 28px; padding-bottom: 40px; }
+.guide-card { position: sticky; }
+.guide-link {
+  display: block;
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  background: linear-gradient(180deg, var(--panel) 0%, var(--bg) 140%);
+  padding: 36px 36px 32px;
+  box-shadow: 0 -18px 40px -24px rgb(0 0 0 / 0.8), 0 30px 60px -30px rgb(0 0 0 / 0.7);
+  transition: border-color 0.3s, transform 0.4s cubic-bezier(0.2, 0.7, 0.2, 1);
+}
+.guide-link:hover { border-color: var(--accent); transform: translateY(-4px); }
+
+/* Opening a guide zooms the card into the page, as one continuous motion.
+   Browsers without cross-document view transitions simply navigate. */
+@view-transition { navigation: auto; }
+::view-transition-group(*) { animation-duration: 0.55s; animation-timing-function: cubic-bezier(0.22, 0.8, 0.2, 1); }
+::view-transition-old(root) { animation: 0.45s cubic-bezier(0.4, 0, 1, 1) both vt-recede; }
+::view-transition-new(root) { animation: 0.55s cubic-bezier(0, 0, 0.2, 1) 0.08s both vt-arrive; }
+@keyframes vt-recede { to { opacity: 0; transform: scale(0.94); filter: blur(6px); } }
+@keyframes vt-arrive { from { opacity: 0; transform: scale(1.04); filter: blur(6px); } }
+@media (prefers-reduced-motion: reduce) {
+  ::view-transition-group(*), ::view-transition-old(root), ::view-transition-new(root) { animation: none; }
+}
+
+.faq summary::-webkit-details-marker { display: none; }

@@ -6,6 +6,7 @@ import { StructuredData, faqPage, graph, organization, website } from '@/compone
 import { Icon } from '@/components/icons';
 import { ARTICLES, articleBySlug, type Block } from '@/lib/articles';
 import { MARKETPLACE, SITE_URL, canonical } from '@/lib/site';
+import { Logo } from '@/components/Logo';
 
 type Params = Promise<{ slug: string }>;
 
@@ -173,7 +174,7 @@ export default async function ArticlePage({ params }: { params: Params }) {
 
             <header className="flex h-14 items-center justify-between">
                 <Link href="/" className="flex items-center gap-2 font-display text-[15px] font-semibold text-fg">
-                    <span className="text-lg text-accent">▣</span> FreeAgentCoder
+                    <Logo /> FreeAgentCoder
                 </Link>
                 <a href={MARKETPLACE} target="_blank" rel="noreferrer noopener" className="rounded-md bg-fg px-3 py-1.5 text-[13px] font-semibold text-bg hover:opacity-90">
                     Install extension
@@ -182,7 +183,7 @@ export default async function ArticlePage({ params }: { params: Params }) {
 
             <article className="pt-10">
                 <p className="text-[12px] font-semibold uppercase tracking-wider text-accent">Guide</p>
-                <h1 className="mt-2 font-display text-3xl font-semibold tracking-tight text-fg sm:text-4xl">{article.h1}</h1>
+                <h1 className="mt-2 font-display text-3xl font-semibold tracking-tight text-fg sm:text-4xl" style={{ viewTransitionName: `guide-${article.slug}` }}>{article.h1}</h1>
                 <p className="mt-4 text-lg leading-relaxed text-muted">{article.dek}</p>
                 <p className="mt-3 text-[12.5px] text-faint">Updated {new Date(article.updated).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })}</p>
 

@@ -28,7 +28,7 @@ function setting(name: string, fallback: number): number {
 }
 
 /** Enough to see whether it answers your codebase well; after that, a visitor brings their own free key. */
-export const TRIAL_LIMIT = setting('BRAIN_TRIAL_QUESTIONS', 2);
+export const TRIAL_LIMIT = setting('BRAIN_TRIAL_QUESTIONS', 5);
 const PER_ADDRESS_LIMIT = TRIAL_LIMIT * 6;
 const DAILY_CAP = setting('BRAIN_TRIAL_DAILY_CAP', 200);
 const DAY_MS = 24 * 60 * 60 * 1000;

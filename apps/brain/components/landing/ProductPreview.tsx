@@ -7,6 +7,7 @@ import { buildPlan, roleOf } from '@agentic/project-brain';
 import Link from 'next/link';
 import { SAMPLE, SAMPLE_IMPACT } from '@/lib/sample';
 import { Icon, type IconName } from '../icons';
+import { Logo } from '@/components/Logo';
 
 const ACTIVITY: IconName[] = ['overview', 'files', 'search', 'ask', 'impact', 'layers', 'package'];
 const DOT = new Set(['api', 'component', 'model', 'service', 'test']);
@@ -31,7 +32,7 @@ export function ProductPreview() {
                         <span className="size-2.5 rounded-full bg-[#28c840]" />
                     </span>
                     <span className="font-mono text-[11.5px] text-muted">
-                        <span className="text-accent">▣</span> Project Brain / {SAMPLE.meta.owner} / <span className="text-fg">{SAMPLE.meta.repo}</span>
+                        <Logo size={13} /> FreeAgentCoder / {SAMPLE.meta.owner} / <span className="text-fg">{SAMPLE.meta.repo}</span>
                     </span>
                     <span className="mx-auto hidden h-6 w-72 items-center rounded border border-line bg-bg px-2 text-[11px] text-faint md:flex">Ask anything about this codebase…</span>
                     <span className="hidden rounded bg-accent px-2 py-0.5 text-[11px] font-medium text-accent-fg sm:block">Plan a change</span>

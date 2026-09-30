@@ -1,3 +1,4 @@
+import { Logo } from '@/components/Logo';
 import Link from 'next/link';
 import { Icon, type IconName } from '@/components/icons';
 import { HeroCanvas } from '@/components/landing/HeroCanvas';
@@ -75,9 +76,7 @@ export default function Home() {
             <header className="sticky top-0 z-30 border-b border-line/60 bg-bg/80 backdrop-blur">
                 <div className="mx-auto flex h-14 max-w-7xl items-center gap-6 px-4 sm:px-6">
                     <Link href="/" className="flex items-center gap-2 font-display text-[15px] font-semibold tracking-tight text-fg">
-                        <svg viewBox="0 0 24 24" className="size-[18px] text-accent" fill="currentColor" aria-hidden>
-                            <path fillRule="evenodd" d="M3 3h13v4H7v9H3zM21 21H8v-4h9V8h4zM10 10h4v4h-4z" />
-                        </svg>
+                        <Logo />
                         FreeAgentCoder
                     </Link>
                     <nav className="hidden items-center gap-6 text-[14px] text-muted md:flex">
@@ -129,7 +128,7 @@ export default function Home() {
                             <Icon name="shield" size={14} /> Read-only, nothing executed
                         </span>
                         <span className="flex items-center gap-1.5">
-                            <Icon name="check" size={14} /> Two free questions a day, then your own free key
+                            <Icon name="check" size={14} /> Five free questions a day, then your own free key
                         </span>
                         <span className="flex items-center gap-1.5">
                             <Icon name="code" size={14} /> Works with the free FreeAgentCoder agent
@@ -197,7 +196,7 @@ export default function Home() {
                     <div className="mt-10 grid items-stretch gap-4 lg:grid-cols-[1fr_auto_1fr]">
                         <div className="rounded-xl border border-line bg-panel p-6">
                             <p className="flex items-center gap-2 text-[15px] font-semibold text-fg">
-                                <span className="text-accent">▣</span> Project Brain <span className="text-[12px] font-normal text-faint">· this website</span>
+                                <Logo size={15} /> Project Brain <span className="text-[12px] font-normal text-faint">· this website</span>
                             </p>
                             <ul className="mt-4 grid grid-cols-2 gap-2 text-[14px] text-muted">
                                 {BRAIN.map((item) => (
@@ -281,32 +280,40 @@ export default function Home() {
                 <div className="mx-auto max-w-4xl px-4 py-20 sm:px-6">
                     <p className="text-[12px] font-semibold uppercase tracking-wider text-accent">Questions</p>
                     <h2 className="mt-2 font-display text-3xl font-semibold tracking-tight text-fg sm:text-4xl">Straight answers.</h2>
-                    <dl className="mt-8 divide-y divide-line rounded-xl border border-line bg-panel px-5">
+                    <div className="mt-8 divide-y divide-line border-y border-line">
                         {FAQ.map((item) => (
-                            <div key={item.q} className="py-5">
-                                <dt className="text-[15px] font-medium text-fg">{item.q}</dt>
-                                <dd className="mt-1.5 text-[14.5px] leading-relaxed text-muted">{item.a}</dd>
-                            </div>
+                            <details key={item.q} className="faq group py-1">
+                                <summary className="flex cursor-pointer list-none items-center justify-between gap-6 py-4 text-[16px] font-medium text-fg">
+                                    {item.q}
+                                    <span className="text-xl leading-none text-faint transition-transform duration-300 group-open:rotate-45" aria-hidden>
+                                        +
+                                    </span>
+                                </summary>
+                                <p className="pb-5 pr-10 text-[14.5px] leading-relaxed text-muted">{item.a}</p>
+                            </details>
                         ))}
-                    </dl>
+                    </div>
                 </div>
             </section>
 
             {/* Guides: one page per real question people search for. */}
             <section data-reveal className="border-t border-line">
-                <div className="mx-auto max-w-7xl px-4 py-20 sm:px-6">
+                <div className="mx-auto max-w-4xl px-4 py-20 sm:px-6">
                     <p className="text-[12px] font-semibold uppercase tracking-wider text-accent">Guides</p>
                     <h2 className="mt-2 font-display text-3xl font-semibold tracking-tight text-fg sm:text-4xl">Read before you switch.</h2>
-                    <ul className="mt-8 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                        {ARTICLES.map((article) => (
-                            <li key={article.slug}>
-                                <Link href={`/${article.slug}`} className="flex h-full flex-col rounded-xl border border-line bg-panel p-5 transition-colors hover:border-accent">
-                                    <span className="text-[15px] font-semibold text-fg">{article.h1}</span>
-                                    <span className="mt-1.5 text-[13.5px] leading-relaxed text-muted">{article.description}</span>
-                                    <span className="mt-3 flex items-center gap-1 text-[13px] text-accent">
-                                        Read <Icon name="arrowRight" size={14} />
+                    <ul className="guide-stack mt-10">
+                        {ARTICLES.map((article, i) => (
+                            <li key={article.slug} className="guide-card" style={{ top: `${88 + i * 18}px`, zIndex: i + 1 }}>
+                                {/* A plain link on purpose: a real page load, so each guide stays its own
+                                    indexable page, and the browser can zoom the card into it. */}
+                                <a href={`/${article.slug}`} className="guide-link" style={{ viewTransitionName: `guide-${article.slug}` }}>
+                                    <span className="font-mono text-[12px] text-faint">{String(i + 1).padStart(2, '0')}</span>
+                                    <span className="mt-3 block font-display text-2xl font-semibold tracking-tight text-fg sm:text-3xl">{article.h1}</span>
+                                    <span className="mt-3 block max-w-2xl text-[15px] leading-relaxed text-muted">{article.description}</span>
+                                    <span className="mt-6 inline-flex items-center gap-1.5 text-[14px] font-medium text-accent">
+                                        Read the guide <Icon name="arrowRight" size={15} />
                                     </span>
-                                </Link>
+                                </a>
                             </li>
                         ))}
                     </ul>
@@ -315,7 +322,7 @@ export default function Home() {
 
             <footer className="border-t border-line">
                 <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-3 px-4 py-8 text-[13px] text-faint sm:px-6">
-                    <span>A Kodenza product.</span>
+                    <span>Free and open source · Works with Claude, GPT, Gemini and more, on your own keys.</span>
                     <span className="flex gap-5">
                         <a href={MARKETPLACE} target="_blank" rel="noreferrer noopener" className="hover:text-fg">
                             VS Code extension
