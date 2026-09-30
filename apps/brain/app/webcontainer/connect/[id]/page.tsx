@@ -10,7 +10,9 @@ import { useEffect } from 'react';
  */
 export default function Connect() {
     useEffect(() => {
-        void import('@webcontainer/api/connect').then(({ setupConnect }) => setupConnect({ editorOrigin: window.location.origin }));
+        // The relay goes to the runtime's own service (stackblitz.com by default),
+        // not back to this site — pointing it here makes the page relay to itself.
+        void import('@webcontainer/api/connect').then(({ setupConnect }) => setupConnect());
     }, []);
     return (
         <main style={{ display: 'grid', minHeight: '100dvh', placeItems: 'center', fontFamily: 'system-ui, sans-serif', color: '#a1a1aa', background: '#0c0c0d' }}>
