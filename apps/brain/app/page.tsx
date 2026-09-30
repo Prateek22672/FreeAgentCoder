@@ -59,17 +59,17 @@ const STEPS: { icon: IconName; title: string; body: string }[] = [
 const orb = (color: string, at = '50% 45%') => `radial-gradient(52% 40% at ${at}, ${color}, transparent 72%)`;
 
 const WORK: WorkCard[] = [
-    { href: '/playground', slug: 'playground', title: 'Playground', tags: 'Browser · Live preview', tag: 'New', art: orb('rgba(170, 70, 255, 0.75)', '55% 40%'), accent: '#d4b0ff', wide: true },
+    { href: '/playground', slug: 'playground', title: 'Playground', tags: 'Browser · Live preview', tag: 'New', art: orb('rgba(220, 220, 228, 0.55)', '55% 40%'), accent: '#e4e4e7', wide: true },
     {
         href: '#brain',
         slug: 'project brain',
         title: 'Read a repo',
         tags: 'Architecture · Impact',
         tag: 'Free',
-        art: `radial-gradient(14% 18% at 50% 42%, rgba(255,255,255,0.9), transparent 70%), repeating-radial-gradient(circle at 50% 42%, rgba(160,190,255,0.16) 0 1px, transparent 1px 9px), radial-gradient(40% 40% at 50% 42%, rgba(80,110,220,0.5), transparent 75%)`,
-        accent: '#aecbff',
+        art: `radial-gradient(14% 18% at 50% 42%, rgba(255,255,255,0.9), transparent 70%), repeating-radial-gradient(circle at 50% 42%, rgba(220,220,230,0.14) 0 1px, transparent 1px 9px), radial-gradient(40% 40% at 50% 42%, rgba(120,120,130,0.45), transparent 75%)`,
+        accent: '#e4e4e7',
     },
-    { href: '/free-ai-coding-agent-vscode', slug: 'agent', title: 'VS Code agent', tags: 'Edits · Tests · Diffs', tag: 'MIT', art: orb('rgba(120, 40, 220, 0.7)', '40% 45%'), accent: '#c9a6ff' },
+    { href: '/free-ai-coding-agent-vscode', slug: 'agent', title: 'VS Code agent', tags: 'Edits · Tests · Diffs', tag: 'MIT', art: orb('rgba(150, 150, 160, 0.55)', '40% 45%'), accent: '#d4d4d8' },
     { href: '/free-ai-coding-agent-vscode', slug: 'specialists', title: 'Specialists', tags: 'Debug · Refactor · Design', tag: 'Built in', art: orb('rgba(230, 140, 60, 0.7)', '60% 50%'), accent: '#ffc38a' },
     { href: '/free-ai-api-limits', slug: 'free keys', title: 'Free keys', tags: 'Gemini · Groq · Mistral', tag: 'No card', art: orb('rgba(40, 190, 150, 0.6)', '50% 40%'), accent: '#7ff0cb', wide: true },
     { href: '/move-off-lovable-keep-building-free', slug: 'leave the credits', title: 'Off the meter', tags: 'Lovable · Bolt', tag: 'Guide', art: orb('rgba(235, 80, 140, 0.6)', '45% 50%'), accent: '#ffa3c6' },
@@ -117,7 +117,7 @@ export default function Home() {
                 <Library />
 
                 {/* The working parts: read a repository, the questions, the guides. */}
-                <div className="force-dark overflow-hidden rounded-b-[28px] bg-[#07060b]">
+                <div className="force-dark overflow-hidden rounded-b-[28px] bg-[#070708]">
                     <section id="brain" className="mx-auto max-w-6xl scroll-mt-24 px-5 pb-24 pt-24 sm:px-8">
                         <h2 className="font-mono text-[11px] uppercase tracking-[0.22em] text-white/50">Read a repo</h2>
                         <p className="cine-display mt-5 max-w-3xl text-[clamp(2.2rem,5vw,3.8rem)] font-medium leading-[1.02] tracking-[-0.035em] text-white">
@@ -182,7 +182,7 @@ export default function Home() {
 
                 {/* The last call to action. */}
                 <section className="p-2 pt-16 sm:p-3 sm:pt-24" aria-labelledby="cta-title">
-                    <div className="cine-purple relative grid min-h-[min(100dvh,760px)] overflow-hidden rounded-[22px] sm:rounded-[28px] md:grid-cols-[minmax(0,5fr)_minmax(0,7fr)]">
+                    <div className="cine-graphite relative grid min-h-[min(100dvh,760px)] overflow-hidden rounded-[22px] sm:rounded-[28px] md:grid-cols-[minmax(0,5fr)_minmax(0,7fr)]">
                         <div className="relative z-10 flex flex-col justify-center px-6 py-20 text-white sm:px-12">
                             <h2 id="cta-title" className="cine-display text-[clamp(3rem,7vw,5.6rem)] font-semibold leading-[0.95] tracking-[-0.035em]">
                                 Start
@@ -219,7 +219,7 @@ export default function Home() {
             <footer data-nav="light" className="px-5 pb-8 pt-20 text-zinc-900 sm:px-12">
                 <div className="flex flex-col gap-14 md:flex-row md:items-start md:justify-between">
                     <div>
-                        <Star size={22} className="text-[#7b2ff0]" />
+                        <Star size={22} className="text-zinc-900" />
                         <p className="cine-display mt-3 text-[clamp(2.6rem,8vw,6.2rem)] font-medium leading-none tracking-[-0.055em]">FreeAgentCoder</p>
                         <p className="mt-3 text-[14px] text-zinc-500">Your codebase has a brain.</p>
                     </div>
@@ -230,7 +230,7 @@ export default function Home() {
                                 <ul className="mt-4 space-y-2.5 text-[14.5px]">
                                     {col.links.map((link) => (
                                         <li key={link.label}>
-                                            <a href={link.href} {...(link.external ? { target: '_blank', rel: 'noreferrer noopener' } : {})} className="hover:text-[#7b2ff0]">
+                                            <a href={link.href} {...(link.external ? { target: '_blank', rel: 'noreferrer noopener' } : {})} className="hover:text-zinc-500">
                                                 {link.label}
                                             </a>
                                         </li>

@@ -47,7 +47,7 @@ export function WorkRail({ cards, archive }: { cards: WorkCard[]; archive: { hre
     const total = String(cards.length + 1).padStart(2, '0');
 
     return (
-        <section ref={host} id="work" className="cine-rail relative h-[340vh] bg-[#07060b] text-white" aria-labelledby="work-title">
+        <section ref={host} id="work" className="cine-rail relative h-[340vh] bg-[#070708] text-white" aria-labelledby="work-title">
             <div className="sticky top-0 flex h-dvh flex-col justify-center overflow-hidden">
                 <h2 id="work-title" className="absolute left-[5vw] top-[15vh] font-mono text-[11px] uppercase tracking-[0.22em] text-white/50">
                     What you can do
@@ -57,7 +57,7 @@ export function WorkRail({ cards, archive }: { cards: WorkCard[]; archive: { hre
                         <div key={card.title} className="shrink-0">
                             <a
                                 href={card.href}
-                                className={`group relative flex aspect-[1.3] flex-col overflow-hidden rounded-[20px] border border-white/10 bg-[#0c0b11] p-4 transition-colors hover:border-white/25 ${
+                                className={`group relative flex aspect-[1.3] flex-col overflow-hidden rounded-[20px] border border-white/10 bg-[#0c0c0e] p-4 transition-colors hover:border-white/25 ${
                                     card.wide ? 'w-[clamp(290px,48vw,600px)]' : 'w-[clamp(270px,40vw,500px)]'
                                 }`}
                             >
@@ -87,7 +87,7 @@ export function WorkRail({ cards, archive }: { cards: WorkCard[]; archive: { hre
                     <div className="shrink-0">
                         <a
                             href={archive.href}
-                            className="flex aspect-[1.3] w-[clamp(240px,30vw,380px)] flex-col items-center justify-center rounded-[20px] border border-white/10 bg-[#15141b] p-6 text-center transition-colors hover:border-white/25"
+                            className="flex aspect-[1.3] w-[clamp(240px,30vw,380px)] flex-col items-center justify-center rounded-[20px] border border-white/10 bg-[#151517] p-6 text-center transition-colors hover:border-white/25"
                         >
                             <span className="font-mono text-[11px] tracking-[0.2em] text-white/45">
                                 {total} / {total}

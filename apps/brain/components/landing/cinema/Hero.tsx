@@ -100,7 +100,7 @@ export function Hero() {
     return (
         <section ref={host} className="cine-hero relative h-[150vh] bg-[#ececf0]">
             <div className="sticky top-0 h-dvh p-2 sm:p-3">
-                <div className="cine-purple relative h-full overflow-hidden rounded-[22px] sm:rounded-[28px]">
+                <div className="cine-graphite relative h-full overflow-hidden rounded-[22px] sm:rounded-[28px]">
                     <div ref={content} className="relative flex h-full origin-center flex-col px-6 pb-8 pt-24 will-change-transform sm:px-12 sm:pb-10 sm:pt-[4.5rem]">
                         <h1 className="cine-display text-[clamp(2.9rem,9.2vw,7.4rem)] font-semibold leading-[0.95] tracking-[-0.035em]">
                             <span className="block text-white">Your codebase</span>
@@ -134,7 +134,7 @@ export function Hero() {
                                             <span
                                                 key={p.name}
                                                 title={p.name}
-                                                className="flex size-6 items-center justify-center rounded-full border-2 border-[#3b0f95] text-[10px] font-bold text-white"
+                                                className="flex size-6 items-center justify-center rounded-full border-2 border-[#1c1c1f] text-[10px] font-bold text-white"
                                                 style={{ background: `radial-gradient(circle at 30% 30%, color-mix(in srgb, ${p.color} 60%, white), ${p.color})` }}
                                             >
                                                 {p.name[0]}

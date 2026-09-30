@@ -61,7 +61,7 @@ export function Library() {
     );
 
     return (
-        <section ref={host} className="relative h-[280vh] bg-[#07060b] text-white" aria-labelledby="library-title">
+        <section ref={host} className="relative h-[280vh] bg-[#070708] text-white" aria-labelledby="library-title">
             <div className="sticky top-0 h-dvh overflow-hidden [perspective:1000px]">
                 <div ref={field} aria-hidden className="absolute inset-0 [transform-style:preserve-3d]">
                     {TILES.map((tile) => (

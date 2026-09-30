@@ -55,7 +55,7 @@ export function Beyond() {
     );
 
     return (
-        <section ref={host} className="relative h-[260vh] bg-[#07060b] text-white" aria-labelledby="beyond-title">
+        <section ref={host} className="relative h-[260vh] bg-[#070708] text-white" aria-labelledby="beyond-title">
             <div className="sticky top-0 h-dvh overflow-hidden">
                 <h2 id="beyond-title" className="cine-display text-[clamp(3.4rem,11.5vw,11rem)] font-medium leading-[0.9] tracking-[-0.05em]">
                     <span ref={top} className="absolute block left-[3vw] top-[11vh] will-change-transform">
@@ -67,7 +67,7 @@ export function Beyond() {
                 </h2>
                 <div ref={star} className="absolute left-1/2 top-1/2 will-change-transform" aria-hidden>
                     <div className="cine-star-glow absolute left-1/2 top-1/2 size-[46vmin] -translate-x-1/2 -translate-y-1/2 rounded-full" />
-                    <Star size={180} className="relative size-[28vmin] text-white drop-shadow-[0_0_40px_rgb(190_150_255/0.7)]" />
+                    <Star size={180} className="relative size-[28vmin] text-white drop-shadow-[0_0_40px_rgb(255_255_255/0.45)]" />
                 </div>
                 <dl ref={stats} className="absolute inset-x-[5vw] top-[66%] flex justify-between gap-4 sm:inset-x-auto sm:right-[4vw] sm:top-1/2 sm:-translate-y-1/2 sm:flex-col sm:items-end sm:gap-8 sm:text-right">
                     {STATS.map((s) => (

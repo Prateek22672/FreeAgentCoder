@@ -49,7 +49,7 @@ export function PillNav() {
             <nav
                 aria-label="Main"
                 className={`pointer-events-auto flex items-center gap-0.5 rounded-full p-1 pl-2 text-[13.5px] shadow-[0_10px_40px_-12px_rgb(0_0_0/0.45)] backdrop-blur-xl transition-colors duration-500 ${
-                    light ? 'bg-white/90 text-zinc-800' : 'bg-[#120a1f]/70 text-white/85'
+                    light ? 'bg-white/90 text-zinc-800' : 'bg-[#0c0c0e]/70 text-white/85'
                 }`}
             >
                 <a href="/" aria-label="FreeAgentCoder home" className="flex size-8 items-center justify-center rounded-full">

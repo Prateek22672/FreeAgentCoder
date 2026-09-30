@@ -35,13 +35,13 @@ float shape(vec3 p){
 }
 
 vec3 env(vec3 r){
-    // A studio of soft lights over a dark purple room: chrome is only ever
+    // A studio of soft lights over a dark grey room: chrome is only ever
     // what it reflects, so the bands here are what make it read as metal.
-    vec3 c = vec3(0.06, 0.02, 0.16);
-    c += vec3(0.72, 0.62, 1.0) * exp(-pow((r.y - 0.12) * 3.5, 2.0)) * 0.8;
+    vec3 c = vec3(0.04, 0.04, 0.045);
+    c += vec3(0.7, 0.7, 0.74) * exp(-pow((r.y - 0.12) * 3.5, 2.0)) * 0.8;
     c += vec3(1.0, 0.97, 1.0) * smoothstep(0.5, 0.85, r.y);
-    c += vec3(0.42, 0.18, 0.9) * smoothstep(-0.25, -0.9, r.y) * 0.55;
-    c += vec3(0.95, 0.9, 1.0) * smoothstep(0.06, 0.0, abs(r.x - 0.4)) * 0.6;
+    c += vec3(0.3, 0.3, 0.33) * smoothstep(-0.25, -0.9, r.y) * 0.55;
+    c += vec3(0.95, 0.95, 0.97) * smoothstep(0.06, 0.0, abs(r.x - 0.4)) * 0.6;
     c += vec3(1.0) * pow(max(dot(r, normalize(vec3(-0.6, 0.45, 0.65))), 0.0), 40.0) * 1.4;
     return c * (0.8 + 0.2 * r.x);
 }
@@ -81,7 +81,7 @@ void main(){
     vec3 n = normalAt(p);
     vec3 col = env(reflect(rd, n));
     float fres = pow(1.0 - max(dot(-rd, n), 0.0), 3.0);
-    col = col + vec3(0.6, 0.5, 1.0) * fres * 0.35;
+    col = col + vec3(0.6, 0.6, 0.64) * fres * 0.35;
     col = pow(col, vec3(0.92));
     gl_FragColor = vec4(col, 1.0);
 }`;
@@ -171,7 +171,7 @@ export function ChromeStar({ className = '' }: { className?: string }) {
     if (fallback) {
         return (
             <div className={`flex items-center justify-center ${className}`} aria-hidden>
-                <Star size={320} className="size-[70%] rotate-12 text-white/85 drop-shadow-[0_20px_60px_rgb(200_170_255/0.7)]" />
+                <Star size={320} className="size-[70%] rotate-12 text-white/85 drop-shadow-[0_20px_60px_rgb(255_255_255/0.35)]" />
             </div>
         );
     }
