@@ -120,22 +120,6 @@
   filter: blur(52px) saturate(170%);
 }
 
-
-/* Sections rise into view. Hidden only once the reveal script has run, so the
-   page is complete for crawlers, for scripts-off readers, and before hydration. */
-body[data-reveal] [data-reveal] {
-  opacity: 0;
-  transform: translateY(18px);
-  transition: opacity 0.7s cubic-bezier(0.2, 0.7, 0.2, 1), transform 0.7s cubic-bezier(0.2, 0.7, 0.2, 1);
-}
-body[data-reveal] [data-reveal].is-visible {
-  opacity: 1;
-  transform: none;
-}
-@media (prefers-reduced-motion: reduce) {
-  body[data-reveal] [data-reveal] {
-    opacity: 1;
-    transform: none;
-    transition: none;
-  }
-}
+/* The landing page scrolls through 3D space; keep sideways swings from
+   creating a horizontal scrollbar. */
+body:has([data-reveal]) { overflow-x: clip; }
