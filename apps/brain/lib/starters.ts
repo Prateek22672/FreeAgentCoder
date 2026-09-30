@@ -62,7 +62,8 @@ export const STARTERS: Starter[] = [
         about: 'An empty page. Describe what you want and let it build from nothing.',
         files: {
             'package.json': vitePackage('new-project', {}, { vite: '^5.4.0' }),
-            'index.html': '<!doctype html>\n<html lang="en">\n  <head>\n    <meta charset="UTF-8" />\n    <title>New project</title>\n  </head>\n  <body></body>\n</html>\n',
+            'index.html':
+                '<!doctype html>\n<html lang="en">\n  <head>\n    <meta charset="UTF-8" />\n    <title>New project</title>\n  </head>\n  <body style="margin:0;display:grid;min-height:100vh;place-items:center;font-family:system-ui,sans-serif;background:#0c0c0d;color:#a1a1aa">\n    <p>A blank project. Ask the agent to build something.</p>\n  </body>\n</html>\n',
         },
     },
 ];

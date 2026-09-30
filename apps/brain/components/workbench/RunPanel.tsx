@@ -166,10 +166,16 @@ export function RunPanel({ load, live, onClose }: { load: () => Promise<RunSourc
                 if (source.skipped) say(`(${source.skipped} very large files were left out)`);
                 say(`$ npm run ${source.run.script}   # ${source.run.command}`);
 
+                let explained = false;
                 wc.on('server-ready', (port, url) => {
                     if (HELPER_PORTS.has(port)) return;
                     setPreview(url);
                     setStage('ready');
+                    if (!explained) {
+                        explained = true;
+                        // The dev server prints a localhost address, which exists only inside this tab.
+                        say(`→ Ready. The "localhost" address above is inside this browser tab, not your computer — use the preview, or Open in a tab.`);
+                    }
                 });
                 wc.on('error', (error) => {
                     setProblem(error.message);
