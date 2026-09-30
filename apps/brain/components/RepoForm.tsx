@@ -1,6 +1,5 @@
 'use client';
 
-import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { parseRepoSpec } from '@/lib/repoSpec';
 import { Button, TextInput } from './ui';
@@ -24,7 +23,6 @@ function toPath(input: string, task: string): string | undefined {
 }
 
 export function RepoForm({ examples }: { examples: string[] }) {
-  const router = useRouter();
   const [value, setValue] = useState('');
   const [task, setTask] = useState('');
   const [error, setError] = useState<string>();
@@ -32,7 +30,8 @@ export function RepoForm({ examples }: { examples: string[] }) {
   const go = (input: string) => {
     const path = toPath(input, task);
     if (!path) return setError('Enter a repository as owner/name, or paste its github.com URL.');
-    router.push(path);
+    // A real page load: the workbench needs its own isolation headers for Run.
+    window.location.assign(path);
   };
 
   return (

@@ -127,10 +127,28 @@ export function RunPanel({ load, live, onClose }: { load: () => Promise<RunSourc
 
         (async () => {
             if (typeof window === 'undefined' || !window.crossOriginIsolated || typeof SharedArrayBuffer === 'undefined') {
+                // Arriving here by an in-app link keeps the previous page's
+                // isolation settings, which do not allow the runtime. A real
+                // load of this page does; reload once, and only once.
+                const flag = `fac.isolation-reload:${location.pathname}`;
+                let reloaded = false;
+                try {
+                    reloaded = sessionStorage.getItem(flag) === '1';
+                    if (!reloaded) sessionStorage.setItem(flag, '1');
+                } catch {
+                    reloaded = true;
+                }
+                if (!reloaded && typeof SharedArrayBuffer === 'undefined') {
+                    location.reload();
+                    return;
+                }
                 setStage('unsupported');
                 setProblem('Running in the browser needs a desktop Chromium browser such as Chrome or Edge. Everything else on this page still works.');
                 return;
             }
+            try {
+                sessionStorage.removeItem(`fac.isolation-reload:${location.pathname}`);
+            } catch {}
             try {
                 setStage('booting');
                 const { WebContainer } = await import('@webcontainer/api');
@@ -239,7 +257,7 @@ export function RunPanel({ load, live, onClose }: { load: () => Promise<RunSourc
                 </div>
             </div>
             <div className="grid min-h-0 flex-1 grid-cols-1 lg:grid-cols-2">
-                <pre ref={logRef} className="scroll-thin m-0 min-h-0 overflow-auto border-r border-line bg-bg p-3 font-mono text-[12px] leading-relaxed text-muted">
+                <pre ref={logRef} className="scroll-thin m-0 min-h-0 overflow-auto whitespace-pre-wrap break-words border-r border-line bg-bg p-3 font-mono text-[12px] leading-relaxed text-muted">
                     {problem ? <span className="text-warn">{problem}{'\n'}</span> : null}
                     {lines.join('\n')}
                 </pre>

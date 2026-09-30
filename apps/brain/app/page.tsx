@@ -80,9 +80,9 @@ export default function Home() {
                         FreeAgentCoder
                     </Link>
                     <nav className="hidden items-center gap-6 text-[14px] text-muted md:flex">
-                        <Link href="/playground" className="font-medium text-fg hover:text-accent">
+                        <a href="/playground" className="font-medium text-fg hover:text-accent">
                             Playground
-                        </Link>
+                        </a>
                         <a href="#brain" className="hover:text-fg">
                             Read a repo
                         </a>
@@ -128,9 +128,9 @@ export default function Home() {
                     </div>
                     <p className="mt-4 text-center text-[14px] text-muted">
                         No repository?{' '}
-                        <Link href="/playground" className="font-medium text-accent underline underline-offset-4 hover:opacity-80">
+                        <a href="/playground" className="font-medium text-accent underline underline-offset-4 hover:opacity-80">
                             Start from nothing in the Playground →
-                        </Link>
+                        </a>
                     </p>
                     <div className="mt-5 flex flex-wrap items-center justify-center gap-x-5 gap-y-2 text-[13px] text-faint">
                         <span className="flex items-center gap-1.5">
