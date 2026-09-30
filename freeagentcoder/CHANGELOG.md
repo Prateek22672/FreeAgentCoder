@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.3.2 — A Plans page
+
+### Added
+
+- **Plans**, in Settings and as **FreeAgentCoder: Plans**. It shows the free tier you are on — your own keys, and the providers that give one away with no card — and, only if one has been switched on, a paid tier for when your free limits run out, with its price, its weekly quota and a button to get a licence. The page asks the project's site for this only when you open it; the free tier still makes no calls of its own. Where paid requests would go is said plainly: through FreeAgentCoder's server, unlike the free tier.
+
 ## 0.3.1 — Honest about Cerebras
 
 ### Fixed
