@@ -18,7 +18,7 @@ import { SearchTab } from './tabs/SearchTab';
 import { KeyPanel } from './KeyPanel';
 import { ConfidenceBadge, Stat, cx } from './ui';
 import { CodeEditor } from './workbench/CodeEditor';
-import { RunPanel } from './workbench/RunPanel';
+import { RunPanel, type RunSource } from './workbench/RunPanel';
 import { Explorer } from './workbench/Explorer';
 import { Progress, advance, initialSteps, type StepState } from './workbench/Progress';
 import { SearchPanel } from './workbench/SearchPanel';
@@ -530,7 +530,15 @@ export function Dashboard({ repo, initialTab, initialQuery }: { repo: string; in
                     )}
                     {runOpen && data && (
                         <div className="h-[46%] min-h-[220px] shrink-0 border-t border-line bg-panel">
-                            <RunPanel id={data.id} onClose={() => setRunOpen(false)} />
+                            <RunPanel
+                                load={async () => {
+                                    const response = await fetch(`/api/files?id=${encodeURIComponent(data.id)}`);
+                                    const payload = (await response.json()) as RunSource & { error?: string };
+                                    if (!response.ok) throw new Error(payload.error ?? 'The project could not be loaded.');
+                                    return payload;
+                                }}
+                                onClose={() => setRunOpen(false)}
+                            />
                         </div>
                     )}
                 </main>
