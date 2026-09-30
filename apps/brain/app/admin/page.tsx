@@ -133,6 +133,34 @@ export default async function AdminPage() {
                 <Stat label="Images sent to a model" value={format(stats.totals.readByModel ?? 0)} />
             </Section>
 
+            <section className="mt-8 rounded-lg border border-line bg-panel p-4">
+                <h2 className="mb-3 text-xs font-semibold uppercase tracking-wide text-muted">How the engine runs</h2>
+                <ol className="grid gap-2 text-[13.5px] leading-relaxed text-muted">
+                    <li>
+                        <span className="text-fg">In the extension:</span> each task is classified — quick or complex — then matched to a specialist (the method)
+                        and a playbook for its stack (the checks). It runs on the user&rsquo;s own keys, moving to the next key when one hits a limit.
+                        {' '}
+                        {SPECIALIST_INFO.filter((i) => specialists[i.id].enabled).length} of {SPECIALIST_INFO.length} specialists are on
+                        {SPECIALIST_INFO.some((i) => specialists[i.id].model) ? `; preferred models set for ${SPECIALIST_INFO.filter((i) => specialists[i.id].model).map((i) => i.name).join(', ')}` : ''}.
+                    </li>
+                    <li>
+                        <span className="text-fg">On this site:</span> Ask and the Playground use the visitor&rsquo;s own key when they have one; otherwise a free
+                        request, tried in this order —{' '}
+                        {pool.filter((k) => k.enabled && !k.benched).length || configuredProviders().length
+                            ? [
+                                  ...pool.filter((k) => k.enabled && !k.benched).map((k) => `${k.label} (pool)`),
+                                  ...configuredProviders().map((p) => `${providerLabel(p)} (environment)`),
+                              ].join(' → ')
+                            : 'no keys yet, so the free trial is off'}
+                        .
+                    </li>
+                    <li>
+                        <span className="text-fg">Running code:</span> never on this server. Run and the Playground boot a Node runtime inside the visitor&rsquo;s own
+                        browser tab.
+                    </li>
+                </ol>
+            </section>
+
             <Section title="Specialists — how each kind of work is done">
                 <SpecialistsForm info={SPECIALIST_INFO} settings={specialists} stats={stats.bySpecialist} />
             </Section>

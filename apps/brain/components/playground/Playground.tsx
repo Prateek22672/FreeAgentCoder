@@ -314,7 +314,7 @@ export function Playground() {
                 </div>
             </header>
 
-            <div className="flex min-h-0 flex-1">
+            <div className="flex min-h-0 flex-1 flex-col md:flex-row">
                 {/* Files */}
                 <aside className="hidden w-56 shrink-0 flex-col border-r border-line bg-panel md:flex">
                     <div className="flex h-9 items-center justify-between px-3 text-[11px] font-semibold uppercase tracking-wider text-faint">
@@ -348,8 +348,22 @@ export function Playground() {
                 </aside>
 
                 {/* Editor, with the running app beneath */}
-                <main className="flex min-w-0 flex-1 flex-col">
-                    <div className="flex h-9 shrink-0 items-center border-b border-line bg-panel px-3 font-mono text-[12.5px] text-muted">{active ?? 'No file open'}</div>
+                <main className="flex min-h-[45dvh] min-w-0 flex-1 flex-col md:min-h-0">
+                    <div className="flex h-9 shrink-0 items-center border-b border-line bg-panel px-3 font-mono text-[12.5px] text-muted">
+                        <select
+                            value={active ?? ''}
+                            onChange={(e) => setProject({ ...project, active: e.target.value })}
+                            aria-label="Open file"
+                            className="max-w-full truncate bg-transparent text-muted outline-none md:hidden"
+                        >
+                            {paths.map((path) => (
+                                <option key={path} value={path}>
+                                    {path}
+                                </option>
+                            ))}
+                        </select>
+                        <span className="hidden truncate md:inline">{active ?? 'No file open'}</span>
+                    </div>
                     {active ? (
                         <Editor value={files[active] ?? ''} onChange={(next) => setProject({ ...project, files: { ...files, [active]: next } })} />
                     ) : (
@@ -367,7 +381,7 @@ export function Playground() {
                 </main>
 
                 {/* Agent */}
-                <aside className="flex w-full max-w-[380px] shrink-0 flex-col border-l border-line bg-panel">
+                <aside className="flex max-h-[55dvh] w-full shrink-0 flex-col border-t border-line bg-panel md:max-h-none md:max-w-[380px] md:border-l md:border-t-0">
                     <div className="flex h-9 shrink-0 items-center justify-between border-b border-line px-3 text-[11px] font-semibold uppercase tracking-wider text-faint">
                         <span className="flex items-center gap-1.5">
                             <Icon name="spark" size={13} /> Agent
