@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Star } from './Hero';
+import { Logo } from '@/components/Logo';
 
 const LINKS = [
     { href: '/playground', label: 'Playground' },
@@ -53,7 +53,7 @@ export function PillNav() {
                 }`}
             >
                 <a href="/" aria-label="FreeAgentCoder home" className="flex size-8 items-center justify-center rounded-full">
-                    <Star size={16} className={light ? 'text-zinc-900' : 'text-white'} />
+                    <Logo size={16} className={light ? 'text-zinc-900' : 'text-white'} />
                 </a>
                 {LINKS.map((link) => (
                     <a
