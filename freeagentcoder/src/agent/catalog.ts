@@ -3,20 +3,23 @@ import { AUTO_MODEL, type ProviderView, type Tier } from '../shared/protocol';
 import { getKeyUrl } from '../shared/site';
 
 /** Providers a user adds keys for, in display order. */
-export const KEY_PROVIDERS = ['gemini', 'groq', 'cerebras', 'mistral', 'openrouter', 'openai', 'anthropic'];
+// Cerebras is last, with the paid ones: it has no free tier any more, but keys
+// people already saved keep working.
+export const KEY_PROVIDERS = ['gemini', 'groq', 'mistral', 'openrouter', 'cohere', 'openai', 'anthropic', 'cerebras'];
 
-/** Fast first: Groq and Cerebras answer in a second or two, and small requests fit their free tiers. */
-const FAST_ORDER = ['groq', 'cerebras', 'gemini', 'mistral', 'openrouter'];
+/** Fast first: Groq answers in a second or two, and small requests fit its free tier. Cohere last: 1,000 calls a month. */
+const FAST_ORDER = ['groq', 'gemini', 'mistral', 'openrouter', 'cohere'];
 /** Strongest first: Gemini's 1M-token context carries long, multi-file work. */
-const DEEP_ORDER = ['gemini', 'mistral', 'cerebras', 'openrouter', 'groq'];
+const DEEP_ORDER = ['gemini', 'mistral', 'openrouter', 'cohere', 'groq'];
 /** Paid keys are only routed automatically when no free key is active. */
-const PAID_ORDER = ['anthropic', 'openai'];
+const PAID_ORDER = ['anthropic', 'openai', 'cerebras'];
 
 const TIER_MODELS: Record<string, Record<Tier, string>> = {
     groq: { fast: 'openai/gpt-oss-120b', deep: 'openai/gpt-oss-120b' },
     cerebras: { fast: 'gpt-oss-120b', deep: 'gpt-oss-120b' },
     gemini: { fast: 'gemini-3.5-flash-lite', deep: 'gemini-3.8-flash' },
     mistral: { fast: 'mistral-small-latest', deep: 'mistral-medium-latest' },
+    cohere: { fast: 'command-a-plus-05-2026', deep: 'command-a-plus-05-2026' },
     openrouter: { fast: 'openrouter/free', deep: 'openrouter/free' },
     openai: { fast: 'gpt-5-mini', deep: 'gpt-5' },
     anthropic: { fast: 'claude-haiku-4-5', deep: 'claude-sonnet-5' },
@@ -25,7 +28,8 @@ const TIER_MODELS: Record<string, Record<Tier, string>> = {
 const SHORT_LABELS: Record<string, string> = {
     gemini: 'Gemini',
     groq: 'Groq',
-    cerebras: 'Cerebras',
+    cerebras: 'Cerebras (paid)',
+    cohere: 'Cohere',
     mistral: 'Mistral',
     openrouter: 'OpenRouter',
     openai: 'OpenAI',

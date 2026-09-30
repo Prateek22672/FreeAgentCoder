@@ -14,7 +14,7 @@ const PERIOD_ORDER = ['minute', 'hour', 'day', 'month'];
 /**
  * Reads the rate-limit headers providers attach to responses:
  * x-ratelimit-{limit,remaining,reset}[-requests|-tokens][-minute|-day|-month]
- * (Groq, OpenAI, Cerebras, Mistral, OpenRouter) and
+ * (Groq, OpenAI, Mistral, OpenRouter and others) and
  * anthropic-ratelimit-{requests,tokens,input-tokens,output-tokens}-{limit,remaining,reset}.
  */
 export function parseQuotaHeaders(headers: Headers, now = Date.now()): QuotaWindow[] {

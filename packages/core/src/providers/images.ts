@@ -30,6 +30,9 @@ export function modelSupportsImages(provider: string, model: string): boolean {
       return /^meta-llama\/llama-4-/.test(m);
     case 'mistral':
       return /^(pixtral|mistral-small|mistral-medium|magistral)/.test(m);
+    case 'cohere':
+      // Command A+ and the Command A Vision models read images; plain Command A does not.
+      return /^command-a-plus|^command-a-vision/.test(m);
     case 'openrouter':
       if (m === 'openrouter/free') return false;
       return (

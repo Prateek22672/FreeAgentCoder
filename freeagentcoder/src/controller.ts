@@ -468,7 +468,7 @@ export class Controller implements vscode.Disposable {
             this.post({
                 type: 'error',
                 message: 'Add an API key to get started.',
-                hint: 'Free keys from Gemini, Groq or Cerebras take about a minute to create. Open Settings → API Keys.',
+                hint: 'Free keys from Gemini or Groq take about a minute to create, with no card. Open Settings → API Keys.',
                 action: 'openKeys',
             });
             return;

@@ -8,6 +8,11 @@
 - Specialists can be improved without a new release: once a day the extension checks the project's site for updated instructions. It is a plain request that sends nothing about you or your project, and **freeagentcoder.specialistUpdates** turns it off.
 - **Plans**, in Settings and as **FreeAgentCoder: Plans**. It shows the free tier you are on — your own keys, and the providers that give one away with no card — and, only if one has been switched on, a paid tier for when your free limits run out, with its price, its weekly quota and a button to get a licence. The page asks the project's site for this only when you open it; the free tier still makes no calls of its own. Where paid requests would go is said plainly: through FreeAgentCoder's server, unlike the free tier.
 
+### Changed
+
+- **Cohere is a new free provider.** Its trial key needs no card and allows 1,000 calls a month at 20 a minute, on Command A+. Cohere does not allow trial keys for production or commercial work, and the extension says so where you add one. It is the last free provider tried, because the monthly allowance runs out quickly.
+- **Cerebras is no longer offered as a free provider anywhere.** Some places still described it as free after 0.3.1. It is now listed with the paid providers, is never tried in the free rotation, and keys you already saved keep working.
+
 ## 0.3.1 — Honest about Cerebras
 
 ### Fixed

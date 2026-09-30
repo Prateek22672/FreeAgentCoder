@@ -143,7 +143,7 @@ async function main(): Promise<void> {
 
   if (!usableProviders(config).length) {
     if (!term.interactive) {
-      line(c.red('No model configured. Set GEMINI_API_KEY, GROQ_API_KEY, CEREBRAS_API_KEY, … or run: agentic setup'));
+      line(c.red('No model configured. Set GEMINI_API_KEY, GROQ_API_KEY, MISTRAL_API_KEY, … or run: agentic setup'));
       process.exitCode = 1;
       return;
     }

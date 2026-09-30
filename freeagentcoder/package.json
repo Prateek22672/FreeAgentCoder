@@ -1,7 +1,7 @@
 {
   "name": "freeagentcoder",
   "displayName": "Free Agent Coder: Free AI Coding Agent, Copilot Alternative",
-  "description": "Free AI coding agent for VS Code: a free alternative to Copilot, Cursor and Claude Code. Plans, edits, runs and verifies your code on free Gemini, Groq, Cerebras, Mistral or OpenRouter API keys. No subscription, open source.",
+  "description": "Free AI coding agent for VS Code: a free alternative to Copilot, Cursor and Claude Code. Plans, edits, runs and verifies your code on free Gemini, Groq, Mistral, OpenRouter or Cohere API keys. No subscription, open source.",
   "version": "0.4.0",
   "publisher": "PrateekKoratala",
   "license": "MIT",
@@ -34,7 +34,7 @@
     "gpt",
     "gemini",
     "groq",
-    "cerebras",
+    "cohere",
     "mistral",
     "openrouter",
     "openai",
@@ -170,7 +170,7 @@
           {
             "id": "keys",
             "title": "Add a free API key",
-            "description": "Get one free key from each provider (Gemini, Groq, Cerebras, OpenRouter, Mistral). The settings page has a direct link for each.\n**One key per account:** a second key from the same account shares its limits and adds nothing.\nKeys stay on this device, encrypted in VS Code Secret Storage.\n[Add a free key](command:freeagentcoder.manageKeys)",
+            "description": "Get one free key from each provider (Gemini, Groq, Mistral, OpenRouter, Cohere). None of them asks for a card. The settings page has a direct link for each.\n**One key per account:** a second key from the same account shares its limits and adds nothing.\nKeys stay on this device, encrypted in VS Code Secret Storage.\n[Add a free key](command:freeagentcoder.manageKeys)",
             "media": {
               "image": "media/walkthrough/keys.png",
               "altText": "The API Keys page, with a direct link to get a free key from each provider"

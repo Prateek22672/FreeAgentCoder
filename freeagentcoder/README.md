@@ -51,9 +51,11 @@ It is a free alternative to paid AI coding assistants: no subscription, no per-s
 3. **Add free keys.** Settings → API Keys lists a direct link for each free provider. The best setup is **one key from each provider**:
    - Google Gemini: https://aistudio.google.com/apikey
    - Groq: https://console.groq.com/keys
-   - Cerebras: https://cloud.cerebras.ai
    - OpenRouter: https://openrouter.ai/keys
    - Mistral: https://console.mistral.ai/api-keys
+   - Cohere: https://dashboard.cohere.com/api-keys
+
+   None of these asks for a card.
 
    **One key per account.** A second key from the same account shares that account's limits, so it adds nothing; add a different provider instead. Provider terms don't allow making extra accounts to get around limits.
 4. **Ask.** Open a project folder and describe what you want, for example *"Explain how this project is structured and how to run it."* Or click **Test my project**.
@@ -100,7 +102,7 @@ Describe the change there and click **Work on this in VS Code**. FreeAgentCoder 
 
 ## Smart routing across all your keys
 
-- **Auto mode** sends quick questions and small edits to the fastest models (Groq, Cerebras), and building, debugging and multi-file work to the strongest (Gemini). Choosing costs no extra request.
+- **Auto mode** sends quick questions and small edits to the fastest models (Groq), and building, debugging and multi-file work to the strongest (Gemini). Choosing costs no extra request.
 - **Several keys per provider.** Give each key a name, such as "Personal" or "College". When one is rate-limited, the next one continues the same task, starting with the key you've used least today.
 - **Fast failover.** A failing model hands over immediately and cools down for a while. Invalid keys are detected and flagged.
 - **Pin a model** at any time from the model menu. Your other free keys stay available as fallbacks.
@@ -119,7 +121,7 @@ When you ask for something big, such as *"build a Flutter wallpaper app that's r
 ## Usage you can trust
 
 - Tokens and requests for each key: today, since VS Code started, and over the last 30 days.
-- Quota bars show only the limits a provider reports in its responses (Groq, Cerebras, Mistral, OpenRouter, OpenAI and Anthropic do). Gemini doesn't, so Gemini keys show local usage only.
+- Quota bars show only the limits a provider reports in its responses (Groq, Mistral, OpenRouter, OpenAI and Anthropic do). Gemini doesn't, so Gemini keys show local usage only.
 - A warning when a key drops below 10% of a reported limit.
 - **Limits across your keys:** each provider's reported limits added up across all your keys, so you can see how much is left in total.
 - **Key suggestions** based on what actually happened: rate limits hit, limits nearly used up, fallbacks to weak models and the size of your tasks. For example: "Room for about 30 more tasks today".
@@ -150,11 +152,12 @@ When you ask for something big, such as *"build a Flutter wallpaper app that's r
 | --- | --- | --- |
 | Google Gemini | Free tier | 1M-token context; daily request quota |
 | Groq | Free tier | Very fast; small per-minute token limit |
-| Cerebras | $5 trial, card required, expires in 30 days | Fast; per-minute request limit |
 | Mistral | Free tier | "Experiment" plan, needs phone verification |
-| OpenRouter | Free models | Daily request limit |
+| OpenRouter | Free models | 50 requests a day, or 1,000 after a one-time $10 top-up |
+| Cohere | Free trial key | 1,000 calls a month; personal, non-commercial use only |
 | OpenAI | Paid | Bring your own key |
 | Anthropic | Paid | Bring your own key |
+| Cerebras | Paid | Its $5 trial needs a card and expires after 30 days |
 
 Free-tier limits change often, so check each provider's site. Keys you already have in environment variables (such as `GEMINI_API_KEY`) or in the Agentic CLI config (`~/.agentic/config.json`) are picked up too, marked **ENV** or **CLI**.
 
