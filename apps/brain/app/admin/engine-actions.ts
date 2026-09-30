@@ -2,7 +2,7 @@
 
 import { revalidatePath } from 'next/cache';
 import { isSignedIn } from '@/lib/admin';
-import { addPoolKey, removePoolKey, setPoolKeyEnabled } from '@/lib/keypool';
+import { addPoolKey, checkPoolKeys, listPool, removePoolKey, setPoolKeyEnabled } from '@/lib/keypool';
 import { SPECIALIST_INFO, writeSpecialists, type SpecialistSetting } from '@/lib/specialists';
 
 export interface FormState {
@@ -16,6 +16,14 @@ export async function addKeyAction(_state: FormState | undefined, form: FormData
     if ('error' in result) return { error: result.error };
     revalidatePath('/admin');
     return { saved: true };
+}
+
+export async function checkKeysAction(form: FormData): Promise<void> {
+    if (!(await isSignedIn())) return;
+    const id = String(form.get('id') ?? '');
+    // One key, or every key when no id is given.
+    await checkPoolKeys(id ? [id] : (await listPool()).map((k) => k.id));
+    revalidatePath('/admin');
 }
 
 export async function toggleKeyAction(form: FormData): Promise<void> {

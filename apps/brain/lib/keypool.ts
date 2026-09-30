@@ -1,7 +1,8 @@
 import 'server-only';
 import { createCipheriv, createDecipheriv, createHash, randomBytes, randomUUID } from 'node:crypto';
 import { createProvider, PRESETS, type ChatRequest, type Provider, type RouterEntry, type StreamEvent } from '@agentic/core';
-import { store } from './kv';
+import { checkKey, type Health } from './keyhealth';
+import { NO_STORE_MESSAGE, settingsNeedStore, store } from './kv';
 
 /**
  * Provider keys added from the admin page, used for the site's free trial.
@@ -27,6 +28,7 @@ interface StoredKey {
     last4: string;
     enabled: boolean;
     addedAt: number;
+    health?: Health;
 }
 
 export interface PoolKeyView {
@@ -38,6 +40,7 @@ export interface PoolKeyView {
     addedAt: number;
     today: { ok: number; failed: number };
     benched: boolean;
+    health?: Health;
 }
 
 const POOL = 'pb:keypool';
@@ -98,13 +101,43 @@ export async function addPoolKey(provider: string, label: string, key: string): 
     if (pool.length >= 50) return { error: 'The pool holds up to 50 keys.' };
     const last4 = clean.slice(-4);
     if (pool.some((k) => k.provider === provider && k.last4 === last4)) return { error: 'That key looks like one already in the pool.' };
+    if (settingsNeedStore) return { error: NO_STORE_MESSAGE };
+    // Ask the provider first: a key it rejects is never saved.
+    const health = await checkKey(provider, clean);
+    if (health.state === 'invalid') return { error: `Not saved: ${provider} rejected this key. ${health.message}` };
     try {
-        pool.push({ id: randomUUID(), provider, label: label.trim().slice(0, 40) || provider, cipher: encrypt(clean), last4, enabled: true, addedAt: Date.now() });
+        pool.push({ id: randomUUID(), provider, label: label.trim().slice(0, 40) || provider, cipher: encrypt(clean), last4, enabled: true, addedAt: Date.now(), health });
     } catch (error) {
         return { error: (error as Error).message };
     }
     await writePool(pool);
     return { ok: true };
+}
+
+/**
+ * Checks keys with their providers and saves the results. With no ids, checks
+ * only keys whose last check is older than `staleMs`, so opening the admin
+ * page keeps every key's health fresh without asking on every load.
+ */
+export async function checkPoolKeys(ids?: string[], staleMs = 30 * 60_000): Promise<void> {
+    const pool = await readPool();
+    const due = pool.filter((k) => (ids ? ids.includes(k.id) : !k.health || Date.now() - k.health.at > staleMs));
+    if (!due.length) return;
+    await Promise.all(
+        due.map(async (k) => {
+            const apiKey = decrypt(k.cipher);
+            k.health = apiKey
+                ? await checkKey(k.provider, apiKey)
+                : { state: 'invalid', message: 'Cannot be decrypted: KEY_POOL_SECRET or ADMIN_PASSWORD changed since it was added. Remove it and add it again.', at: Date.now() };
+        }),
+    );
+    // Write back onto a fresh read, so a key added meanwhile is not dropped.
+    const fresh = await readPool();
+    for (const k of fresh) {
+        const checked = due.find((d) => d.id === k.id);
+        if (checked) k.health = checked.health;
+    }
+    if (!settingsNeedStore) await writePool(fresh);
 }
 
 export async function setPoolKeyEnabled(id: string, enabled: boolean): Promise<void> {
@@ -132,6 +165,7 @@ export async function listPool(): Promise<PoolKeyView[]> {
         addedAt: k.addedAt,
         today: { ok: counts[`${k.id}:ok`] ?? 0, failed: counts[`${k.id}:fail`] ?? 0 },
         benched: benched[i] !== null,
+        health: k.health,
     }));
 }
 
@@ -194,7 +228,8 @@ export async function poolEntries(): Promise<RouterEntry[]> {
     const benched = await store.getMany(pool.map((k) => `pb:keybench:${k.id}`));
     const entries: RouterEntry[] = [];
     pool.forEach((k, i) => {
-        if (benched[i] !== null) return;
+        // A key its provider has rejected is not tried on visitors' requests.
+        if (benched[i] !== null || k.health?.state === 'invalid') return;
         const preset = PRESETS[k.provider];
         const apiKey = decrypt(k.cipher);
         if (!preset || !apiKey) return;

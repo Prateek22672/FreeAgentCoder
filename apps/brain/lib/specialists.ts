@@ -1,5 +1,5 @@
 import 'server-only';
-import { store } from './kv';
+import { NO_STORE_MESSAGE, settingsNeedStore, store } from './kv';
 
 /**
  * How the extension's specialists are tuned from the admin page. The ids and
@@ -42,6 +42,7 @@ export async function readSpecialists(): Promise<Record<SpecialistId, Specialist
 }
 
 export async function writeSpecialists(settings: Record<string, SpecialistSetting>): Promise<string | undefined> {
+    if (settingsNeedStore) return NO_STORE_MESSAGE;
     const clean: Record<string, SpecialistSetting> = {};
     for (const { id, name } of SPECIALIST_INFO) {
         const s = settings[id];

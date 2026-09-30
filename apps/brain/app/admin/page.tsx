@@ -3,9 +3,9 @@ import { adminPassword, isSignedIn } from '@/lib/admin';
 import { configuredProviders, providerLabel } from '@/lib/ai';
 import { readKeyLinks } from '@/lib/keylinks';
 import { readPlans } from '@/lib/plans';
-import { listPool, POOL_PROVIDERS } from '@/lib/keypool';
+import { checkPoolKeys, listPool, POOL_PROVIDERS } from '@/lib/keypool';
 import { readSpecialists, SPECIALIST_INFO } from '@/lib/specialists';
-import { kvConfigured } from '@/lib/kv';
+import { kvConfigured, settingsNeedStore } from '@/lib/kv';
 import { marketplaceStats } from '@/lib/marketplace';
 import { readStats, type Stats } from '@/lib/stats';
 import { trialUsage } from '@/lib/trial';
@@ -34,6 +34,9 @@ export default async function AdminPage() {
         );
     }
 
+    // Keys not checked in the last half hour are checked with their providers
+    // now (a few seconds at most), so the health column is never stale.
+    await checkPoolKeys().catch(() => undefined);
     const [market, stats, keyLinks, plans, pool, specialists] = await Promise.all([
         marketplaceStats(),
         readStats(),
@@ -166,7 +169,7 @@ export default async function AdminPage() {
             </Section>
 
             <Section title="Key pool — the site’s free trial">
-                <KeyPool keys={pool} providers={POOL_PROVIDERS} />
+                <KeyPool keys={pool} providers={POOL_PROVIDERS} needStore={settingsNeedStore} />
             </Section>
 
             <Section title="Paid tier">

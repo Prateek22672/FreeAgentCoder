@@ -1,5 +1,5 @@
 import 'server-only';
-import { store } from './kv';
+import { settingsNeedStore, store } from './kv';
 
 /**
  * The paid tier, as the admin page configures it and the extension reads it.
@@ -40,10 +40,11 @@ export async function readPlans(): Promise<Plans> {
     }
 }
 
-export type PlansProblem = 'checkout-url' | 'quota';
+export type PlansProblem = 'checkout-url' | 'quota' | 'no-store';
 
 /** Validates and saves. A bad field is refused rather than saved half-right. */
 export async function writePlans(input: Partial<Plans>): Promise<{ plans: Plans } | { problem: PlansProblem }> {
+    if (settingsNeedStore) return { problem: 'no-store' };
     const current = await readPlans();
     const checkoutUrl = (input.checkoutUrl ?? current.checkoutUrl).trim();
     if (checkoutUrl && !/^https:\/\/[^\s]+$/i.test(checkoutUrl)) {

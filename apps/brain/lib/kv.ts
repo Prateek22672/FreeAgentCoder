@@ -10,10 +10,22 @@ import 'server-only';
  * names and a random install id.
  */
 
-const URL_BASE = process.env.KV_REST_API_URL?.replace(/\/$/, '');
-const TOKEN = process.env.KV_REST_API_TOKEN;
+// Vercel's Upstash integration sets the KV_ names; a database made at
+// upstash.com gives the UPSTASH_REDIS_REST_ names. Either works.
+const URL_BASE = (process.env.KV_REST_API_URL || process.env.UPSTASH_REDIS_REST_URL)?.trim().replace(/\/$/, '');
+const TOKEN = (process.env.KV_REST_API_TOKEN || process.env.UPSTASH_REDIS_REST_TOKEN)?.trim();
 
 export const kvConfigured = Boolean(URL_BASE && TOKEN);
+
+/**
+ * On a real deployment, memory is not storage: each request can land on a
+ * different short-lived instance, so anything saved there is lost within
+ * minutes. Settings the admin saves (keys, plans, specialists) are refused
+ * there until a store is connected, rather than silently thrown away.
+ */
+export const settingsNeedStore = !kvConfigured && Boolean(process.env.VERCEL || process.env.NODE_ENV === 'production');
+export const NO_STORE_MESSAGE =
+    'Not saved: this deployment has no storage connected, so it would be lost within minutes. Connect Upstash Redis (see the note at the top of this page), redeploy, then add it again.';
 
 export interface Store {
     /** Adds to several counters under one key, and keeps the key for `ttl` seconds. */

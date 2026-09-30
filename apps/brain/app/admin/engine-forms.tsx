@@ -3,7 +3,7 @@
 import { useActionState } from 'react';
 import type { PoolKeyView } from '@/lib/keypool';
 import type { SpecialistId, SpecialistSetting } from '@/lib/specialists';
-import { addKeyAction, removeKeyAction, saveSpecialistsAction, toggleKeyAction, type FormState } from './engine-actions';
+import { addKeyAction, checkKeysAction, removeKeyAction, saveSpecialistsAction, toggleKeyAction, type FormState } from './engine-actions';
 
 const field = 'h-10 w-full rounded-md border border-line-strong bg-panel px-3 text-[14px] text-fg outline-none placeholder:text-faint focus:border-accent';
 const label = 'block text-[11px] font-semibold uppercase tracking-wide text-muted';
@@ -15,7 +15,18 @@ function Status({ state, savedText }: { state?: FormState; savedText: string }) 
     return null;
 }
 
-export function KeyPool({ keys, providers }: { keys: PoolKeyView[]; providers: readonly string[] }) {
+function ago(at: number): string {
+    const minutes = Math.round((Date.now() - at) / 60_000);
+    if (minutes < 1) return 'just now';
+    if (minutes < 60) return `${minutes} min ago`;
+    const hours = Math.round(minutes / 60);
+    return hours < 48 ? `${hours} h ago` : `${Math.round(hours / 24)} days ago`;
+}
+
+const HEALTH_TONE = { ok: 'text-ok', limited: 'text-warn', invalid: 'text-bad', error: 'text-warn' } as const;
+const HEALTH_WORD = { ok: 'Working', limited: 'Rate limited', invalid: 'Invalid key', error: 'Could not check' } as const;
+
+export function KeyPool({ keys, providers, needStore }: { keys: PoolKeyView[]; providers: readonly string[]; needStore: boolean }) {
     const [state, action, pending] = useActionState<FormState | undefined, FormData>(addKeyAction, undefined);
     return (
         <div className="col-span-full grid gap-4">
@@ -23,6 +34,17 @@ export function KeyPool({ keys, providers }: { keys: PoolKeyView[]; providers: r
                 One key per provider account. Several free accounts used to multiply one provider’s free quota breaks their terms, and those keys get banned
                 together. To serve more people, add a paid key.
             </p>
+            {needStore && (
+                <div className="rounded-lg border border-bad/50 bg-bad/10 px-4 py-3 text-[13px] leading-relaxed text-fg">
+                    <p className="font-semibold text-bad">Keys cannot be saved yet: this deployment has no storage.</p>
+                    <p className="mt-1 text-muted">
+                        Without it, every key is held in one short-lived server&rsquo;s memory and vanishes within minutes. In Vercel, open the project, then Storage,
+                        then Upstash for Redis (the free plan is enough), and connect it to this project. That sets <code className="font-mono">KV_REST_API_URL</code>{' '}
+                        and <code className="font-mono">KV_REST_API_TOKEN</code>. Also set <code className="font-mono">KEY_POOL_SECRET</code> to a long random value, so
+                        changing the admin password never makes saved keys unreadable. Redeploy, then add the keys again.
+                    </p>
+                </div>
+            )}
             {keys.length ? (
                 <div className="overflow-x-auto rounded-lg border border-line">
                     <table className="w-full text-[13px]">
@@ -30,6 +52,7 @@ export function KeyPool({ keys, providers }: { keys: PoolKeyView[]; providers: r
                             <tr>
                                 <th className="px-3 py-2">Key</th>
                                 <th className="px-3 py-2">Status</th>
+                                <th className="px-3 py-2">Health</th>
                                 <th className="px-3 py-2">Today</th>
                                 <th className="px-3 py-2" />
                             </tr>
@@ -49,10 +72,27 @@ export function KeyPool({ keys, providers }: { keys: PoolKeyView[]; providers: r
                                             <span className="text-ok">In use</span>
                                         )}
                                     </td>
+                                    <td className="px-3 py-2">
+                                        {k.health ? (
+                                            <span title={k.health.message}>
+                                                <span className={HEALTH_TONE[k.health.state]}>{HEALTH_WORD[k.health.state]}</span>{' '}
+                                                <span className="text-faint">· {ago(k.health.at)}</span>
+                                                {k.health.state !== 'ok' && <span className="block max-w-[280px] truncate text-[11.5px] text-faint">{k.health.message}</span>}
+                                            </span>
+                                        ) : (
+                                            <span className="text-faint">Not checked</span>
+                                        )}
+                                    </td>
                                     <td className="px-3 py-2 tabular-nums text-muted">
                                         {k.today.ok} ok · {k.today.failed} failed
                                     </td>
                                     <td className="flex justify-end gap-2 px-3 py-2">
+                                        <form action={checkKeysAction}>
+                                            <input type="hidden" name="id" value={k.id} />
+                                            <button type="submit" className="rounded-md border border-line px-2.5 py-1 text-[12px] text-muted hover:text-fg">
+                                                Check
+                                            </button>
+                                        </form>
                                         <form action={toggleKeyAction}>
                                             <input type="hidden" name="id" value={k.id} />
                                             <input type="hidden" name="enabled" value={String(!k.enabled)} />
@@ -71,6 +111,11 @@ export function KeyPool({ keys, providers }: { keys: PoolKeyView[]; providers: r
                             ))}
                         </tbody>
                     </table>
+                    <form action={checkKeysAction} className="flex justify-end border-t border-line px-3 py-2">
+                        <button type="submit" className="rounded-md border border-line px-3 py-1 text-[12px] text-muted hover:text-fg">
+                            Check all keys now
+                        </button>
+                    </form>
                 </div>
             ) : (
                 <p className="text-[13px] text-muted">No keys in the pool yet. The trial uses only keys set in the environment.</p>

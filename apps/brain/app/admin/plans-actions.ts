@@ -2,6 +2,7 @@
 
 import { revalidatePath } from 'next/cache';
 import { isSignedIn } from '@/lib/admin';
+import { NO_STORE_MESSAGE } from '@/lib/kv';
 import { writePlans } from '@/lib/plans';
 
 export interface PlansState {
@@ -24,9 +25,11 @@ export async function savePlansAction(_state: PlansState | undefined, form: Form
     if ('problem' in result) {
         return {
             error:
-                result.problem === 'checkout-url'
-                    ? 'The checkout link must start with https://.'
-                    : 'The weekly quota must be a number of tokens, zero or more.',
+                result.problem === 'no-store'
+                    ? NO_STORE_MESSAGE
+                    : result.problem === 'checkout-url'
+                      ? 'The checkout link must start with https://.'
+                      : 'The weekly quota must be a number of tokens, zero or more.',
         };
     }
     revalidatePath('/admin');
