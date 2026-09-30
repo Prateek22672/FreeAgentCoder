@@ -1,6 +1,8 @@
 import Link from 'next/link';
 import { Icon, type IconName } from '@/components/icons';
+import { HeroCanvas } from '@/components/landing/HeroCanvas';
 import { ProductPreview } from '@/components/landing/ProductPreview';
+import { Reveal } from '@/components/landing/Reveal';
 import { RepoForm } from '@/components/RepoForm';
 import { StructuredData, brainApp, extensionApp, faqPage, graph, organization, website } from '@/components/StructuredData';
 import { ARTICLES } from '@/lib/articles';
@@ -68,6 +70,7 @@ export default function Home() {
     return (
         <div className="relative overflow-x-clip bg-bg">
             <StructuredData data={graph([organization, website, extensionApp, brainApp, faqPage(FAQ)])} />
+            <Reveal />
             {/* Nav */}
             <header className="sticky top-0 z-30 border-b border-line/60 bg-bg/80 backdrop-blur">
                 <div className="mx-auto flex h-14 max-w-7xl items-center gap-6 px-4 sm:px-6">
@@ -101,6 +104,7 @@ export default function Home() {
             <section id="brain" className="relative">
                 <div className="grid-fade pointer-events-none absolute inset-0 opacity-60" aria-hidden />
                 <div className="glow-warm pointer-events-none absolute inset-x-0 bottom-0 h-[70%]" aria-hidden />
+                <HeroCanvas />
                 <div className="relative mx-auto max-w-7xl px-4 pb-20 pt-20 sm:px-6 sm:pt-28">
                     <div className="mx-auto max-w-3xl text-center">
                         <h1 className="font-display">
@@ -139,7 +143,7 @@ export default function Home() {
             </section>
 
             {/* How it works */}
-            <section id="how" className="border-t border-line">
+            <section data-reveal id="how" className="border-t border-line">
                 <div className="mx-auto max-w-7xl px-4 py-20 sm:px-6">
                     <p className="text-[12px] font-semibold uppercase tracking-wider text-accent">How it works</p>
                     <h2 className="mt-2 max-w-2xl font-display text-3xl font-semibold tracking-tight text-fg sm:text-4xl">From a GitHub link to a verified change.</h2>
@@ -161,7 +165,7 @@ export default function Home() {
             </section>
 
             {/* Features */}
-            <section className="border-t border-line">
+            <section data-reveal className="border-t border-line">
                 <div className="mx-auto max-w-7xl px-4 py-20 sm:px-6">
                     <p className="text-[12px] font-semibold uppercase tracking-wider text-accent">What you get</p>
                     <h2 className="mt-2 max-w-2xl font-display text-3xl font-semibold tracking-tight text-fg sm:text-4xl">Answers you can check, not just answers.</h2>
@@ -182,7 +186,7 @@ export default function Home() {
             </section>
 
             {/* Two halves */}
-            <section id="agent" className="border-t border-line">
+            <section data-reveal id="agent" className="border-t border-line">
                 <div className="mx-auto max-w-7xl px-4 py-20 sm:px-6">
                     <p className="text-[12px] font-semibold uppercase tracking-wider text-accent">Why this one</p>
                     <h2 className="mt-2 max-w-3xl font-display text-3xl font-semibold tracking-tight text-fg sm:text-4xl">Reading a repository is the easy half.</h2>
@@ -229,7 +233,7 @@ export default function Home() {
             </section>
 
             {/* What we believe about agents working on code. */}
-            <section className="relative overflow-hidden border-t border-line">
+            <section data-reveal className="relative overflow-hidden border-t border-line">
                 <div className="mx-auto max-w-7xl px-4 py-20 sm:px-6">
                     <p className="text-[12px] font-semibold uppercase tracking-wider text-accent">For developers and teams</p>
                     <h2 className="mt-3 max-w-4xl font-display text-3xl font-semibold leading-tight tracking-tight sm:text-[2.6rem]">
@@ -261,7 +265,7 @@ export default function Home() {
             </section>
 
             {/* Final CTA */}
-            <section className="relative border-t border-line">
+            <section data-reveal className="relative border-t border-line">
                 <div className="glow-warm pointer-events-none absolute inset-0 opacity-70" aria-hidden />
                 <div className="relative mx-auto max-w-3xl px-4 py-24 text-center sm:px-6">
                     <h2 className="font-display text-3xl font-semibold tracking-tight text-fg sm:text-5xl">See your own repository.</h2>
@@ -273,7 +277,7 @@ export default function Home() {
             </section>
 
             {/* FAQ: the questions people ask before installing. */}
-            <section id="faq" className="border-t border-line">
+            <section data-reveal id="faq" className="border-t border-line">
                 <div className="mx-auto max-w-4xl px-4 py-20 sm:px-6">
                     <p className="text-[12px] font-semibold uppercase tracking-wider text-accent">Questions</p>
                     <h2 className="mt-2 font-display text-3xl font-semibold tracking-tight text-fg sm:text-4xl">Straight answers.</h2>
@@ -289,7 +293,7 @@ export default function Home() {
             </section>
 
             {/* Guides: one page per real question people search for. */}
-            <section className="border-t border-line">
+            <section data-reveal className="border-t border-line">
                 <div className="mx-auto max-w-7xl px-4 py-20 sm:px-6">
                     <p className="text-[12px] font-semibold uppercase tracking-wider text-accent">Guides</p>
                     <h2 className="mt-2 font-display text-3xl font-semibold tracking-tight text-fg sm:text-4xl">Read before you switch.</h2>
