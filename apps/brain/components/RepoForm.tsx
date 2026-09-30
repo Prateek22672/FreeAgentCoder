@@ -46,8 +46,9 @@ export function RepoForm({ examples }: { examples: string[] }) {
         }}
         className="flex gap-2"
       >
+        {/* No autofocus: the form sits far down the landing page, and focusing
+            it on load would scroll straight past the hero. */}
         <TextInput
-          autoFocus
           value={value}
           onChange={(e) => {
             setValue(e.target.value);

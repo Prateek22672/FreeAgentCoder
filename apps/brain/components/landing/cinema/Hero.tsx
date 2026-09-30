@@ -1,63 +1,36 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useRef, useState } from 'react';
+import { AgentDemo } from './AgentDemo';
 import { ease, span, useScrollProgress } from './progress';
 
-/** What the live card shows, one after another: the agent's real loop. */
-const SESSIONS = [
-    { task: 'Add dark mode to the settings page', done: 'Tests passing', detail: '3 files changed · checked in 41 s' },
-    { task: 'Why does checkout fail on refresh?', done: 'Cause found', detail: 'cart/session.ts, lines 88–104' },
-    { task: 'Replace Prisma with Drizzle', done: 'Plan ready', detail: '14 files reached · risk: medium' },
-];
+/** What you type in VS Code's Quick Open (Ctrl+P) to install the extension. */
+const INSTALL = 'ext install PrateekKoratala.freeagentcoder';
 
-const PROVIDERS = [
-    { name: 'Gemini', color: '#4f7cff' },
-    { name: 'Groq', color: '#f55036' },
-    { name: 'Mistral', color: '#ff8a00' },
-    { name: 'OpenRouter', color: '#8b5cf6' },
-    { name: 'Claude', color: '#d97757' },
-];
-
-function LiveCard({ width = 'w-[min(300px,38vh)]' }: { width?: string }) {
-    const [index, setIndex] = useState(0);
-    useEffect(() => {
-        if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
-        const timer = window.setInterval(() => setIndex((i) => (i + 1) % SESSIONS.length), 4200);
-        return () => window.clearInterval(timer);
-    }, []);
-    const session = SESSIONS[index];
+/** The install command, one click to copy: the real first step, not a badge. */
+function InstallCommand() {
+    const [copied, setCopied] = useState(false);
+    const copy = () => {
+        void navigator.clipboard?.writeText(INSTALL).then(() => {
+            setCopied(true);
+            window.setTimeout(() => setCopied(false), 1600);
+        });
+    };
     return (
-        <div className={`cine-glass relative flex aspect-[0.72] ${width} flex-col overflow-hidden rounded-[22px] p-3.5 text-white`} aria-hidden>
-            <div className="cine-live-glow pointer-events-none absolute inset-0" />
-            <div className="relative flex items-center justify-between">
-                <span className="flex items-center gap-1.5 rounded-full bg-black/30 px-2.5 py-1 text-[11.5px] font-medium">
-                    <Star size={10} /> Live session
-                </span>
-                <span className="flex items-center gap-1.5 rounded-full bg-black/30 px-2 py-1 text-[10px] font-semibold tracking-wide text-white/80">
-                    <span className="size-1.5 animate-pulse rounded-full bg-lime-300" /> LIVE
-                </span>
-            </div>
-            <div className="relative mt-auto">
-                <div key={session.task} className="cine-fade-in flex items-center gap-3 rounded-xl border border-white/15 bg-black/35 py-2.5 pl-3 pr-2 text-[13px] backdrop-blur-md">
-                    <span className="flex-1 truncate">{session.task}</span>
-                    <span className="flex size-6 shrink-0 items-center justify-center rounded-full bg-white text-zinc-900">
-                        <Arrow />
-                    </span>
-                </div>
-                <div key={`bars-${index}`} className="mt-2.5 grid grid-cols-5 gap-1.5 px-0.5">
-                    {[0, 1, 2, 3, 4].map((i) => (
-                        <span key={i} className="h-[3px] overflow-hidden rounded-full bg-white/20">
-                            <span className="cine-bar block h-full rounded-full bg-white" style={{ animationDelay: `${i * 0.55}s` }} />
-                        </span>
-                    ))}
-                </div>
-            </div>
-            <div className="relative mt-auto pt-10">
-                <p key={session.done} className="cine-fade-in text-[15px] font-semibold">
-                    {session.done}
-                </p>
-                <p className="mt-0.5 text-[11.5px] text-white/60">{session.detail}</p>
-            </div>
+        <div className="mt-7 inline-flex max-w-full items-center gap-3 rounded-[12px] border border-white/10 bg-black/40 py-1.5 pl-3 pr-1.5 backdrop-blur">
+            <span className="shrink-0 rounded-md bg-white/10 px-1.5 py-0.5 font-mono text-[10.5px] text-white/60">Ctrl P</span>
+            <code className="truncate font-mono text-[12.5px] text-white/85">
+                <span className="text-white/40">&gt; </span>
+                {INSTALL}
+            </code>
+            <button
+                type="button"
+                onClick={copy}
+                aria-label="Copy the install command"
+                className="shrink-0 rounded-[8px] bg-white/10 px-2.5 py-1 text-[12px] font-medium text-white transition-colors hover:bg-white hover:text-zinc-950"
+            >
+                {copied ? 'Copied' : 'Copy'}
+            </button>
         </div>
     );
 }
@@ -109,7 +82,7 @@ export function Hero() {
 
                         {/* On a phone the card sits in the space between the headline and the copy. */}
                         <div className="flex flex-1 items-center justify-center py-4 md:hidden">
-                            <LiveCard width="w-[min(230px,28vh)]" />
+                            <AgentDemo width="w-[min(250px,32vh)]" />
                         </div>
                         <div className="flex flex-col gap-8 md:mt-auto md:flex-row md:items-end md:justify-between">
                             <div className="max-w-[26rem]">
@@ -128,29 +101,15 @@ export function Hero() {
                                         Start building <span className="transition-transform group-hover:translate-x-0.5"><Arrow size={14} /></span>
                                     </a>
                                 </div>
-                                <div className="mt-7 inline-flex items-center gap-2.5 rounded-full border border-white/10 bg-white/10 py-1.5 pl-1.5 pr-4 text-[13px] text-white/85 backdrop-blur">
-                                    <span className="flex -space-x-1.5">
-                                        {PROVIDERS.map((p) => (
-                                            <span
-                                                key={p.name}
-                                                title={p.name}
-                                                className="flex size-6 items-center justify-center rounded-full border-2 border-[#1c1c1f] text-[10px] font-bold text-white"
-                                                style={{ background: `radial-gradient(circle at 30% 30%, color-mix(in srgb, ${p.color} 60%, white), ${p.color})` }}
-                                            >
-                                                {p.name[0]}
-                                            </span>
-                                        ))}
-                                    </span>
-                                    Works with Gemini, Groq, Claude and more
-                                </div>
+                                <InstallCommand />
                             </div>
                             <p className="hidden max-w-[19rem] text-right text-[13px] leading-relaxed text-white/60 md:block">
                                 From a GitHub link to a verified change: it maps the code, plans the edit and runs your tests before it says done.
                             </p>
                         </div>
                     </div>
-                    <div ref={live} className="absolute right-[9%] top-[22%] hidden rotate-[-2deg] will-change-transform md:block">
-                        <LiveCard />
+                    <div ref={live} className="absolute right-[8%] top-[15%] hidden rotate-[-2deg] will-change-transform md:block">
+                        <AgentDemo width="w-[min(340px,44vh)]" />
                     </div>
                 </div>
             </div>
