@@ -2,7 +2,7 @@
   "name": "freeagentcoder",
   "displayName": "Free Agent Coder: Free AI Coding Agent, Copilot Alternative",
   "description": "Free AI coding agent for VS Code: a free alternative to Copilot, Cursor and Claude Code. Plans, edits, runs and verifies your code on free Gemini, Groq, Cerebras, Mistral or OpenRouter API keys. No subscription, open source.",
-  "version": "0.3.2",
+  "version": "0.4.0",
   "publisher": "PrateekKoratala",
   "license": "MIT",
   "icon": "media/icon.png",
