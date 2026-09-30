@@ -11,6 +11,7 @@
   "dependencies": {
     "@agentic/core": "*",
     "@agentic/project-brain": "*",
+    "@webcontainer/api": "^1.6.4",
     "next": "^15.5.4",
     "react": "^19.1.1",
     "react-dom": "^19.1.1",

@@ -18,6 +18,7 @@ import { SearchTab } from './tabs/SearchTab';
 import { KeyPanel } from './KeyPanel';
 import { ConfidenceBadge, Stat, cx } from './ui';
 import { CodeEditor } from './workbench/CodeEditor';
+import { RunPanel } from './workbench/RunPanel';
 import { Explorer } from './workbench/Explorer';
 import { Progress, advance, initialSteps, type StepState } from './workbench/Progress';
 import { SearchPanel } from './workbench/SearchPanel';
@@ -102,7 +103,23 @@ function CommandBox({ ai, onRun }: { ai: boolean; onRun: (mode: Mode, text: stri
     );
 }
 
-function TitleBar({ repo, data, onRun, onPlan }: { repo: string; data?: AnalyzeResponse; onRun: (mode: Mode, text: string) => void; onPlan: () => void }) {
+function TitleBar({
+    repo,
+    data,
+    onRun,
+    onPlan,
+    runnable,
+    running,
+    onRunProject,
+}: {
+    repo: string;
+    data?: AnalyzeResponse;
+    onRun: (mode: Mode, text: string) => void;
+    onPlan: () => void;
+    runnable: boolean;
+    running: boolean;
+    onRunProject: () => void;
+}) {
     const [owner, name] = repo.split('/');
     return (
         <header className="flex h-10 shrink-0 items-center gap-3 border-b border-line bg-panel px-3">
@@ -117,6 +134,23 @@ function TitleBar({ repo, data, onRun, onPlan }: { repo: string; data?: AnalyzeR
                 <span className="text-fg">{name?.split('/tree/')[0]}</span>
             </span>
             <div className="flex min-w-0 flex-1 justify-center">{data && <CommandBox ai={data.ai.length > 0} onRun={onRun} />}</div>
+            {data && (
+                <button
+                    type="button"
+                    onClick={onRunProject}
+                    disabled={!runnable}
+                    title={runnable ? 'Run this project in your browser' : 'Only JavaScript and TypeScript projects with a package.json can run here'}
+                    aria-pressed={running}
+                    className={cx(
+                        'hidden h-7 shrink-0 items-center gap-1.5 rounded-md border px-2.5 text-[12px] font-medium md:flex',
+                        running ? 'border-ok/40 bg-ok/10 text-ok' : 'border-line-strong text-fg hover:bg-panel-2',
+                        'disabled:cursor-not-allowed disabled:opacity-40',
+                    )}
+                >
+                    <span className={cx('size-1.5 rounded-full', running ? 'bg-ok' : 'bg-faint')} />
+                    {running ? 'Running' : 'Run'}
+                </button>
+            )}
             {data && (
                 <button type="button" onClick={onPlan} className="flex h-7 shrink-0 items-center gap-1.5 rounded-md bg-accent px-2.5 text-[12px] font-medium text-accent-fg hover:brightness-110">
                     <Icon name="code" size={14} />
@@ -180,6 +214,7 @@ export function Dashboard({ repo, initialTab, initialQuery }: { repo: string; in
     const { own } = useOwnKey();
     const [sideWidth, setSideWidth] = useState(SIDE_WIDTH.fallback);
     const [chatOpen, setChatOpen] = useState(false);
+    const [runOpen, setRunOpen] = useState(false);
     const [chatWidth, setChatWidth] = useState(CHAT_WIDTH.fallback);
 
     useEffect(() => {
@@ -308,7 +343,15 @@ export function Dashboard({ repo, initialTab, initialQuery }: { repo: string; in
 
     return (
         <div className="flex h-dvh flex-col bg-bg">
-            <TitleBar repo={repo} data={data} onRun={runCommand} onPlan={() => goTo('impact')} />
+            <TitleBar
+                repo={repo}
+                data={data}
+                onRun={runCommand}
+                onPlan={() => goTo('impact')}
+                runnable={!!data && known.has('package.json')}
+                running={runOpen}
+                onRunProject={() => setRunOpen((openNow) => !openNow)}
+            />
 
             {/* Phones: the activity bar becomes a strip of views. */}
             {data && (
@@ -483,6 +526,11 @@ export function Dashboard({ repo, initialTab, initialQuery }: { repo: string; in
                                 })}
                             </div>
                         </>
+                    )}
+                    {runOpen && data && (
+                        <div className="h-[46%] min-h-[220px] shrink-0 border-t border-line bg-panel">
+                            <RunPanel id={data.id} onClose={() => setRunOpen(false)} />
+                        </div>
                     )}
                 </main>
 

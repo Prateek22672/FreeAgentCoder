@@ -15,6 +15,17 @@ const nextConfig = {
           { key: 'X-Frame-Options', value: 'DENY' },
         ],
       },
+      {
+        // Running a repository in the browser needs SharedArrayBuffer, which
+        // needs the page to be cross-origin isolated. Only the workbench pages
+        // get these headers: they load nothing from other origins, and the
+        // rest of the site keeps its embeds and previews.
+        source: '/r/:path*',
+        headers: [
+          { key: 'Cross-Origin-Opener-Policy', value: 'same-origin' },
+          { key: 'Cross-Origin-Embedder-Policy', value: 'require-corp' },
+        ],
+      },
     ];
   },
 };
