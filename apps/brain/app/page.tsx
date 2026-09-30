@@ -1,6 +1,7 @@
 import { Logo } from '@/components/Logo';
 import Link from 'next/link';
 import { Icon, type IconName } from '@/components/icons';
+import { FeatureRail, type RailCard } from '@/components/landing/FeatureRail';
 import { HeroCanvas } from '@/components/landing/HeroCanvas';
 import { ProductPreview } from '@/components/landing/ProductPreview';
 import { Reveal } from '@/components/landing/Reveal';
@@ -66,6 +67,15 @@ const FEATURES: { icon: IconName; title: string; body: string }[] = [
 
 const BRAIN = ['Understand it', 'Read the code', 'Search', 'Map the structure', 'See what breaks', 'Write the plan'];
 const AGENT = ['Do the work', 'Edit files', 'Fix bugs', 'Run your tests', 'Show every diff', 'Undo in a click'];
+
+const RAIL: RailCard[] = [
+    { href: '/playground', kicker: '01 · Playground', title: 'Build an app from nothing', body: 'Describe it, the agent writes it, and it runs live in your browser.', ratio: 1.55, art: 'radial-gradient(120% 90% at 20% 10%, #f0936e 0%, #b8502e 40%, #1a0d08 100%)' },
+    { href: '#brain', kicker: '02 · Read a repo', title: 'Understand any codebase', body: 'Paste a GitHub link: how it is built, where things live, what a change breaks.', ratio: 1.2, art: 'radial-gradient(120% 90% at 80% 20%, #4d6cfa 0%, #22307a 45%, #0a0d1f 100%)' },
+    { href: '/free-ai-coding-agent-vscode', kicker: '03 · VS Code agent', title: 'It does the work in your editor', body: 'Plans, edits, runs your tests and fixes what fails — on your own free keys.', ratio: 1.7, art: 'radial-gradient(120% 90% at 30% 80%, #2fbf8a 0%, #125c43 45%, #06140f 100%)' },
+    { href: '/free-ai-coding-agent-vscode', kicker: '04 · Specialists', title: 'The right method for the job', body: 'Debugging reproduces first. Refactors keep behaviour. Design matches your system.', ratio: 1.3, art: 'radial-gradient(120% 90% at 70% 70%, #b36bf0 0%, #5b2a86 45%, #120a1c 100%)' },
+    { href: '/free-ai-api-limits', kicker: '05 · Free keys', title: 'Free, and honest about limits', body: 'Gemini, Groq, Mistral and OpenRouter keys with no card — and what each really gives.', ratio: 1.45, art: 'radial-gradient(120% 90% at 20% 30%, #f2c14e 0%, #a0721a 45%, #1a1206 100%)' },
+    { href: '/move-off-lovable-keep-building-free', kicker: '06 · Leave the credits', title: 'Keep building without a meter', body: 'Take your project off a credit platform and carry on, free, in VS Code.', ratio: 1.6, art: 'radial-gradient(120% 90% at 80% 80%, #ec5b8d 0%, #8a2146 45%, #1c0710 100%)' },
+];
 
 export default function Home() {
     return (
@@ -159,6 +169,8 @@ export default function Home() {
                     </div>
                 </div>
             </section>
+
+            <FeatureRail cards={RAIL} />
 
             {/* How it works */}
             <section data-reveal id="how" className="border-t border-line">

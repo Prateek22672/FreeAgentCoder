@@ -162,3 +162,11 @@ body:has([data-reveal]) { overflow-x: clip; }
   100% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--accent) 0%, transparent), 0 10px 30px -8px color-mix(in srgb, var(--accent) 60%, transparent); }
 }
 @media (prefers-reduced-motion: reduce) { .cta-glow { animation: none; } }
+
+/* The sideways rail: grab to drag; with reduced motion, an ordinary row. */
+.feature-rail .rail-track { cursor: grab; user-select: none; touch-action: pan-y; }
+.feature-rail.grabbing .rail-track { cursor: grabbing; }
+.feature-rail .rail-card { box-shadow: 0 30px 80px -30px rgb(0 0 0 / 0.8); transform-origin: center; }
+.feature-rail[data-still] { height: auto !important; }
+.feature-rail[data-still] > div { position: static; height: auto; padding: 96px 0; }
+.feature-rail[data-still] .rail-track { overflow-x: auto; }
