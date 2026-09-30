@@ -120,10 +120,6 @@
   filter: blur(52px) saturate(170%);
 }
 
-/* The landing page scrolls through 3D space; keep sideways swings from
-   creating a horizontal scrollbar. */
-body:has([data-reveal]) { overflow-x: clip; }
-
 /* Guides stack like cards as you scroll: each one sticks a little lower than
    the last and the next slides over it. */
 .guide-stack { display: grid; gap: 28px; padding-bottom: 40px; }
@@ -163,10 +159,64 @@ body:has([data-reveal]) { overflow-x: clip; }
 }
 @media (prefers-reduced-motion: reduce) { .cta-glow { animation: none; } }
 
-/* The sideways rail: grab to drag; with reduced motion, an ordinary row. */
-.feature-rail .rail-track { cursor: grab; user-select: none; touch-action: pan-y; }
-.feature-rail.grabbing .rail-track { cursor: grabbing; }
-.feature-rail .rail-card { box-shadow: 0 30px 80px -30px rgb(0 0 0 / 0.8); transform-origin: center; }
-.feature-rail[data-still] { height: auto !important; }
-.feature-rail[data-still] > div { position: static; height: auto; padding: 96px 0; }
-.feature-rail[data-still] .rail-track { overflow-x: auto; }
+/* ── The landing page ─────────────────────────────────────────────── */
+.cine-display { font-family: var(--font-cine), var(--font-sans); }
+
+/* Sections that are always dark, whatever the reader's colour scheme, so
+   shared parts like the repository form draw in their dark colours. */
+.force-dark {
+  --bg: #07060b; --panel: #111018; --panel-2: #17161f; --border: #24222e; --border-strong: #34313f;
+  --text: #ececef; --muted: #a1a1aa; --faint: #74717f; --accent: #d97757; --accent-fg: #1a0f0a;
+  --ok: #4ade80; --warn: #e8b44a; --bad: #f87171; --mark: rgba(217, 119, 87, 0.16);
+  color-scheme: dark; color: var(--text);
+}
+
+.cine-purple {
+  background:
+    radial-gradient(70% 55% at 50% 118%, rgba(226, 190, 245, 0.9), transparent 62%),
+    radial-gradient(55% 60% at 0% 0%, rgba(128, 36, 230, 0.95), transparent 70%),
+    radial-gradient(50% 50% at 100% 10%, rgba(76, 16, 170, 0.8), transparent 70%),
+    linear-gradient(165deg, #5a14cc 0%, #2e0987 45%, #1b0558 100%);
+}
+.cine-glass {
+  background: linear-gradient(180deg, rgba(120, 50, 200, 0.55), rgba(40, 8, 90, 0.75));
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  box-shadow: 0 40px 80px -30px rgba(10, 0, 40, 0.8), inset 0 1px 0 rgba(255, 255, 255, 0.15);
+  backdrop-filter: blur(18px);
+}
+.cine-live-glow {
+  background:
+    radial-gradient(38% 30% at 62% 26%, rgba(255, 255, 255, 0.55), transparent 70%),
+    radial-gradient(55% 40% at 40% 82%, rgba(214, 60, 240, 0.75), transparent 70%);
+  filter: blur(6px);
+}
+@keyframes cine-bar { 0% { transform: translateX(-101%); } 30%, 100% { transform: translateX(0); } }
+.cine-bar { transform: translateX(-101%); animation: cine-bar 4.2s cubic-bezier(0.3, 0.6, 0.2, 1) both; }
+@keyframes cine-fade { from { opacity: 0; transform: translateY(6px); filter: blur(4px); } }
+.cine-fade-in { animation: cine-fade 0.6s cubic-bezier(0.2, 0.7, 0.2, 1) both; }
+
+/* Card and tile surfaces. */
+.cine-ring-card { box-shadow: 0 50px 80px -40px rgba(20, 10, 40, 0.55); }
+.cine-look-violet { background: radial-gradient(60% 45% at 50% 30%, rgba(210, 160, 255, 0.55), transparent 70%), linear-gradient(180deg, rgba(96, 40, 170, 0.92), rgba(28, 10, 60, 0.95)); }
+.cine-look-chrome { background: conic-gradient(from 210deg at 62% 45%, #f5f5f7, #9d9da6, #ececf0, #6f6f78, #dcdce2, #a8a8b2, #f5f5f7); }
+.cine-look-teal { background: radial-gradient(60% 45% at 45% 40%, rgba(60, 200, 160, 0.6), transparent 70%), linear-gradient(180deg, rgba(15, 59, 51, 0.92), rgba(7, 22, 19, 0.95)); }
+.cine-look-moss { background: radial-gradient(45% 35% at 50% 62%, rgba(190, 230, 70, 0.7), transparent 70%), linear-gradient(180deg, rgba(40, 44, 36, 0.92), rgba(16, 18, 14, 0.95)); }
+.cine-look-plum { background: radial-gradient(55% 40% at 55% 30%, rgba(200, 120, 255, 0.55), transparent 70%), linear-gradient(180deg, rgba(110, 40, 160, 0.9), rgba(50, 14, 70, 0.95)); }
+.cine-look-ice { background: repeating-linear-gradient(115deg, rgba(255, 255, 255, 0.14) 0 2px, transparent 2px 14px), linear-gradient(160deg, rgba(207, 217, 245, 0.72), rgba(159, 179, 232, 0.72) 55%, rgba(230, 235, 248, 0.72)); }
+.cine-look-magenta { background: radial-gradient(60% 45% at 50% 70%, rgba(255, 90, 200, 0.6), transparent 70%), linear-gradient(180deg, rgba(90, 20, 130, 0.9), rgba(30, 6, 50, 0.95)); }
+.cine-tile-holo { background: repeating-linear-gradient(120deg, rgba(160, 190, 255, 0.28) 0 1px, transparent 1px 16px), linear-gradient(135deg, #1b2447, #4a5c9c 55%, #9aa9d8); }
+.cine-tile-violet { background: radial-gradient(60% 50% at 50% 60%, rgba(150, 60, 255, 0.75), transparent 70%), #120a22; }
+.cine-tile-red { background: radial-gradient(55% 45% at 50% 45%, rgba(210, 60, 60, 0.6), transparent 70%), #1a0708; }
+.cine-tile-signal { background: radial-gradient(40% 30% at 30% 72%, rgba(200, 240, 60, 0.9), transparent 70%), radial-gradient(60% 50% at 60% 30%, rgba(40, 140, 60, 0.45), transparent 70%), #07120a; }
+.cine-tile-dusk { background: radial-gradient(60% 50% at 50% 70%, rgba(120, 60, 220, 0.5), transparent 70%), #0e0a1a; }
+.cine-tile-orb { background: radial-gradient(22% 22% at 50% 50%, rgba(255, 255, 255, 0.8), transparent 70%), repeating-radial-gradient(circle at 50% 50%, rgba(255, 255, 255, 0.08) 0 1px, transparent 1px 8px), #0b0b12; }
+.cine-tile-ember { background: radial-gradient(50% 40% at 50% 60%, rgba(240, 150, 60, 0.6), transparent 70%), #160c05; }
+.cine-tile-teal { background: radial-gradient(50% 45% at 50% 50%, rgba(40, 170, 150, 0.6), transparent 70%), #051210; }
+.cine-star-glow { background: radial-gradient(circle, rgba(150, 90, 255, 0.55), rgba(90, 40, 200, 0.18) 45%, transparent 70%); filter: blur(10px); }
+
+/* With reduced motion, pinned sections become ordinary ones. */
+[data-still].cine-hero, [data-still].cine-carousel, [data-still].cine-rail { height: auto; }
+[data-still].cine-hero > div, [data-still].cine-carousel > div { position: relative; }
+[data-still].cine-rail > div { position: relative; height: auto; padding: 120px 0; }
+[data-still].cine-rail > div > div { overflow-x: auto; max-width: 100vw; }
+@media (prefers-reduced-motion: reduce) { .cine-bar, .cine-fade-in { animation: none; transform: none; } }

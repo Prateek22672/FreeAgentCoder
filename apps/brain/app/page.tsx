@@ -1,16 +1,16 @@
 import { Logo } from '@/components/Logo';
-import Link from 'next/link';
 import { Icon, type IconName } from '@/components/icons';
-import { FeatureRail, type RailCard } from '@/components/landing/FeatureRail';
-import { HeroCanvas } from '@/components/landing/HeroCanvas';
-import { ProductPreview } from '@/components/landing/ProductPreview';
-import { Reveal } from '@/components/landing/Reveal';
+import { Beyond } from '@/components/landing/cinema/Beyond';
+import { Carousel } from '@/components/landing/cinema/Carousel';
+import { ChromeStar } from '@/components/landing/cinema/ChromeStar';
+import { Arrow, Hero, Star } from '@/components/landing/cinema/Hero';
+import { Library } from '@/components/landing/cinema/Library';
+import { PillNav } from '@/components/landing/cinema/PillNav';
+import { WorkRail, type WorkCard } from '@/components/landing/cinema/WorkRail';
 import { RepoForm } from '@/components/RepoForm';
 import { StructuredData, brainApp, extensionApp, faqPage, graph, organization, website } from '@/components/StructuredData';
 import { ARTICLES } from '@/lib/articles';
-import { SAMPLE, SAMPLE_IMPACT } from '@/lib/sample';
-
-import { MARKETPLACE } from '@/lib/site';
+import { GITHUB, MARKETPLACE } from '@/lib/site';
 
 /** Answers to what people actually ask before installing. Shown on the page and given to search engines. */
 const FAQ = [
@@ -20,7 +20,7 @@ const FAQ = [
     },
     {
         q: 'Do I need an API key?',
-        a: 'Your first two questions each day are free here, so you can see how it answers your own code before committing. After that you paste your own free key — about a minute, no credit card. In VS Code you bring your own free keys from the start.',
+        a: 'Your first five requests each day are free here, so you can see how it works on your own code before committing. After that you paste your own free key — about a minute, no credit card. In VS Code you bring your own free keys from the start.',
     },
     {
         q: 'Does Project Brain change my repository?',
@@ -36,7 +36,7 @@ const FAQ = [
     },
     {
         q: 'Is it unlimited?',
-        a: "No free tier is unlimited, and we will not claim otherwise. FreeAgentCoder adds no limits of its own; keys from several providers raise your daily ceiling, and it warns you before a task would run out.",
+        a: 'No free tier is unlimited, and we will not claim otherwise. FreeAgentCoder adds no limits of its own; keys from several providers raise your daily ceiling, and it warns you before a task would run out.',
     },
     {
         q: 'Where do my API keys live?',
@@ -50,318 +50,201 @@ const FAQ = [
 const EXAMPLES = ['shadcn-ui/taxonomy', 'fastapi/full-stack-fastapi-template', 'expressjs/express'];
 
 const STEPS: { icon: IconName; title: string; body: string }[] = [
-    { icon: 'github', title: 'Connect a repository', body: 'Paste any public GitHub repository. Its source is read in about three seconds — never run, never stored.' },
-    { icon: 'layers', title: 'Understand it', body: 'Stack, architecture, dependencies and every file, then ask questions and get answers that cite real lines.' },
-    { icon: 'impact', title: 'Plan a change', body: 'Describe what you want to change. See every file it touches and a step-by-step plan, before anyone writes code.' },
-    { icon: 'code', title: 'Build it in VS Code', body: 'One click sends the plan to your FreeAgentCoder agent, which edits, runs your checks and shows every change.' },
+    { icon: 'github', title: 'Connect a repository', body: 'Paste any public GitHub repository. Its source is read in about three seconds, never run, never stored.' },
+    { icon: 'layers', title: 'Understand it', body: 'Stack, architecture, dependencies and every file, then answers that cite real lines.' },
+    { icon: 'impact', title: 'Plan a change', body: 'Every file a change touches and a step-by-step plan, before anyone writes code.' },
+    { icon: 'code', title: 'Build it in VS Code', body: 'One click sends the plan to the agent, which edits, runs your checks and shows every change.' },
 ];
 
-const FEATURES: { icon: IconName; title: string; body: string }[] = [
-    { icon: 'ask', title: 'Answers you can check', body: 'Every answer cites files and line ranges from the repository. A path the model invents is flagged, not trusted.' },
-    { icon: 'impact', title: 'Impact before code', body: 'Direct hits, files reached through imports, packages involved and a risk level — each labelled detected, inferred or estimated.' },
-    { icon: 'search', title: 'Search that ranks code first', body: 'Implementation above tests, docs and examples, by identifiers and words. The same engine the VS Code agent uses.' },
-    { icon: 'layers', title: 'Architecture from the code', body: 'Only the layers the repository really has, with the files in each. Nothing drawn that is not there.' },
-    { icon: 'plan', title: 'Plans your agent can run', body: 'Scope, data, logic, API, UI, tests, verify — in that order, with the actual files, ready for FreeAgentCoder.' },
-    { icon: 'shield', title: 'Private by design', body: 'Read-only. Committed .env files and credentials are never sent to a model. Keys stay on the server.' },
+const orb = (color: string, at = '50% 45%') => `radial-gradient(52% 40% at ${at}, ${color}, transparent 72%)`;
+
+const WORK: WorkCard[] = [
+    { href: '/playground', slug: 'playground', title: 'Playground', tags: 'Browser · Live preview', tag: 'New', art: orb('rgba(170, 70, 255, 0.75)', '55% 40%'), accent: '#d4b0ff', wide: true },
+    {
+        href: '#brain',
+        slug: 'project brain',
+        title: 'Read a repo',
+        tags: 'Architecture · Impact',
+        tag: 'Free',
+        art: `radial-gradient(14% 18% at 50% 42%, rgba(255,255,255,0.9), transparent 70%), repeating-radial-gradient(circle at 50% 42%, rgba(160,190,255,0.16) 0 1px, transparent 1px 9px), radial-gradient(40% 40% at 50% 42%, rgba(80,110,220,0.5), transparent 75%)`,
+        accent: '#aecbff',
+    },
+    { href: '/free-ai-coding-agent-vscode', slug: 'agent', title: 'VS Code agent', tags: 'Edits · Tests · Diffs', tag: 'MIT', art: orb('rgba(120, 40, 220, 0.7)', '40% 45%'), accent: '#c9a6ff' },
+    { href: '/free-ai-coding-agent-vscode', slug: 'specialists', title: 'Specialists', tags: 'Debug · Refactor · Design', tag: 'Built in', art: orb('rgba(230, 140, 60, 0.7)', '60% 50%'), accent: '#ffc38a' },
+    { href: '/free-ai-api-limits', slug: 'free keys', title: 'Free keys', tags: 'Gemini · Groq · Mistral', tag: 'No card', art: orb('rgba(40, 190, 150, 0.6)', '50% 40%'), accent: '#7ff0cb', wide: true },
+    { href: '/move-off-lovable-keep-building-free', slug: 'leave the credits', title: 'Off the meter', tags: 'Lovable · Bolt', tag: 'Guide', art: orb('rgba(235, 80, 140, 0.6)', '45% 50%'), accent: '#ffa3c6' },
 ];
 
-const BRAIN = ['Understand it', 'Read the code', 'Search', 'Map the structure', 'See what breaks', 'Write the plan'];
-const AGENT = ['Do the work', 'Edit files', 'Fix bugs', 'Run your tests', 'Show every diff', 'Undo in a click'];
-
-const RAIL: RailCard[] = [
-    { href: '/playground', kicker: '01 · Playground', title: 'Build an app from nothing', body: 'Describe it, the agent writes it, and it runs live in your browser.', ratio: 1.55, art: 'radial-gradient(120% 90% at 20% 10%, #f0936e 0%, #b8502e 40%, #1a0d08 100%)' },
-    { href: '#brain', kicker: '02 · Read a repo', title: 'Understand any codebase', body: 'Paste a GitHub link: how it is built, where things live, what a change breaks.', ratio: 1.2, art: 'radial-gradient(120% 90% at 80% 20%, #4d6cfa 0%, #22307a 45%, #0a0d1f 100%)' },
-    { href: '/free-ai-coding-agent-vscode', kicker: '03 · VS Code agent', title: 'It does the work in your editor', body: 'Plans, edits, runs your tests and fixes what fails — on your own free keys.', ratio: 1.7, art: 'radial-gradient(120% 90% at 30% 80%, #2fbf8a 0%, #125c43 45%, #06140f 100%)' },
-    { href: '/free-ai-coding-agent-vscode', kicker: '04 · Specialists', title: 'The right method for the job', body: 'Debugging reproduces first. Refactors keep behaviour. Design matches your system.', ratio: 1.3, art: 'radial-gradient(120% 90% at 70% 70%, #b36bf0 0%, #5b2a86 45%, #120a1c 100%)' },
-    { href: '/free-ai-api-limits', kicker: '05 · Free keys', title: 'Free, and honest about limits', body: 'Gemini, Groq, Mistral and OpenRouter keys with no card — and what each really gives.', ratio: 1.45, art: 'radial-gradient(120% 90% at 20% 30%, #f2c14e 0%, #a0721a 45%, #1a1206 100%)' },
-    { href: '/move-off-lovable-keep-building-free', kicker: '06 · Leave the credits', title: 'Keep building without a meter', body: 'Take your project off a credit platform and carry on, free, in VS Code.', ratio: 1.6, art: 'radial-gradient(120% 90% at 80% 80%, #ec5b8d 0%, #8a2146 45%, #1c0710 100%)' },
+const FOOTER: { title: string; links: { label: string; href: string; external?: boolean }[] }[] = [
+    {
+        title: 'Product',
+        links: [
+            { label: 'Playground', href: '/playground' },
+            { label: 'Read a repo', href: '#brain' },
+            { label: 'Extension', href: MARKETPLACE, external: true },
+            { label: 'Questions', href: '#faq' },
+        ],
+    },
+    {
+        title: 'Guides',
+        links: [
+            { label: 'Free API limits', href: '/free-ai-api-limits' },
+            { label: 'Leave Lovable', href: '/move-off-lovable-keep-building-free' },
+            { label: 'VS Code agent', href: '/free-ai-coding-agent-vscode' },
+            { label: 'All guides', href: '#guides' },
+        ],
+    },
+    {
+        title: 'Resources',
+        links: [
+            { label: 'GitHub', href: GITHUB, external: true },
+            { label: 'Marketplace', href: MARKETPLACE, external: true },
+            { label: 'Gemini key', href: '/free-gemini-api-key-vs-code' },
+        ],
+    },
 ];
 
 export default function Home() {
     return (
-        <div className="relative overflow-x-clip bg-bg">
+        <div className="relative overflow-x-clip bg-[#efeff2]">
             <StructuredData data={graph([organization, website, extensionApp, brainApp, faqPage(FAQ)])} />
-            <Reveal />
-            {/* Nav */}
-            <header className="sticky top-0 z-30 border-b border-line/60 bg-bg/80 backdrop-blur">
-                <div className="mx-auto flex h-14 max-w-7xl items-center gap-6 px-4 sm:px-6">
-                    <Link href="/" className="flex items-center gap-2 font-display text-[15px] font-semibold tracking-tight text-fg">
-                        <Logo />
-                        FreeAgentCoder
-                    </Link>
-                    <nav className="hidden items-center gap-6 text-[14px] text-muted md:flex">
-                        <a
-                            href="/playground"
-                            className="inline-flex items-center gap-1.5 rounded-full border border-accent/50 bg-accent/10 px-3 py-1 font-medium text-accent transition-colors hover:bg-accent hover:text-accent-fg"
-                        >
-                            <Icon name="spark" size={13} />
-                            Playground
-                            <span className="rounded-full bg-accent px-1.5 text-[10px] font-bold uppercase tracking-wide text-accent-fg">New</span>
-                        </a>
-                        <a href="#brain" className="hover:text-fg">
-                            Read a repo
-                        </a>
-                        <a href="#agent" className="hover:text-fg">
-                            Why this one
-                        </a>
-                        <a href="#how" className="hover:text-fg">
-                            How it works
-                        </a>
-                        <a href="https://github.com/Prateek22672/FreeAgentCoder" target="_blank" rel="noreferrer noopener" className="hover:text-fg">
-                            GitHub
-                        </a>
-                    </nav>
-                    <a href={MARKETPLACE} target="_blank" rel="noreferrer noopener" className="ml-auto rounded-md bg-fg px-3.5 py-1.5 text-[13.5px] font-semibold text-bg hover:opacity-90">
-                        Install extension
-                    </a>
-                </div>
-            </header>
+            <PillNav />
+            <main>
+                <Hero />
+                <Carousel />
+                <Beyond />
+                <WorkRail cards={WORK} archive={{ href: '#guides', title: 'Read every guide', action: 'Open guides' }} />
+                <Library />
 
-            {/* Hero */}
-            <section id="brain" className="relative">
-                <div className="grid-fade pointer-events-none absolute inset-0 opacity-60" aria-hidden />
-                <div className="glow-warm pointer-events-none absolute inset-x-0 bottom-0 h-[70%]" aria-hidden />
-                <HeroCanvas />
-                <div className="relative mx-auto max-w-7xl px-4 pb-20 pt-20 sm:px-6 sm:pt-28">
-                    <div className="mx-auto max-w-3xl text-center">
-                        <h1 className="font-display">
-                            <span className="block text-[13px] font-semibold uppercase tracking-[0.18em] text-accent sm:text-[15px]">Free AI coding agent for VS Code</span>
-                            <span className="text-gradient mt-4 block text-[2.6rem] font-semibold leading-[1.05] tracking-tight sm:text-6xl">
-                                Your codebase
-                                <br />
-                                has a brain.
-                            </span>
-                        </h1>
-                        <p className="mx-auto mt-6 max-w-xl text-lg leading-relaxed text-muted">
-                            Understand any codebase, then let AI build it. Paste a GitHub repository and see how it is built, where things live, and what a change
-                            would break — then hand the plan to a VS Code agent that does the work, free, on your own free API keys.
+                {/* The working parts: read a repository, the questions, the guides. */}
+                <div className="force-dark overflow-hidden rounded-b-[28px] bg-[#07060b]">
+                    <section id="brain" className="mx-auto max-w-6xl scroll-mt-24 px-5 pb-24 pt-24 sm:px-8">
+                        <h2 className="font-mono text-[11px] uppercase tracking-[0.22em] text-white/50">Read a repo</h2>
+                        <p className="cine-display mt-5 max-w-3xl text-[clamp(2.2rem,5vw,3.8rem)] font-medium leading-[1.02] tracking-[-0.035em] text-white">
+                            See how any repository is built <span className="text-white/40">before you change it.</span>
                         </p>
-                    </div>
-
-                    <div className="mx-auto mt-9 max-w-2xl rounded-xl border border-line-strong bg-panel/90 p-3 text-left shadow-2xl backdrop-blur sm:p-4">
-                        <RepoForm examples={EXAMPLES} />
-                    </div>
-                    <div className="mt-6 flex flex-col items-center gap-2">
-                        <span className="text-[13px] text-faint">No repository? Build something new.</span>
-                        <a
-                            href="/playground"
-                            className="cta-glow group inline-flex h-12 items-center gap-2.5 rounded-full bg-accent px-7 text-[15px] font-semibold text-accent-fg transition-transform hover:scale-[1.03]"
-                        >
-                            <Icon name="spark" size={17} />
-                            Start now in the Playground
-                            <Icon name="arrowRight" size={17} className="transition-transform group-hover:translate-x-1" />
-                        </a>
-                    </div>
-                    <div className="mt-5 flex flex-wrap items-center justify-center gap-x-5 gap-y-2 text-[13px] text-faint">
-                        <span className="flex items-center gap-1.5">
-                            <Icon name="shield" size={14} /> Read-only, nothing executed
-                        </span>
-                        <span className="flex items-center gap-1.5">
-                            <Icon name="check" size={14} /> Five free requests a day, then your own free key
-                        </span>
-                        <span className="flex items-center gap-1.5">
-                            <Icon name="code" size={14} /> Works with the free FreeAgentCoder agent
-                        </span>
-                    </div>
-
-                    <div className="mt-16 sm:mt-20">
-                        <ProductPreview />
-                    </div>
-                </div>
-            </section>
-
-            <FeatureRail cards={RAIL} />
-
-            {/* How it works */}
-            <section data-reveal id="how" className="border-t border-line">
-                <div className="mx-auto max-w-7xl px-4 py-20 sm:px-6">
-                    <p className="text-[12px] font-semibold uppercase tracking-wider text-accent">How it works</p>
-                    <h2 className="mt-2 max-w-2xl font-display text-3xl font-semibold tracking-tight text-fg sm:text-4xl">From a GitHub link to a verified change.</h2>
-                    <ol className="mt-10 grid gap-px overflow-hidden rounded-xl border border-line bg-line sm:grid-cols-2 lg:grid-cols-4">
-                        {STEPS.map((step, i) => (
-                            <li key={step.title} className="bg-panel p-6">
-                                <div className="flex items-center gap-3">
-                                    <span className="flex size-9 items-center justify-center rounded-lg border border-line-strong bg-bg text-accent">
-                                        <Icon name={step.icon} size={18} />
+                        <div className="mt-10 max-w-3xl rounded-[20px] border border-white/10 bg-white/[0.04] p-3 backdrop-blur sm:p-5">
+                            <RepoForm examples={EXAMPLES} />
+                        </div>
+                        <ol className="mt-16 grid gap-10 sm:grid-cols-2 lg:grid-cols-4">
+                            {STEPS.map((step, i) => (
+                                <li key={step.title}>
+                                    <span className="flex items-center gap-3 text-white/50">
+                                        <span className="rounded-full border border-white/15 px-2 py-0.5 font-mono text-[11px]">0{i + 1}</span>
+                                        <Icon name={step.icon} size={16} />
                                     </span>
-                                    <span className="font-mono text-[12px] text-faint">0{i + 1}</span>
-                                </div>
-                                <h3 className="mt-4 text-[15px] font-semibold text-fg">{step.title}</h3>
-                                <p className="mt-1.5 text-[14px] leading-relaxed text-muted">{step.body}</p>
-                            </li>
-                        ))}
-                    </ol>
-                </div>
-            </section>
+                                    <h3 className="mt-4 text-[16px] font-semibold text-white">{step.title}</h3>
+                                    <p className="mt-1.5 text-[14px] leading-relaxed text-white/55">{step.body}</p>
+                                </li>
+                            ))}
+                        </ol>
+                    </section>
 
-            {/* Features */}
-            <section data-reveal className="border-t border-line">
-                <div className="mx-auto max-w-7xl px-4 py-20 sm:px-6">
-                    <p className="text-[12px] font-semibold uppercase tracking-wider text-accent">What you get</p>
-                    <h2 className="mt-2 max-w-2xl font-display text-3xl font-semibold tracking-tight text-fg sm:text-4xl">Answers you can check, not just answers.</h2>
-                    <div className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                        {FEATURES.map((f) => (
-                            <div key={f.title} className="rounded-xl border border-line bg-panel p-6 transition-colors hover:border-line-strong">
-                                <Icon name={f.icon} size={20} className="text-accent" />
-                                <h3 className="mt-4 text-[15px] font-semibold text-fg">{f.title}</h3>
-                                <p className="mt-1.5 text-[14px] leading-relaxed text-muted">{f.body}</p>
-                            </div>
-                        ))}
-                    </div>
-                    <p className="mt-6 text-[13px] text-faint">
-                        Example from the preview: replacing Prisma in {SAMPLE.meta.owner}/{SAMPLE.meta.repo} reaches {SAMPLE_IMPACT.total} files across{' '}
-                        {SAMPLE_IMPACT.groups.length} kinds of code — found in under a second, before a single edit.
-                    </p>
-                </div>
-            </section>
-
-            {/* Two halves */}
-            <section data-reveal id="agent" className="border-t border-line">
-                <div className="mx-auto max-w-7xl px-4 py-20 sm:px-6">
-                    <p className="text-[12px] font-semibold uppercase tracking-wider text-accent">Why this one</p>
-                    <h2 className="mt-2 max-w-3xl font-display text-3xl font-semibold tracking-tight text-fg sm:text-4xl">Reading a repository is the easy half.</h2>
-                    <p className="mt-4 max-w-2xl text-[15px] leading-relaxed text-muted">
-                        Tools that write a wiki for a repository explain it and stop there. Assistants that change code want a subscription and run on a model you
-                        do not choose. This does both halves — and the part that costs money runs on free keys that belong to you, in the editor you already have.
-                    </p>
-                    <div className="mt-10 grid items-stretch gap-4 lg:grid-cols-[1fr_auto_1fr]">
-                        <div className="rounded-xl border border-line bg-panel p-6">
-                            <p className="flex items-center gap-2 text-[15px] font-semibold text-fg">
-                                <Logo size={15} /> Project Brain <span className="text-[12px] font-normal text-faint">· this website</span>
-                            </p>
-                            <ul className="mt-4 grid grid-cols-2 gap-2 text-[14px] text-muted">
-                                {BRAIN.map((item) => (
-                                    <li key={item} className="flex items-center gap-2">
-                                        <Icon name="check" size={14} className="text-ok" /> {item}
-                                    </li>
-                                ))}
-                            </ul>
+                    <section id="faq" className="mx-auto max-w-4xl scroll-mt-24 px-5 py-24 sm:px-8">
+                        <h2 className="font-mono text-[11px] uppercase tracking-[0.22em] text-white/50">Questions</h2>
+                        <p className="cine-display mt-5 text-[clamp(2rem,4.5vw,3.2rem)] font-medium tracking-[-0.035em] text-white">Straight answers.</p>
+                        <div className="mt-10 divide-y divide-white/10 border-y border-white/10">
+                            {FAQ.map((item) => (
+                                <details key={item.q} className="faq group py-1">
+                                    <summary className="flex cursor-pointer list-none items-center justify-between gap-6 py-5 text-[16px] font-medium text-white">
+                                        {item.q}
+                                        <span className="text-xl leading-none text-white/40 transition-transform duration-300 group-open:rotate-45" aria-hidden>
+                                            +
+                                        </span>
+                                    </summary>
+                                    <p className="pb-6 pr-10 text-[14.5px] leading-relaxed text-white/60">{item.a}</p>
+                                </details>
+                            ))}
                         </div>
-                        <div className="flex items-center justify-center text-faint" aria-hidden>
-                            <div className="flex flex-col items-center gap-1 rounded-lg border border-line-strong bg-bg px-3 py-2 text-[11.5px]">
-                                <span>plan</span>
-                                <Icon name="arrowRight" size={18} className="rotate-90 text-accent lg:rotate-0" />
-                            </div>
-                        </div>
-                        <div className="rounded-xl border border-line bg-panel p-6">
-                            <p className="flex items-center gap-2 text-[15px] font-semibold text-fg">
-                                <Icon name="code" size={16} className="text-accent" /> FreeAgentCoder <span className="text-[12px] font-normal text-faint">· in VS Code</span>
-                            </p>
-                            <ul className="mt-4 grid grid-cols-2 gap-2 text-[14px] text-muted">
-                                {AGENT.map((item) => (
-                                    <li key={item} className="flex items-center gap-2">
-                                        <Icon name="check" size={14} className="text-ok" /> {item}
-                                    </li>
-                                ))}
-                            </ul>
-                            <a href={MARKETPLACE} target="_blank" rel="noreferrer noopener" className="mt-6 inline-flex items-center gap-1.5 text-[14px] text-accent hover:underline">
-                                Get the free extension <Icon name="arrowRight" size={14} />
-                            </a>
-                        </div>
-                    </div>
+                    </section>
+
+                    <section id="guides" className="mx-auto max-w-4xl scroll-mt-24 px-5 pb-28 pt-24 sm:px-8">
+                        <h2 className="font-mono text-[11px] uppercase tracking-[0.22em] text-white/50">Guides</h2>
+                        <p className="cine-display mt-5 text-[clamp(2rem,4.5vw,3.2rem)] font-medium tracking-[-0.035em] text-white">Read before you switch.</p>
+                        <ul className="guide-stack mt-10">
+                            {ARTICLES.map((article, i) => (
+                                <li key={article.slug} className="guide-card" style={{ top: `${88 + i * 18}px`, zIndex: i + 1 }}>
+                                    {/* A plain link on purpose: a real page load, so each guide stays its own
+                                        indexable page, and the browser can zoom the card into it. */}
+                                    <a href={`/${article.slug}`} className="guide-link" style={{ viewTransitionName: `guide-${article.slug}` }}>
+                                        <span className="font-mono text-[12px] text-faint">{String(i + 1).padStart(2, '0')}</span>
+                                        <span className="cine-display mt-3 block text-2xl font-medium tracking-[-0.02em] text-fg sm:text-3xl">{article.h1}</span>
+                                        <span className="mt-3 block max-w-2xl text-[15px] leading-relaxed text-muted">{article.description}</span>
+                                        <span className="mt-6 inline-flex items-center gap-1.5 text-[14px] font-medium text-white">
+                                            Read the guide <Arrow size={14} />
+                                        </span>
+                                    </a>
+                                </li>
+                            ))}
+                        </ul>
+                    </section>
                 </div>
-            </section>
 
-            {/* What we believe about agents working on code. */}
-            <section data-reveal className="relative overflow-hidden border-t border-line">
-                <div className="mx-auto max-w-7xl px-4 py-20 sm:px-6">
-                    <p className="text-[12px] font-semibold uppercase tracking-wider text-accent">For developers and teams</p>
-                    <h2 className="mt-3 max-w-4xl font-display text-3xl font-semibold leading-tight tracking-tight sm:text-[2.6rem]">
-                        <span className="text-fg">Understanding comes first —</span>
-                        <br />
-                        <span className="text-muted">the change is the easy part.</span>
-                    </h2>
-
-                    <div className="relative mt-12 flex justify-center">
-                        <div className="aurora pointer-events-none absolute -inset-x-2 -top-16 bottom-[-4rem] opacity-90 mix-blend-screen sm:inset-x-10" aria-hidden />
-                        <figure className="relative w-full max-w-4xl rounded-3xl border border-line-strong bg-panel/55 p-8 shadow-2xl backdrop-blur-2xl sm:p-12">
-                            <span className="block font-display text-5xl leading-none text-accent" aria-hidden>
-                                &ldquo;
-                            </span>
-                            <blockquote className="mt-6 font-display text-xl font-semibold leading-snug sm:text-[1.7rem]">
-                                <span className="text-fg">An agent that edits code nobody understands is a liability.</span>{' '}
-                                <span className="text-muted">
-                                    One that maps the system first, shows exactly what a change touches, and proves the result against your own tests is a colleague. That is the
-                                    difference between an impressive demo and work you can ship on a Friday.
+                {/* The last call to action. */}
+                <section className="p-2 pt-16 sm:p-3 sm:pt-24" aria-labelledby="cta-title">
+                    <div className="cine-purple relative grid min-h-[min(100dvh,760px)] overflow-hidden rounded-[22px] sm:rounded-[28px] md:grid-cols-[minmax(0,5fr)_minmax(0,7fr)]">
+                        <div className="relative z-10 flex flex-col justify-center px-6 py-20 text-white sm:px-12">
+                            <h2 id="cta-title" className="cine-display text-[clamp(3rem,7vw,5.6rem)] font-semibold leading-[0.95] tracking-[-0.035em]">
+                                Start
+                                <br />
+                                building
+                                <br />
+                                <span className="text-white/50">
+                                    for
+                                    <br />
+                                    free.
                                 </span>
-                            </blockquote>
-                            <figcaption className="mt-8 text-[13px]">
-                                <span className="block font-semibold text-fg">The FreeAgentCoder team</span>
-                                <span className="block text-faint">Kodenza</span>
-                            </figcaption>
-                        </figure>
-                    </div>
-                </div>
-            </section>
-
-            {/* Final CTA */}
-            <section data-reveal className="relative border-t border-line">
-                <div className="glow-warm pointer-events-none absolute inset-0 opacity-70" aria-hidden />
-                <div className="relative mx-auto max-w-3xl px-4 py-24 text-center sm:px-6">
-                    <h2 className="font-display text-3xl font-semibold tracking-tight text-fg sm:text-5xl">See your own repository.</h2>
-                    <p className="mt-4 text-lg text-muted">Paste a link. In a few seconds you will know how it is built and what a change would touch.</p>
-                    <div className="mx-auto mt-8 max-w-xl rounded-xl border border-line-strong bg-panel/90 p-3 text-left backdrop-blur sm:p-4">
-                        <RepoForm examples={[]} />
-                    </div>
-                </div>
-            </section>
-
-            {/* FAQ: the questions people ask before installing. */}
-            <section data-reveal id="faq" className="border-t border-line">
-                <div className="mx-auto max-w-4xl px-4 py-20 sm:px-6">
-                    <p className="text-[12px] font-semibold uppercase tracking-wider text-accent">Questions</p>
-                    <h2 className="mt-2 font-display text-3xl font-semibold tracking-tight text-fg sm:text-4xl">Straight answers.</h2>
-                    <div className="mt-8 divide-y divide-line border-y border-line">
-                        {FAQ.map((item) => (
-                            <details key={item.q} className="faq group py-1">
-                                <summary className="flex cursor-pointer list-none items-center justify-between gap-6 py-4 text-[16px] font-medium text-fg">
-                                    {item.q}
-                                    <span className="text-xl leading-none text-faint transition-transform duration-300 group-open:rotate-45" aria-hidden>
-                                        +
-                                    </span>
-                                </summary>
-                                <p className="pb-5 pr-10 text-[14.5px] leading-relaxed text-muted">{item.a}</p>
-                            </details>
-                        ))}
-                    </div>
-                </div>
-            </section>
-
-            {/* Guides: one page per real question people search for. */}
-            <section data-reveal className="border-t border-line">
-                <div className="mx-auto max-w-4xl px-4 py-20 sm:px-6">
-                    <p className="text-[12px] font-semibold uppercase tracking-wider text-accent">Guides</p>
-                    <h2 className="mt-2 font-display text-3xl font-semibold tracking-tight text-fg sm:text-4xl">Read before you switch.</h2>
-                    <ul className="guide-stack mt-10">
-                        {ARTICLES.map((article, i) => (
-                            <li key={article.slug} className="guide-card" style={{ top: `${88 + i * 18}px`, zIndex: i + 1 }}>
-                                {/* A plain link on purpose: a real page load, so each guide stays its own
-                                    indexable page, and the browser can zoom the card into it. */}
-                                <a href={`/${article.slug}`} className="guide-link" style={{ viewTransitionName: `guide-${article.slug}` }}>
-                                    <span className="font-mono text-[12px] text-faint">{String(i + 1).padStart(2, '0')}</span>
-                                    <span className="mt-3 block font-display text-2xl font-semibold tracking-tight text-fg sm:text-3xl">{article.h1}</span>
-                                    <span className="mt-3 block max-w-2xl text-[15px] leading-relaxed text-muted">{article.description}</span>
-                                    <span className="mt-6 inline-flex items-center gap-1.5 text-[14px] font-medium text-accent">
-                                        Read the guide <Icon name="arrowRight" size={15} />
-                                    </span>
+                            </h2>
+                            <p className="mt-7 max-w-[19rem] text-[15px] leading-relaxed text-white/80">
+                                A playground in your browser and an agent in your editor, both on keys you own. Ship something today.
+                            </p>
+                            <a
+                                href="/playground"
+                                className="group mt-8 inline-flex w-fit items-center gap-2 rounded-[12px] bg-white px-5 py-3 text-[14.5px] font-medium text-zinc-950 shadow-[0_14px_40px_-12px_rgb(0_0_0/0.5)] transition-transform hover:scale-[1.03]"
+                            >
+                                Get started <span className="transition-transform group-hover:translate-x-0.5"><Arrow size={14} /></span>
+                            </a>
+                            <p className="mt-7 max-w-[17rem] text-[14px] leading-relaxed text-white/75">
+                                No card required · No sign-up ·{' '}
+                                <a href={MARKETPLACE} target="_blank" rel="noreferrer noopener" className="underline decoration-white/40 underline-offset-4 hover:decoration-white">
+                                    or install for VS Code
                                 </a>
-                            </li>
-                        ))}
-                    </ul>
-                </div>
-            </section>
+                            </p>
+                        </div>
+                        <ChromeStar className="pointer-events-none absolute inset-y-0 right-[-10%] h-full w-[80%] opacity-60 md:relative md:right-0 md:w-full md:opacity-100" />
+                    </div>
+                </section>
+            </main>
 
-            <footer className="border-t border-line">
-                <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-3 px-4 py-8 text-[13px] text-faint sm:px-6">
-                    <span>Free and open source · Works with Claude, GPT, Gemini and more, on your own keys.</span>
-                    <span className="flex gap-5">
-                        <a href={MARKETPLACE} target="_blank" rel="noreferrer noopener" className="hover:text-fg">
-                            VS Code extension
-                        </a>
-                        <a href="https://github.com/Prateek22672/FreeAgentCoder" target="_blank" rel="noreferrer noopener" className="hover:text-fg">
-                            GitHub
-                        </a>
+            <footer data-nav="light" className="px-5 pb-8 pt-20 text-zinc-900 sm:px-12">
+                <div className="flex flex-col gap-14 md:flex-row md:items-start md:justify-between">
+                    <div>
+                        <Star size={22} className="text-[#7b2ff0]" />
+                        <p className="cine-display mt-3 text-[clamp(2.6rem,8vw,6.2rem)] font-medium leading-none tracking-[-0.055em]">FreeAgentCoder</p>
+                        <p className="mt-3 text-[14px] text-zinc-500">Your codebase has a brain.</p>
+                    </div>
+                    <nav aria-label="Footer" className="grid shrink-0 grid-cols-2 gap-x-10 gap-y-10 whitespace-nowrap pt-2 sm:grid-cols-3">
+                        {FOOTER.map((col) => (
+                            <div key={col.title}>
+                                <p className="font-mono text-[11px] uppercase tracking-[0.18em] text-zinc-500">{col.title}</p>
+                                <ul className="mt-4 space-y-2.5 text-[14.5px]">
+                                    {col.links.map((link) => (
+                                        <li key={link.label}>
+                                            <a href={link.href} {...(link.external ? { target: '_blank', rel: 'noreferrer noopener' } : {})} className="hover:text-[#7b2ff0]">
+                                                {link.label}
+                                            </a>
+                                        </li>
+                                    ))}
+                                </ul>
+                            </div>
+                        ))}
+                    </nav>
+                </div>
+                <div className="mt-20 flex flex-col gap-3 border-t border-zinc-300 pt-6 text-[13px] text-zinc-500 sm:flex-row sm:items-center sm:justify-between">
+                    <span className="flex items-center gap-2">
+                        <Logo size={13} className="text-zinc-700" /> © 2026 FreeAgentCoder · A Kodenza product
                     </span>
+                    <span>Free and open source · Works with Claude, GPT, Gemini and more, on your own keys.</span>
                 </div>
             </footer>
         </div>

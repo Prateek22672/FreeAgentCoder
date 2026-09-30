@@ -1,9 +1,11 @@
 import type { Metadata } from 'next';
-import { Montserrat } from 'next/font/google';
+import { Inter_Tight, Montserrat } from 'next/font/google';
 import { DESCRIPTION, INDEXABLE, PRODUCT, SITE_URL } from '@/lib/site';
 import './globals.css';
 
 const display = Montserrat({ subsets: ['latin'], weight: ['500', '600', '700'], variable: '--font-montserrat', display: 'swap' });
+/** The tight grotesque the landing page's big type is set in. */
+const cine = Inter_Tight({ subsets: ['latin'], weight: ['500', '600'], variable: '--font-cine', display: 'swap' });
 
 export const metadata: Metadata = {
     metadataBase: new URL(SITE_URL),
@@ -48,7 +50,7 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
     return (
-        <html lang="en" className={display.variable}>
+        <html lang="en" className={`${display.variable} ${cine.variable}`}>
             <body className="min-h-screen">{children}</body>
         </html>
     );
