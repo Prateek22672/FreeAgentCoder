@@ -22,7 +22,8 @@ export async function checkKeysAction(form: FormData): Promise<void> {
     if (!(await isSignedIn())) return;
     const id = String(form.get('id') ?? '');
     // One key, or every key when no id is given.
-    await checkPoolKeys(id ? [id] : (await listPool()).map((k) => k.id));
+    // Pressing Check sends one real request per key, to prove it answers and to read its limits.
+    await checkPoolKeys(id ? [id] : (await listPool()).map((k) => k.id), 0, true);
     revalidatePath('/admin');
 }
 

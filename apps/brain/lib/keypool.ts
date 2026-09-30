@@ -1,7 +1,7 @@
 import 'server-only';
 import { createCipheriv, createDecipheriv, createHash, randomBytes, randomUUID } from 'node:crypto';
 import { createProvider, PRESETS, type ChatRequest, type Provider, type RouterEntry, type StreamEvent } from '@agentic/core';
-import { checkKey, type Health } from './keyhealth';
+import { checkKey, deepCheckKey, PUBLISHED_LIMITS, type Health } from './keyhealth';
 import { NO_STORE_MESSAGE, settingsNeedStore, store } from './kv';
 
 /**
@@ -41,6 +41,8 @@ export interface PoolKeyView {
     today: { ok: number; failed: number };
     benched: boolean;
     health?: Health;
+    /** The provider's published free-tier limits, for when it sends no live figures. */
+    published?: string;
 }
 
 const POOL = 'pb:keypool';
@@ -119,16 +121,23 @@ export async function addPoolKey(provider: string, label: string, key: string): 
  * only keys whose last check is older than `staleMs`, so opening the admin
  * page keeps every key's health fresh without asking on every load.
  */
-export async function checkPoolKeys(ids?: string[], staleMs = 30 * 60_000): Promise<void> {
+export async function checkPoolKeys(ids?: string[], staleMs = 30 * 60_000, deep = false): Promise<void> {
     const pool = await readPool();
     const due = pool.filter((k) => (ids ? ids.includes(k.id) : !k.health || Date.now() - k.health.at > staleMs));
     if (!due.length) return;
     await Promise.all(
         due.map(async (k) => {
             const apiKey = decrypt(k.cipher);
+            const before = k.health;
             k.health = apiKey
-                ? await checkKey(k.provider, apiKey)
+                ? await (deep ? deepCheckKey : checkKey)(k.provider, apiKey)
                 : { state: 'invalid', message: 'Cannot be decrypted: KEY_POOL_SECRET or ADMIN_PASSWORD changed since it was added. Remove it and add it again.', at: Date.now() };
+            // A free recheck sees no quota figures; keep the ones the last real Check found.
+            if (!deep && k.health.state === 'ok' && !k.health.limits?.length && before?.limits?.length) {
+                k.health = { ...k.health, limits: before.limits, limitsAt: before.limitsAt ?? before.at };
+            } else if (k.health.limits?.length) {
+                k.health = { ...k.health, limitsAt: k.health.at };
+            }
         }),
     );
     // Write back onto a fresh read, so a key added meanwhile is not dropped.
@@ -166,6 +175,7 @@ export async function listPool(): Promise<PoolKeyView[]> {
         today: { ok: counts[`${k.id}:ok`] ?? 0, failed: counts[`${k.id}:fail`] ?? 0 },
         benched: benched[i] !== null,
         health: k.health,
+        published: PUBLISHED_LIMITS[k.provider],
     }));
 }
 

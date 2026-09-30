@@ -54,6 +54,7 @@ export function KeyPool({ keys, providers, needStore }: { keys: PoolKeyView[]; p
                                 <th className="px-3 py-2">Key</th>
                                 <th className="px-3 py-2">Status</th>
                                 <th className="px-3 py-2">Health</th>
+                                <th className="px-3 py-2">Limits</th>
                                 <th className="px-3 py-2">Today</th>
                                 <th className="px-3 py-2" />
                             </tr>
@@ -82,6 +83,23 @@ export function KeyPool({ keys, providers, needStore }: { keys: PoolKeyView[]; p
                                             </span>
                                         ) : (
                                             <span className="text-faint">Not checked</span>
+                                        )}
+                                    </td>
+                                    <td className="max-w-[300px] px-3 py-2 text-[12px] leading-snug text-muted">
+                                        {k.health?.limits?.length ? (
+                                            <>
+                                                {k.health.limits.map((line) => (
+                                                    <span key={line} className="block text-fg">
+                                                        {line}
+                                                    </span>
+                                                ))}
+                                                <span className="block text-faint">as of {ago(k.health.limitsAt ?? k.health.at)}</span>
+                                            </>
+                                        ) : (
+                                            <>
+                                                <span className="block">{k.published ?? 'Not published'}</span>
+                                                <span className="block text-faint">Press Check for this key&rsquo;s live figures</span>
+                                            </>
                                         )}
                                     </td>
                                     <td className="px-3 py-2 tabular-nums text-muted">
@@ -114,7 +132,7 @@ export function KeyPool({ keys, providers, needStore }: { keys: PoolKeyView[]; p
                     </table>
                     <form action={checkKeysAction} className="flex justify-end border-t border-line px-3 py-2">
                         <button type="submit" className="rounded-md border border-line px-3 py-1 text-[12px] text-muted hover:text-fg">
-                            Check all keys now
+                            Check all keys now (one test request each)
                         </button>
                     </form>
                 </div>
