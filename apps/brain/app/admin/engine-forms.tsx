@@ -38,10 +38,11 @@ export function KeyPool({ keys, providers, needStore }: { keys: PoolKeyView[]; p
                 <div className="rounded-lg border border-bad/50 bg-bad/10 px-4 py-3 text-[13px] leading-relaxed text-fg">
                     <p className="font-semibold text-bad">Keys cannot be saved yet: this deployment has no storage.</p>
                     <p className="mt-1 text-muted">
-                        Without it, every key is held in one short-lived server&rsquo;s memory and vanishes within minutes. In Vercel, open the project, then Storage,
-                        then Upstash for Redis (the free plan is enough), and connect it to this project. That sets <code className="font-mono">KV_REST_API_URL</code>{' '}
-                        and <code className="font-mono">KV_REST_API_TOKEN</code>. Also set <code className="font-mono">KEY_POOL_SECRET</code> to a long random value, so
-                        changing the admin password never makes saved keys unreadable. Redeploy, then add the keys again.
+                        Without it, every key is held in one short-lived server&rsquo;s memory and vanishes within minutes. Run{' '}
+                        <code className="font-mono">apps/brain/supabase/schema.sql</code> once in your Supabase project&rsquo;s SQL Editor, then set{' '}
+                        <code className="font-mono">SUPABASE_URL</code> and <code className="font-mono">SUPABASE_SERVICE_ROLE_KEY</code> in the deployment. Also set{' '}
+                        <code className="font-mono">KEY_POOL_SECRET</code> to a long random value, so changing the admin password never makes saved keys unreadable.
+                        Redeploy, then add the keys again.
                     </p>
                 </div>
             )}

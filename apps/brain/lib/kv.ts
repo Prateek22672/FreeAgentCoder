@@ -1,13 +1,15 @@
 import 'server-only';
 
 /**
- * A small store for counts that have to survive a deploy.
+ * A small store for settings and counts that have to survive a deploy.
  *
- * Backed by any Upstash-compatible Redis REST endpoint (Vercel KV is one) when
- * KV_REST_API_URL and KV_REST_API_TOKEN are set, and by this process's memory
- * when they are not, so development and preview deployments work with no
- * service attached. Nothing here holds anything personal: counts, provider
- * names and a random install id.
+ * Backed by Supabase when SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY are set
+ * (run supabase/schema.sql in the project once), otherwise by any
+ * Upstash-compatible Redis REST endpoint when KV_REST_API_URL and
+ * KV_REST_API_TOKEN are set, and otherwise by this process's memory, so
+ * development works with no service attached. Nothing here holds anything
+ * personal: counts, provider names, a random install id, and pool keys that
+ * are encrypted before they arrive.
  */
 
 // Vercel's Upstash integration sets the KV_ names; a database made at
@@ -15,7 +17,14 @@ import 'server-only';
 const URL_BASE = (process.env.KV_REST_API_URL || process.env.UPSTASH_REDIS_REST_URL)?.trim().replace(/\/$/, '');
 const TOKEN = (process.env.KV_REST_API_TOKEN || process.env.UPSTASH_REDIS_REST_TOKEN)?.trim();
 
-export const kvConfigured = Boolean(URL_BASE && TOKEN);
+const SUPABASE_URL = process.env.SUPABASE_URL?.trim().replace(/\/$/, '');
+const SUPABASE_KEY = (process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SECRET_KEY)?.trim();
+const supabaseConfigured = Boolean(SUPABASE_URL && SUPABASE_KEY);
+const redisConfigured = Boolean(URL_BASE && TOKEN);
+
+export const kvConfigured = supabaseConfigured || redisConfigured;
+/** Which store is in use, for the admin page. */
+export const storeName = supabaseConfigured ? 'Supabase' : redisConfigured ? 'Upstash Redis' : 'memory';
 
 /**
  * On a real deployment, memory is not storage: each request can land on a
@@ -25,7 +34,7 @@ export const kvConfigured = Boolean(URL_BASE && TOKEN);
  */
 export const settingsNeedStore = !kvConfigured && Boolean(process.env.VERCEL || process.env.NODE_ENV === 'production');
 export const NO_STORE_MESSAGE =
-    'Not saved: this deployment has no storage connected, so it would be lost within minutes. Connect Upstash Redis (see the note at the top of this page), redeploy, then add it again.';
+    'Not saved: this deployment has no storage connected, so it would be lost within minutes. Set SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY (see the note on this page), redeploy, then save again.';
 
 export interface Store {
     /** Adds to several counters under one key, and keeps the key for `ttl` seconds. */
@@ -114,6 +123,59 @@ const remote: Store = {
     },
 };
 
+/**
+ * Supabase: one Postgres function per operation, in supabase/schema.sql,
+ * called through the project's REST API with the secret key. A failed call
+ * throws, like the Redis store, so a save is never reported as done when it
+ * was not.
+ */
+async function rpc<T>(fn: string, args: Record<string, unknown>): Promise<T> {
+    const headers: Record<string, string> = { apikey: SUPABASE_KEY!, 'content-type': 'application/json' };
+    // The older service_role key is a JWT and goes in Authorization too; the
+    // newer sb_secret_ keys go in apikey alone.
+    if (SUPABASE_KEY!.startsWith('eyJ')) headers.authorization = `Bearer ${SUPABASE_KEY}`;
+    const response = await fetch(`${SUPABASE_URL}/rest/v1/rpc/${fn}`, { method: 'POST', headers, body: JSON.stringify(args), cache: 'no-store' });
+    if (!response.ok) {
+        const detail = (await response.text().catch(() => '')).slice(0, 200);
+        throw new Error(`store: ${fn} HTTP ${response.status}${detail ? ` ${detail}` : ''}`);
+    }
+    const text = await response.text();
+    return (text ? JSON.parse(text) : null) as T;
+}
+
+const supabase: Store = {
+    async addCounts(key, counts, ttl) {
+        const clean = Object.fromEntries(Object.entries(counts).filter(([, by]) => by !== 0).map(([field, by]) => [field, Math.round(by)]));
+        if (!Object.keys(clean).length) return;
+        await rpc('fac_kv_add_counts', { p_key: key, p_counts: clean, p_ttl: ttl });
+    },
+    async counts(key) {
+        return toCounts(await rpc<Record<string, number>>('fac_kv_counts', { p_key: key }));
+    },
+    async addMember(key, member, ttl) {
+        await rpc('fac_kv_add_member', { p_key: key, p_member: member, p_ttl: ttl });
+    },
+    async memberCount(key) {
+        return Number(await rpc('fac_kv_member_count', { p_key: key })) || 0;
+    },
+    async members(key, limit) {
+        const rows = await rpc<unknown[]>('fac_kv_members_of', { p_key: key, p_limit: limit });
+        return Array.isArray(rows) ? rows.map((row) => (typeof row === 'string' ? row : String((row as Record<string, unknown>).fac_kv_members_of ?? ''))) : [];
+    },
+    async put(key, value, ttl) {
+        await rpc('fac_kv_put', { p_key: key, p_value: value, p_ttl: Math.max(1, Math.round(ttl)) });
+    },
+    async getMany(keys) {
+        if (!keys.length) return [];
+        const rows = await rpc<{ k: string; v: string | null }[]>('fac_kv_get_many', { p_keys: keys });
+        const found = new Map((rows ?? []).map((row) => [row.k, row.v]));
+        return keys.map((key) => found.get(key) ?? null);
+    },
+    async firstIn(key, ttl) {
+        return Boolean(await rpc('fac_kv_first_in', { p_key: key, p_ttl: ttl }));
+    },
+};
+
 interface Entry {
     value: unknown;
     expires: number;
@@ -172,4 +234,4 @@ const memory: Store = {
     },
 };
 
-export const store: Store = kvConfigured ? remote : memory;
+export const store: Store = supabaseConfigured ? supabase : redisConfigured ? remote : memory;

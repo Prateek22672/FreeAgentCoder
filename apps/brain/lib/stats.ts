@@ -1,5 +1,5 @@
 import 'server-only';
-import { store } from './kv';
+import { kvConfigured, store } from './kv';
 
 /**
  * The anonymous counts the extension sends, and what the admin page reads back.
@@ -252,6 +252,6 @@ export async function readStats(days = 30): Promise<Stats> {
             (acc[id] ??= { tasks: 0, failed: 0 })[kind] += value;
             return acc;
         }, {}),
-        durable: Boolean(process.env.KV_REST_API_URL && process.env.KV_REST_API_TOKEN),
+        durable: kvConfigured,
     };
 }

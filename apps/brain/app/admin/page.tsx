@@ -5,7 +5,7 @@ import { readKeyLinks } from '@/lib/keylinks';
 import { readPlans } from '@/lib/plans';
 import { checkPoolKeys, listPool, POOL_PROVIDERS } from '@/lib/keypool';
 import { readSpecialists, SPECIALIST_INFO } from '@/lib/specialists';
-import { kvConfigured, settingsNeedStore } from '@/lib/kv';
+import { kvConfigured, settingsNeedStore, storeName } from '@/lib/kv';
 import { marketplaceStats } from '@/lib/marketplace';
 import { readStats, type Stats } from '@/lib/stats';
 import { trialUsage } from '@/lib/trial';
@@ -168,7 +168,7 @@ export default async function AdminPage() {
                 <SpecialistsForm info={SPECIALIST_INFO} settings={specialists} stats={stats.bySpecialist} />
             </Section>
 
-            <Section title="Key pool — the site’s free trial">
+            <Section title={`Key pool — the site’s free trial · stored in ${storeName}`}>
                 <KeyPool keys={pool} providers={POOL_PROVIDERS} needStore={settingsNeedStore} />
             </Section>
 
@@ -196,7 +196,7 @@ export default async function AdminPage() {
             {!kvConfigured && (
                 <Note>
                     Counts are being held in this server's memory, so they reset on every deployment and each instance counts separately. Set{' '}
-                    <code className="font-mono text-fg">KV_REST_API_URL</code> and <code className="font-mono text-fg">KV_REST_API_TOKEN</code> to keep them.
+                    <code className="font-mono text-fg">SUPABASE_URL</code> and <code className="font-mono text-fg">SUPABASE_SERVICE_ROLE_KEY</code> to keep them.
                 </Note>
             )}
             <p className="mt-6 text-xs text-muted">
