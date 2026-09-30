@@ -30,6 +30,12 @@ interface Turn {
 }
 
 const STORAGE = 'fac.playground.v1';
+const SUGGESTIONS = [
+    'Turn this into a todo app that saves to local storage',
+    'Add a dark mode toggle to the page',
+    'Make a landing page for a coffee shop',
+    'Build a calculator with keyboard support',
+];
 const HISTORY = 'fac.playground.chat.v1';
 
 function loadSaved<T>(key: string): T | undefined {
@@ -144,9 +150,18 @@ export function Playground() {
     const [needKey, setNeedKey] = useState<string>();
     const [runOpen, setRunOpen] = useState(false);
     const [trial, setTrial] = useState<{ remaining: number; limit: number }>();
+    const [elapsed, setElapsed] = useState(0);
     const { own } = useOwnKey();
     const chatEnd = useRef<HTMLDivElement>(null);
     const pendingRequest = useRef<string | undefined>(undefined);
+
+    // Seconds on the clock while the agent works, as the extension shows.
+    useEffect(() => {
+        if (!busy) return;
+        setElapsed(0);
+        const timer = window.setInterval(() => setElapsed((n) => n + 1), 1000);
+        return () => window.clearInterval(timer);
+    }, [busy]);
 
     useEffect(() => {
         setProject(loadSaved<Project>(STORAGE));
@@ -380,50 +395,114 @@ export function Playground() {
                     )}
                 </main>
 
-                {/* Agent */}
+                {/* Agent — the same shape as the chat panel in the VS Code extension. */}
                 <aside className="flex max-h-[55dvh] w-full shrink-0 flex-col border-t border-line bg-panel md:max-h-none md:max-w-[380px] md:border-l md:border-t-0">
-                    <div className="flex h-9 shrink-0 items-center justify-between border-b border-line px-3 text-[11px] font-semibold uppercase tracking-wider text-faint">
-                        <span className="flex items-center gap-1.5">
-                            <Icon name="spark" size={13} /> Agent
+                    <div className="flex h-10 shrink-0 items-center justify-between border-b border-line pl-3 pr-2">
+                        <span className="flex items-center gap-2 text-[13px] font-semibold text-fg">
+                            <Logo size={15} /> FreeAgentCoder
                         </span>
-                        <span className="normal-case tracking-normal">
-                            {own ? `Your ${own.provider} key` : trial ? `${trial.remaining} of ${trial.limit} free left today` : 'Free to try'}
-                        </span>
+                        <button
+                            type="button"
+                            title="Clear the conversation"
+                            aria-label="Clear the conversation"
+                            onClick={() => setTurns([])}
+                            className="rounded-md px-2 py-1 text-[12px] text-faint hover:bg-panel-2 hover:text-fg"
+                        >
+                            New chat
+                        </button>
                     </div>
-                    <div className="scroll-thin min-h-0 flex-1 space-y-3 overflow-y-auto p-3">
-                        {!turns.length && (
-                            <p className="text-[13px] leading-relaxed text-muted">
-                                Say what you want: “add a dark mode toggle”, “turn this into a todo app that saves to local storage”, “the button does nothing, fix
-                                it”. Each change shows up in the files, and live in Run.
-                            </p>
-                        )}
-                        {turns.map((turn, i) => (
-                            <div key={i} className={turn.role === 'user' ? 'ml-6 rounded-lg bg-panel-2 px-3 py-2 text-[13.5px] text-fg' : 'text-[13.5px] leading-relaxed text-muted'}>
-                                {turn.content}
-                                {turn.changed?.length ? (
-                                    <div className="mt-2 flex flex-wrap gap-1">
-                                        {turn.changed.map((path) => (
-                                            <button
-                                                key={path}
-                                                type="button"
-                                                onClick={() => path in files && setProject({ ...project, active: path })}
-                                                className="rounded border border-line px-1.5 py-0.5 font-mono text-[11.5px] text-accent hover:border-accent"
-                                            >
-                                                {path}
-                                            </button>
-                                        ))}
-                                    </div>
-                                ) : null}
+
+                    <div className="scroll-thin min-h-0 flex-1 overflow-y-auto px-3 py-4">
+                        {!turns.length && !busy ? (
+                            <div className="flex flex-col items-center gap-1.5 px-1 pt-6 text-center">
+                                <Logo size={34} />
+                                <h2 className="mt-2 text-[16px] font-semibold text-fg">What should we build?</h2>
+                                <p className="mb-3 max-w-[280px] text-[12.5px] leading-relaxed text-muted">
+                                    Describe it in plain words. Changes appear in the files, and live in Run.
+                                </p>
+                                {SUGGESTIONS.map((text) => (
+                                    <button
+                                        key={text}
+                                        type="button"
+                                        onClick={() => setPrompt(text)}
+                                        className="flex w-full items-center gap-2 rounded-lg border border-line bg-panel-2/60 px-3 py-2 text-left text-[12.5px] text-fg transition-colors hover:border-accent"
+                                    >
+                                        <Icon name="spark" size={13} className="shrink-0 text-accent" />
+                                        {text}
+                                    </button>
+                                ))}
                             </div>
-                        ))}
-                        {busy && <p className="animate-pulse text-[13px] text-faint">Writing the code…</p>}
+                        ) : (
+                            <div className="flex flex-col gap-5">
+                                {turns.map((turn, i) =>
+                                    turn.role === 'user' ? (
+                                        <div
+                                            key={i}
+                                            className="max-w-[92%] self-end whitespace-pre-wrap break-words rounded-[12px_12px_4px_12px] border border-line bg-bg px-3 py-2 text-[13px] text-fg"
+                                        >
+                                            {turn.content}
+                                        </div>
+                                    ) : (
+                                        <div key={i} className="flex flex-col gap-2">
+                                            <div className="flex items-center gap-1.5 text-[12px]">
+                                                <Logo size={12} />
+                                                <span className="font-semibold text-fg">FreeAgentCoder</span>
+                                                {turn.model ? <span className="truncate text-faint">· {turn.model.replace(/^custom:/, '')}</span> : null}
+                                            </div>
+                                            <p className="whitespace-pre-wrap break-words text-[13px] leading-relaxed text-muted">{turn.content}</p>
+                                            {turn.changed?.length ? (
+                                                <div className="rounded-lg border border-line bg-bg">
+                                                    <div className="flex items-center justify-between border-b border-line px-3 py-1.5 text-[11.5px]">
+                                                        <span className="font-semibold text-fg">Changes</span>
+                                                        <span className="text-faint">
+                                                            {turn.changed.length} file{turn.changed.length === 1 ? '' : 's'}
+                                                        </span>
+                                                    </div>
+                                                    <ul className="flex flex-col gap-1 px-3 py-2">
+                                                        {turn.changed.map((path) => (
+                                                            <li key={path}>
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={() => path in files && setProject({ ...project, active: path })}
+                                                                    className="flex items-center gap-2 font-mono text-[12px] text-muted hover:text-accent"
+                                                                >
+                                                                    <Icon name="check" size={12} className="text-ok" />
+                                                                    {path}
+                                                                </button>
+                                                            </li>
+                                                        ))}
+                                                    </ul>
+                                                </div>
+                                            ) : null}
+                                            <div className="flex items-center gap-1.5 border-t border-dashed border-line pt-2 text-[11.5px] text-faint">
+                                                {turn.changed?.length ? (
+                                                    <>
+                                                        <Icon name="check" size={12} className="text-ok" /> Done · applied to the project
+                                                    </>
+                                                ) : (
+                                                    <>No files changed</>
+                                                )}
+                                            </div>
+                                        </div>
+                                    ),
+                                )}
+                                {busy && (
+                                    <div className="flex items-center gap-2 text-[12px] text-muted">
+                                        <span className="inline-block size-3.5 animate-spin rounded-full border-[1.5px] border-line border-t-accent" />
+                                        <span className="flex-1">Writing the code…</span>
+                                        <span className="tabular-nums text-faint">{elapsed}s</span>
+                                    </div>
+                                )}
+                            </div>
+                        )}
                         {needKey && (
-                            <div className="rounded-lg border border-line bg-bg p-3">
+                            <div className="mt-4 rounded-lg border border-warn/40 bg-warn/5 p-3">
                                 <KeyPanel reason={needKey} onSaved={() => setNeedKey(undefined)} />
                             </div>
                         )}
                         <div ref={chatEnd} />
                     </div>
+
                     <form
                         onSubmit={(e) => {
                             e.preventDefault();
@@ -432,29 +511,47 @@ export function Playground() {
                             setPrompt('');
                             void send(text, project);
                         }}
-                        className="shrink-0 border-t border-line p-3"
+                        className="shrink-0 border-t border-line px-2.5 py-2"
                     >
-                        <textarea
-                            value={prompt}
-                            onChange={(e) => setPrompt(e.target.value)}
-                            onKeyDown={(e) => {
-                                if (e.key === 'Enter' && !e.shiftKey) {
-                                    e.preventDefault();
-                                    e.currentTarget.form?.requestSubmit();
-                                }
-                            }}
-                            rows={3}
-                            placeholder="What should it build or change?"
-                            aria-label="Message the agent"
-                            className="w-full resize-none rounded-md border border-line-strong bg-bg px-3 py-2 text-[13.5px] text-fg outline-none placeholder:text-faint focus:border-accent"
-                        />
-                        <button
-                            type="submit"
-                            disabled={busy || !prompt.trim()}
-                            className="mt-2 h-9 w-full rounded-md bg-accent text-[13.5px] font-semibold text-accent-fg hover:brightness-110 disabled:opacity-50"
-                        >
-                            {busy ? 'Working…' : 'Send'}
-                        </button>
+                        <div className="rounded-[10px] border border-line-strong bg-bg focus-within:border-accent">
+                            <textarea
+                                value={prompt}
+                                onChange={(e) => setPrompt(e.target.value)}
+                                onKeyDown={(e) => {
+                                    if (e.key === 'Enter' && !e.shiftKey) {
+                                        e.preventDefault();
+                                        e.currentTarget.form?.requestSubmit();
+                                    }
+                                }}
+                                rows={2}
+                                placeholder="Describe what to build or change…"
+                                aria-label="Message the agent"
+                                className="block max-h-52 min-h-[42px] w-full resize-none bg-transparent px-3 pb-0.5 pt-2.5 text-[13px] leading-[1.45] text-fg outline-none placeholder:text-faint"
+                            />
+                            <div className="flex items-center gap-1 px-1.5 pb-1.5 pt-1">
+                                <span className="flex h-6 min-w-0 items-center gap-1.5 rounded-md px-1.5 text-[12px] text-muted" title={own ? 'Using your own key' : 'Free requests on this site'}>
+                                    <span className={`size-[7px] shrink-0 rounded-full ${trial && trial.remaining === 0 && !own ? 'bg-warn' : 'bg-ok'}`} />
+                                    <span className="truncate">{own ? `Your ${own.provider} key` : trial ? `${trial.remaining} of ${trial.limit} free left` : 'Free to try'}</span>
+                                </span>
+                                <span className="flex-1" />
+                                <button
+                                    type="submit"
+                                    disabled={busy || !prompt.trim()}
+                                    aria-label="Send"
+                                    className="flex size-7 items-center justify-center rounded-[7px] bg-accent text-accent-fg hover:brightness-110 disabled:opacity-40"
+                                >
+                                    <Icon name="arrowRight" size={15} className="-rotate-90" />
+                                </button>
+                            </div>
+                        </div>
+                        <div className="flex items-center gap-3 px-0.5 pt-1.5 text-[11px] text-faint">
+                            <span>Enter to send · Shift+Enter for a new line</span>
+                            {!own && (
+                                <button type="button" onClick={() => setNeedKey('Add your own free key for unlimited requests.')} className="ml-auto hover:text-fg">
+                                    Use my own key
+                                </button>
+                            )}
+                        </div>
                     </form>
                 </aside>
             </div>
