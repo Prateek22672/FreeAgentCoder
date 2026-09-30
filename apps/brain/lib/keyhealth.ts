@@ -37,7 +37,7 @@ export const PUBLISHED_LIMITS: Record<string, string> = {
     groq: 'Free tier: 1,000 requests a day, 30 a minute, 200,000 tokens a day',
     openrouter: 'Free models: 20 a minute; 50 a day, or 1,000 a day after $10 of credits',
     mistral: 'Shown only in your Mistral account, under API > Limits',
-    cerebras: 'Trial: 5 requests a minute',
+    cerebras: 'Paid: the $5 trial needs a card and expires after 30 days',
     openai: 'Paid: set by your account\'s usage tier',
     anthropic: 'Paid: set by your account\'s usage tier',
 };
@@ -46,7 +46,7 @@ const number = (value: string) => (Number.isFinite(Number(value)) ? Number(value
 
 /**
  * Reads rate-limit headers in both common shapes, x-ratelimit-remaining-requests
- * (OpenAI, Groq, Cerebras) and anthropic-ratelimit-requests-remaining, into
+ * (OpenAI, Groq and others) and anthropic-ratelimit-requests-remaining, into
  * lines such as "998 of 1,000 requests left".
  */
 /** What the bare "requests" and "tokens" headers count, where a provider leaves the window unsaid. */

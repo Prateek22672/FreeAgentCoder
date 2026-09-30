@@ -14,6 +14,7 @@ export const KEY_LINKS: Record<string, string> = {
     groq: 'https://console.groq.com/keys',
     cerebras: 'https://cloud.cerebras.ai',
     mistral: 'https://console.mistral.ai/api-keys',
+    cohere: 'https://dashboard.cohere.com/api-keys',
     openrouter: 'https://openrouter.ai/keys',
     ollama: 'https://ollama.com/download',
     openai: 'https://platform.openai.com/api-keys',

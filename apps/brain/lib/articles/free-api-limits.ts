@@ -22,7 +22,7 @@ const table = (headers: string[], rows: string[][]): Block => ({ type: 'table', 
 const callout = (text: string): Block => ({ type: 'callout', text });
 
 /** Everything below was read from the provider's own pages on this date. */
-export const CHECKED = '2026-09-29';
+export const CHECKED = '2026-09-30';
 
 export const FREE_API_LIMITS: Article = {
     slug: 'free-ai-api-limits',
@@ -46,8 +46,10 @@ export const FREE_API_LIMITS: Article = {
                 ['Groq', 'Yes', 'No', 'openai/gpt-oss-120b', '131,072', '1,000', 'Yes, one model'],
                 ['Mistral', 'Yes', 'No', 'Not published', 'Not published', 'Not published', 'Not published'],
                 ['OpenRouter', 'Yes', 'No', 'Varies by model', 'Varies', '50, or 1,000', 'Varies'],
+                ['Cohere', 'Trial key', 'No', 'Command A+', '128,000', '1,000 a month', 'Yes'],
+                ['SambaNova', 'Yes', 'No', 'DeepSeek-V3.2', 'Not published', '20', 'Not published'],
                 ['Cerebras', '**Trial only**', '**Yes**', 'openai/gpt-oss-120b', '65,536 on trial', 'Not published', 'Yes, 2 images'],
-                ['NVIDIA NIM', 'Yes', 'No', 'Not published', 'Not published', 'Not published', 'Not published'],
+                ['NVIDIA NIM', 'Trial', 'Not published', 'Not published', 'Not published', 'Not published', 'Not published'],
                 ['Z.ai / GLM', 'Some models', 'Not published', 'GLM-4.7-Flash', 'Not published', 'Not published', 'Yes'],
                 ['Together AI', 'No', '—', 'One model at $0', '262,144', 'Not published', 'No'],
                 ['DeepSeek', 'No', 'Yes', '—', '—', '—', '—'],
@@ -55,7 +57,7 @@ export const FREE_API_LIMITS: Article = {
             ],
         ),
         p(
-            'Four of those ten do not belong in a free-tier comparison at all any more, which tells you how fast this moves. If you want two keys that cost nothing and need no card, take **Gemini** and **Groq**.',
+            'Four of those twelve do not belong in a free-tier comparison at all any more, which tells you how fast this moves. If you want two keys that cost nothing and need no card, take **Gemini** and **Groq**.',
         ),
 
         h2('Google Gemini — generous, but the numbers are secret now'),
@@ -111,6 +113,15 @@ export const FREE_API_LIMITS: Article = {
             'Check the live page: [OpenRouter limits](https://openrouter.ai/docs/api_reference/limits). [Get a free OpenRouter key](/go/openrouter).',
         ]),
 
+        h2('Cohere — a real free key, but small and personal-use only'),
+        ul([
+            'The trial key needs no card and is waiting on the API Keys page as soon as you sign up.',
+            '**1,000 calls a month** across everything, and 20 chat requests a minute. An agent uses several calls per task, so treat it as a backup, not a main key.',
+            'Cohere\u2019s pricing page: "Trial keys are not permitted to be used for production or commercial purposes." Personal coding is fine; a product serving other people is not.',
+            'Best free coding model: **Command A+** (`command-a-plus-05-2026`), 128,000 tokens of context, with tools and images.',
+            'Check the live pages: [Cohere rate limits](https://docs.cohere.com/docs/rate-limits) and [pricing](https://cohere.com/pricing). [Get a free Cohere key](/go/cohere).',
+        ]),
+
         h2('Mistral — free, no card, limits not published'),
         ul([
             '"Free mode" is on by default and needs no credit card.',
@@ -156,7 +167,7 @@ export const FREE_API_LIMITS: Article = {
         },
         {
             q: 'Do any of these need a credit card?',
-            a: 'Gemini, Groq, Mistral and OpenRouter do not. Cerebras and DeepSeek do. For Together AI and Z.ai it is not published.',
+            a: 'Gemini, Groq, Mistral, OpenRouter, Cohere and SambaNova do not. Cerebras, DeepSeek and Together AI do. For Z.ai and NVIDIA it is not published.',
         },
         {
             q: 'Will my code be used to train their models?',

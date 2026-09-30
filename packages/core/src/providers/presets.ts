@@ -73,12 +73,14 @@ export const PRESETS: Record<string, ProviderPreset> = {
   },
   cerebras: {
     id: 'cerebras',
-    label: 'Cerebras',
+    label: 'Cerebras (paid)',
     kind: 'openai',
     baseURL: 'https://api.cerebras.ai/v1',
     keyEnv: ['CEREBRAS_API_KEY'],
     needsKey: true,
-    free: true,
+    // Not free: its trial needs a card. Kept so keys people already saved keep
+    // working, but never offered as a free option or used in the free chain.
+    free: false,
     defaultModel: 'gpt-oss-120b',
     models: ['gpt-oss-120b', 'qwen-3.8-27b'],
     prefer: [/gpt-oss-120b/, /qwen.*coder/, /qwen/, /gpt-oss/],
@@ -86,6 +88,21 @@ export const PRESETS: Record<string, ProviderPreset> = {
     maxRequestTokens: 28_000,
     signupUrl: 'https://cloud.cerebras.ai',
     note: 'Trial, not a free tier: $5 of credits that need a card and expire after 30 days. 5 requests/minute, 64K context. Checked 2026-09-29.',
+  },
+  cohere: {
+    id: 'cohere',
+    label: 'Cohere (trial key)',
+    kind: 'openai',
+    baseURL: 'https://api.cohere.ai/compatibility/v1',
+    keyEnv: ['COHERE_API_KEY', 'CO_API_KEY'],
+    needsKey: true,
+    free: true,
+    defaultModel: 'command-a-plus-05-2026',
+    models: ['command-a-plus-05-2026', 'command-a-03-2025'],
+    prefer: [/^command-a-plus/, /^command-a-\d/, /^command-a/],
+    contextWindow: 128_000,
+    signupUrl: 'https://dashboard.cohere.com/api-keys',
+    note: 'Free trial key, no card: 20 requests/minute and 1,000 calls a month. Cohere does not allow trial keys for production or commercial work. Checked 2026-09-30.',
   },
   mistral: {
     id: 'mistral',
@@ -167,7 +184,8 @@ export const PRESETS: Record<string, ProviderPreset> = {
 };
 
 /** Order used to build the automatic free fallback chain. */
-export const FREE_ORDER = ['gemini', 'cerebras', 'groq', 'mistral', 'openrouter', 'ollama'];
+// Cohere comes last among the keyed ones: 1,000 calls a month runs out fast.
+export const FREE_ORDER = ['gemini', 'groq', 'mistral', 'openrouter', 'cohere', 'ollama'];
 
 export interface ModelRef {
   provider: string;

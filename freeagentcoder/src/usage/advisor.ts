@@ -102,7 +102,7 @@ export function estimatePromptsLeft(input: { keys: KeyView[]; learnedLimits: Rec
         return {
             atLeast: true,
             requestsPerPrompt: rounded,
-            basis: "None of your active keys has reported a daily request limit yet, so prompts left can't be estimated. Gemini names its limit the first time you reach it; Groq, Cerebras and OpenRouter report theirs with every response.",
+            basis: "None of your active keys has reported a daily request limit yet, so prompts left can't be estimated. Gemini names its limit the first time you reach it; Groq and OpenRouter report theirs with every response.",
         };
     }
     const partial = known < usable.length;
@@ -228,7 +228,7 @@ export function adviseKeys(input: AdvisorInput): Suggestion[] {
                 id: 'large-tasks',
                 level: 'tip',
                 title: 'Your tasks are large: add Gemini',
-                detail: `Your tasks average about ${compactNumber(tokensPerTask)} tokens. Gemini's free tier accepts far bigger requests than Groq or Cerebras.`,
+                detail: `Your tasks average about ${compactNumber(tokensPerTask)} tokens. Gemini's free tier accepts far bigger requests than Groq.`,
                 action: 'addKey',
                 provider: 'gemini',
             });

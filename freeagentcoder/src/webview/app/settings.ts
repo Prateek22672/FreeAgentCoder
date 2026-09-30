@@ -793,7 +793,7 @@ export class SettingsPanel {
                     { class: 'empty-card' },
                     icon('key'),
                     h('strong', { text: 'No API keys yet' }),
-                    h('span', { text: 'Gemini, Groq and Cerebras have free tiers. Each key takes about a minute to create.' }),
+                    h('span', { text: 'Gemini, Groq, Mistral, OpenRouter and Cohere give free keys with no card. Each takes about a minute to create.' }),
                 ),
             );
         }
@@ -1068,7 +1068,7 @@ export class SettingsPanel {
                 { class: 'callout' },
                 icon('info'),
                 h('span', {
-                    text: "Limits come only from what providers report in their responses (Groq, Cerebras, Mistral, OpenRouter, OpenAI and Anthropic do). Gemini doesn't, so Gemini shows your usage without a limit.",
+                    text: "Limits come only from what providers report in their responses (Groq, Mistral, OpenRouter, OpenAI and Anthropic do). Gemini doesn't, so Gemini shows your usage without a limit.",
                 }),
             ),
         );

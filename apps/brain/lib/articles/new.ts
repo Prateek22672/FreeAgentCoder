@@ -21,12 +21,12 @@ export const FREE_AGENT_VSCODE: Article = {
     slug: 'free-ai-coding-agent-vscode',
     title: 'Free AI Coding Agent for VS Code (2026)',
     description:
-        'FreeAgentCoder is a free, open-source AI coding agent for VS Code. It plans, edits, runs your tests and fixes failures on free Gemini, Groq and Cerebras keys.',
+        'FreeAgentCoder is a free, open-source AI coding agent for VS Code. It plans, edits, runs your tests and fixes failures on free Gemini, Groq, Mistral and OpenRouter keys.',
     h1: 'A free AI coding agent for VS Code',
     dek: 'Not autocomplete: an agent that plans a task, edits files across your project, runs your build and tests, and keeps going until they pass. Free, on free API keys.',
-    updated: '2026-09-22',
+    updated: '2026-09-30',
     blocks: [
-        p('Most "free" AI coding tools are free to install and then paid per use. FreeAgentCoder is built the other way around: it runs on the free tiers that AI providers give away — Google Gemini, Groq, Cerebras, Mistral and OpenRouter — and moves your work from one key to the next when a provider hits its limit, so a task keeps going instead of stopping.'),
+        p('Most "free" AI coding tools are free to install and then paid per use. FreeAgentCoder is built the other way around: it runs on the free tiers that AI providers give away — Google Gemini, Groq, Mistral, OpenRouter and Cohere — and moves your work from one key to the next when a provider hits its limit, so a task keeps going instead of stopping.'),
         h2('What the agent does'),
         ol([
             'Reads your project and makes a plan you can see, step by step.',
@@ -68,9 +68,9 @@ export const CLAUDE_CODE_ALTERNATIVE: Article = {
         'Looking for a free Claude Code alternative? FreeAgentCoder is an open-source agent for VS Code that plans, edits and verifies code on free API keys. No plan needed.',
     h1: 'A free, open-source Claude Code alternative',
     dek: 'Claude Code is an excellent agent that runs on a paid Claude plan or API usage. FreeAgentCoder gives you the same agentic loop in VS Code on free API keys.',
-    updated: '2026-09-22',
+    updated: '2026-09-30',
     blocks: [
-        p('Claude Code popularised the idea of an agent that works through a task the way a developer would: read the code, plan, edit, run the tests, fix, repeat. That loop is what makes agents useful. FreeAgentCoder brings the same loop to a VS Code extension, and runs it on free API keys from Gemini, Groq, Cerebras, Mistral and OpenRouter.'),
+        p('Claude Code popularised the idea of an agent that works through a task the way a developer would: read the code, plan, edit, run the tests, fix, repeat. That loop is what makes agents useful. FreeAgentCoder brings the same loop to a VS Code extension, and runs it on free API keys from Gemini, Groq, Mistral, OpenRouter and Cohere.'),
         h2('What carries over'),
         ul([
             'An explicit plan you can follow while it works.',
@@ -83,7 +83,7 @@ export const CLAUDE_CODE_ALTERNATIVE: Article = {
             ['', 'Claude Code', 'FreeAgentCoder'],
             [
                 ['Cost', 'A paid Claude plan or pay-as-you-go API usage', 'Free, on free provider tiers'],
-                ['Models', "Anthropic's Claude models", 'Gemini, Groq, Cerebras, Mistral, OpenRouter — plus Claude or OpenAI if you add a paid key'],
+                ['Models', "Anthropic's Claude models", 'Gemini, Groq, Mistral, OpenRouter, Cohere — plus Claude or OpenAI if you add a paid key'],
                 ['Where it runs', 'Terminal, with IDE integrations', 'A VS Code extension in the side bar'],
                 ['Source', 'Proprietary', 'Open source, MIT'],
             ],
@@ -105,7 +105,7 @@ export const CURSOR_ALTERNATIVE: Article = {
         'Want a free Cursor alternative without switching editors? FreeAgentCoder adds a free AI coding agent to the VS Code you already use, on free Gemini and Groq keys.',
     h1: 'A free Cursor alternative — without leaving VS Code',
     dek: 'Cursor is a separate editor with a limited free plan. FreeAgentCoder is an extension: keep VS Code, your settings and your extensions, and add a free agent.',
-    updated: '2026-09-22',
+    updated: '2026-09-30',
     blocks: [
         p("Cursor is built from VS Code and adds its own AI features; its free plan is limited and heavier use needs a paid plan. If what you want is an AI agent that works through tasks in your project, you don't have to change editors to get one."),
         h2('What you keep'),
@@ -130,7 +130,7 @@ export const CURSOR_ALTERNATIVE: Article = {
     faq: [
         { q: 'Is there a free Cursor alternative for VS Code?', a: 'FreeAgentCoder is one: a free, open-source AI coding agent that runs inside VS Code on free API keys.' },
         { q: 'Does it do tab autocomplete like Cursor?', a: 'No. FreeAgentCoder is an agent for tasks — building features, fixing bugs, explaining code — rather than inline completion.' },
-        { q: 'Do I need a credit card?', a: 'No. Gemini, Groq and Cerebras give free API keys without a card.' },
+        { q: 'Do I need a credit card?', a: 'No. Gemini, Groq, Mistral, OpenRouter and Cohere give free API keys without a card.' },
     ],
 };
 
@@ -141,7 +141,7 @@ export const CHAT_WITH_REPO: Article = {
         'Paste any public GitHub repo and understand it in seconds: stack, architecture, answers with real file references, code search and what a change would break.',
     h1: 'Chat with any GitHub repository',
     dek: 'Project Brain reads a repository in a few seconds and answers questions with the files and lines that prove it — then shows what a change would touch.',
-    updated: '2026-09-22',
+    updated: '2026-09-30',
     blocks: [
         p('Most "chat with your repo" tools send your question and a pile of code to a model and hope. Project Brain starts from a structured analysis of the repository — its stack, its layers, its import graph — and every file path in an answer is checked against the files that actually exist. A path the model invents is flagged, not trusted.'),
         h2('What you get from one link'),
@@ -170,12 +170,12 @@ export const CHAT_WITH_REPO: Article = {
 
 export const FREE_API_KEYS: Article = {
     slug: 'free-ai-api-keys-for-coding',
-    title: 'Free AI API Keys for Coding: Gemini, Groq, Cerebras',
+    title: 'Free AI API Keys for Coding: Gemini, Groq, Mistral',
     description:
-        'Where to get free AI API keys for coding — Google Gemini, Groq, Cerebras, Mistral and OpenRouter — what each is good for, and the one-key-per-account rule.',
+        'Where to get free AI API keys for coding with no credit card — Google Gemini, Groq, Mistral, OpenRouter and Cohere — what each is good for, and the one-key-per-account rule.',
     h1: 'Free AI API keys for coding',
-    dek: 'Five providers give free API keys you can use for coding, most without a credit card. Here is where to get each, what it is best at, and how to combine them.',
-    updated: '2026-09-22',
+    dek: 'Five providers give free API keys you can use for coding, none of them asking for a credit card. Here is where to get each, what it is best at, and how to combine them.',
+    updated: '2026-09-30',
     blocks: [
         h2('Where to get them'),
         table(
@@ -183,9 +183,9 @@ export const FREE_API_KEYS: Article = {
             [
                 ['Google Gemini', 'aistudio.google.com/apikey', 'Large codebases — reads a lot of code at once'],
                 ['Groq', 'console.groq.com/keys', 'Very fast answers and small edits'],
-                ['Cerebras', 'cloud.cerebras.ai', 'Fast, with a generous free tier'],
                 ['OpenRouter', 'openrouter.ai/keys', 'Free models from several makers behind one key'],
-                ['Mistral', 'console.mistral.ai/api-keys', 'A solid all-rounder'],
+                ['Mistral', 'console.mistral.ai/api-keys', 'A solid all-rounder; needs a phone number'],
+                ['Cohere', 'dashboard.cohere.com/api-keys', 'A last backup: 1,000 calls a month, personal use only'],
             ],
         ),
         h2('One key per account'),
@@ -193,8 +193,8 @@ export const FREE_API_KEYS: Article = {
         h2('How to combine them'),
         ul([
             'Start with Gemini: it handles the largest amount of code at once.',
-            'Add Groq and Cerebras for speed on small tasks.',
-            'Add OpenRouter and Mistral for extra headroom.',
+            'Add Groq for speed on small tasks.',
+            'Add OpenRouter and Mistral for extra headroom, and Cohere as a last backup.',
             'In FreeAgentCoder, work moves between your keys automatically when one hits its limit.',
         ]),
         h2('Keep them safe'),
@@ -202,7 +202,7 @@ export const FREE_API_KEYS: Article = {
     ],
     faq: [
         { q: 'Is the Gemini API key free?', a: 'Yes. Google AI Studio gives a free API key with daily limits, without a credit card to start.' },
-        { q: 'Which free API key is best for coding?', a: 'Gemini for large projects, Groq or Cerebras for speed. Using several together, with automatic failover, beats any single one.' },
+        { q: 'Which free API key is best for coding?', a: 'Gemini for large projects, Groq for speed. Using several together, with automatic failover, beats any single one.' },
         { q: 'Are free API keys unlimited?', a: 'No. Each has daily and per-minute limits. Keys from several providers raise the total.' },
     ],
 };
@@ -214,9 +214,9 @@ export const FOR_STUDENTS: Article = {
         'A free AI coding agent for students: FreeAgentCoder runs in VS Code on free API keys — no subscription, no credit card — and explains code as it works.',
     h1: 'A free AI coding agent for students',
     dek: 'No subscription and no credit card: free API keys, a free extension, and an agent that shows every step so you learn what it did.',
-    updated: '2026-09-22',
+    updated: '2026-09-30',
     blocks: [
-        p('Paid AI coding tools add up quickly on a student budget. FreeAgentCoder is free and open source, and runs on free API keys from Gemini, Groq and Cerebras — none of which need a credit card to start.'),
+        p('Paid AI coding tools add up quickly on a student budget. FreeAgentCoder is free and open source, and runs on free API keys from Gemini and Groq — neither needs a credit card.'),
         h2('Built for learning, not just output'),
         ul([
             'Every step is visible: the plan, each file it reads, each edit as a diff, each command it runs.',
@@ -230,7 +230,7 @@ export const FOR_STUDENTS: Article = {
     ],
     faq: [
         { q: 'Is it free for students?', a: 'It is free for everyone. There is no student plan because there is no paid plan.' },
-        { q: 'Do I need a credit card?', a: 'No. Gemini, Groq and Cerebras give free keys without a card.' },
+        { q: 'Do I need a credit card?', a: 'No. Gemini and Groq give free keys without a card, and so do Mistral, OpenRouter and Cohere.' },
         { q: 'Does it work on a school laptop?', a: 'It runs wherever VS Code runs. The models run in the cloud through your free keys, so it does not need a powerful computer.' },
     ],
 };
@@ -242,7 +242,7 @@ export const IMPACT_ANALYSIS: Article = {
         'See what a code change would touch before you make it: files that mention it, files that import those, packages involved and a risk level — for any GitHub repo.',
     h1: 'Impact analysis for code changes',
     dek: '"What happens if I replace the database?" Project Brain traces a change through the code and the import graph, and tells you what is detected, inferred or estimated.',
-    updated: '2026-09-22',
+    updated: '2026-09-30',
     blocks: [
         p('Before a large change — swapping a database, renaming a field, upgrading a framework — the question that matters is what else it touches. Project Brain answers it from the repository itself, in about a second, without running any code.'),
         h2('Three levels of certainty, kept apart'),

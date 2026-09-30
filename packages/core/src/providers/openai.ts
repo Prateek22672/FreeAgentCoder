@@ -8,7 +8,7 @@ import type { ChatRequest, Provider, StreamEvent } from './types';
 
 /**
  * One adapter for every OpenAI-compatible Chat Completions API: Groq, Gemini
- * (compat endpoint), Cerebras, Mistral, OpenRouter, Ollama, OpenAI itself, and
+ * (compat endpoint), Mistral, OpenRouter, Cohere (compat endpoint), Ollama, OpenAI itself, and
  * any custom base URL. Plain fetch + SSE, so it runs in Node and the browser.
  */
 

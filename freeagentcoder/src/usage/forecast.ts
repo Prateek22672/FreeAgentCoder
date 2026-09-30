@@ -3,7 +3,7 @@ import type { KeyView, PromptsLeft, SavingsView, Tier, UsageCounts } from '../sh
 import type { TaskStats } from './usageStore';
 
 /** Providers with a free tier: usage on these keys is money the user didn't spend. */
-export const FREE_PROVIDERS = new Set(['gemini', 'groq', 'cerebras', 'mistral', 'openrouter']);
+export const FREE_PROVIDERS = new Set(['gemini', 'groq', 'mistral', 'openrouter', 'cohere']);
 
 /** Priced like a typical paid coding model, in US dollars per million tokens. */
 export const REFERENCE_RATE = { input: 3, output: 15 };

@@ -46,7 +46,7 @@ export const COPILOT_ALTERNATIVE: Article = {
       ['', 'GitHub Copilot', 'FreeAgentCoder'],
       [
         ['Cost', 'A free tier with monthly limits; paid plans for more', 'Free. MIT licensed. No plan to upgrade to.'],
-        ['What you connect', "Your GitHub account (Copilot's own models)", 'Your own API keys — Gemini, Groq, Cerebras, Mistral, OpenRouter (free), or OpenAI/Anthropic (paid, optional)'],
+        ['What you connect', "Your GitHub account (Copilot's own models)", 'Your own API keys — Gemini, Groq, Mistral, OpenRouter, Cohere (free), or OpenAI/Anthropic (paid, optional)'],
         ['Usage limits', 'Set by your Copilot plan', "Set by whichever provider's free tier you're using — add more keys to raise the ceiling yourself"],
         ['Where keys/tokens live', "GitHub's servers", "Your device only, encrypted in VS Code's Secret Storage"],
       ],
@@ -100,11 +100,11 @@ export const GEMINI_API_VSCODE: Article = {
     ul([
       "A 1M-token context window — large enough to include most of a real project's relevant files in one request, which is why FreeAgentCoder routes complex, multi-file tasks to it by default.",
       "A daily request quota rather than a tight per-minute one, so it holds up over a longer task.",
-      "Doesn't publish rate-limit headers the way Groq or Cerebras do, so FreeAgentCoder tracks your Gemini usage locally instead.",
+      "Doesn't publish rate-limit headers the way Groq does, so FreeAgentCoder tracks your Gemini usage locally instead.",
     ]),
     callout('Free-tier limits change over time — check ai.google.dev/pricing for the current numbers before relying on an exact figure.'),
     h2('Pair it with a fast key'),
-    p('Gemini is strong for large, complex work but not the fastest for quick questions. Add a Groq or Cerebras key too — FreeAgentCoder sends short questions and small edits there, and saves Gemini for builds, debugging and multi-file changes. That combination, entirely free, covers most day-to-day coding.'),
+    p('Gemini is strong for large, complex work but not the fastest for quick questions. Add a Groq key too — FreeAgentCoder sends short questions and small edits there, and saves Gemini for builds, debugging and multi-file changes. That combination, entirely free, covers most day-to-day coding.'),
   ],
   faq: [
     { q: 'Does the free Gemini API key expire?', a: "Keys don't expire on their own, but Google can rotate or revoke a key you regenerate. If FreeAgentCoder reports a key as invalid, create a new one and swap it in Settings → API Keys." },
@@ -136,17 +136,17 @@ export const BEST_FREE_AI_CODING: Article = {
     p("Every free tier has a ceiling, and you'll hit it in the middle of something eventually — that's the actual complaint people have with free AI coding tools, not model quality. The fix isn't picking the single 'best' provider, it's holding keys from two or three of them so a rate limit on one just hands the task to the next."),
     h2('A routing strategy that costs nothing'),
     ul([
-      'Quick questions, small edits, "explain this function": Groq or Cerebras — both answer in a second or two.',
+      'Quick questions, small edits, "explain this function": Groq — it answers in a second or two, free.',
       'Builds, debugging, multi-file changes: Gemini, for its context window and daily (not per-minute) quota.',
       "Backup capacity: Mistral and OpenRouter, so a rate limit on your main keys doesn't stop the task.",
     ]),
     p('FreeAgentCoder automates exactly this: it classifies each request as quick or complex and routes it accordingly, then fails over to your next key the moment one is rate-limited — so the strategy above happens without you thinking about it.'),
     h2('A rough sizing rule'),
-    p('For steady daily use, two to three keys from two different providers is usually enough to stop noticing rate limits. If your tasks are large (long multi-file builds), weight that toward Gemini; if they are short and frequent, weight it toward Groq or Cerebras.'),
+    p('For steady daily use, two to three keys from two different providers is usually enough to stop noticing rate limits. If your tasks are large (long multi-file builds), weight that toward Gemini; if they are short and frequent, weight it toward Groq.'),
     callout('Free-tier limits change often. Check each provider\'s own pricing page for current numbers before planning around an exact figure.'),
   ],
   faq: [
-    { q: 'Which is fastest for coding?', a: "Groq and Cerebras are both built for low-latency inference and answer in roughly a second or two — noticeably faster than Gemini for short requests, though Gemini's larger context window wins on big, complex tasks." },
+    { q: 'Which is fastest for coding?', a: "Groq and Cerebras are both built for low-latency inference and answer in roughly a second or two, but only Groq is still free. It is noticeably faster than Gemini for short requests, though Gemini's larger context window wins on big, complex tasks." },
     { q: "Do I have to pick just one provider?", a: "No — and you shouldn't. Using two or three free keys from different providers, with something switching between them automatically, is what actually removes rate-limit friction." },
     { q: 'Is a paid key ever worth it?', a: "Only if the free tiers genuinely aren't enough for how much you code. FreeAgentCoder only reaches for a paid OpenAI or Anthropic key automatically when you have no free key active." },
   ],
