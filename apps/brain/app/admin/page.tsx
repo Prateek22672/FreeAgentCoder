@@ -2,12 +2,14 @@ import type { Metadata } from 'next';
 import { adminPassword, isSignedIn } from '@/lib/admin';
 import { configuredProviders, providerLabel } from '@/lib/ai';
 import { readKeyLinks } from '@/lib/keylinks';
+import { readPlans } from '@/lib/plans';
 import { kvConfigured } from '@/lib/kv';
 import { marketplaceStats } from '@/lib/marketplace';
 import { readStats, type Stats } from '@/lib/stats';
 import { trialUsage } from '@/lib/trial';
 import { signOutAction } from './actions';
 import { Login } from './login';
+import { PlansForm } from './plans-form';
 
 export const metadata: Metadata = { title: 'Admin', robots: { index: false, follow: false } };
 export const dynamic = 'force-dynamic';
@@ -29,7 +31,7 @@ export default async function AdminPage() {
         );
     }
 
-    const [market, stats, keyLinks] = await Promise.all([marketplaceStats(), readStats(), readKeyLinks()]);
+    const [market, stats, keyLinks, plans] = await Promise.all([marketplaceStats(), readStats(), readKeyLinks(), readPlans()]);
     const trial = trialUsage();
     const ownKeys = configuredProviders();
     const reporting = stats.active.month;
@@ -119,6 +121,10 @@ export default async function AdminPage() {
                 <Stat label="Stopped by hand" value={format(stats.totals.stopped ?? 0)} />
                 <Stat label="Images read locally" value={format(stats.totals.readLocally ?? 0)} hint="No API request" />
                 <Stat label="Images sent to a model" value={format(stats.totals.readByModel ?? 0)} />
+            </Section>
+
+            <Section title="Paid tier">
+                <PlansForm plans={plans} />
             </Section>
 
             <Section title="This site's keys">
