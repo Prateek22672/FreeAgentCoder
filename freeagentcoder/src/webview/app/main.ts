@@ -627,6 +627,9 @@ window.addEventListener('message', (event: MessageEvent<ToWebview>) => {
         case 'history':
             settingsPanel.history(message);
             break;
+        case 'plans':
+            settingsPanel.plans(message);
+            break;
         case 'logs':
             settingsPanel.logs(message);
             break;

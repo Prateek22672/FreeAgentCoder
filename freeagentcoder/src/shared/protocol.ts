@@ -2,7 +2,7 @@ export type PermissionMode = 'ask' | 'auto-edit' | 'auto';
 export type Tier = 'fast' | 'deep';
 export type KeyStatus = 'active' | 'cooldown' | 'invalid' | 'disabled' | 'unverified';
 export type KeySource = 'extension' | 'env' | 'config';
-export type SettingsSection = 'overview' | 'keys' | 'usage' | 'health' | 'memory' | 'history' | 'model' | 'permissions' | 'logs';
+export type SettingsSection = 'overview' | 'keys' | 'plans' | 'usage' | 'health' | 'memory' | 'history' | 'model' | 'permissions' | 'logs';
 export type HistoryMode = 'ask' | 'on' | 'off';
 export type LogKind = 'provider' | 'agent' | 'extension';
 export type TurnEndReason = 'completed' | 'max_steps' | 'aborted' | 'error';
@@ -224,6 +224,18 @@ export interface LessonView {
     project?: string;
 }
 
+/**
+ * The paid tier as the project's site describes it. Fetched only when the
+ * Plans page is opened, so the free tier never calls the site by itself.
+ */
+export interface PlansView {
+    enabled: boolean;
+    priceLabel: string;
+    weeklyTokens: number;
+    checkoutUrl: string;
+    note: string;
+}
+
 export interface OverviewView {
     project?: ProjectStatus;
     promptsLeft: PromptsLeft;
@@ -404,11 +416,13 @@ export type ToWebview =
     | { type: 'clipboard'; text: string }
     | { type: 'keyTest'; id: string; ok: boolean; message: string }
     | { type: 'showSettings'; section?: SettingsSection }
+    | { type: 'plans'; plans?: PlansView; error?: string }
     /** Focus the chat input; `prefill` writes text into it (never sends it), `note` explains where it came from. */
     | { type: 'focusInput'; prefill?: string; note?: string };
 
 export type FromWebview =
     | { type: 'ready' }
+    | { type: 'openPlans' }
     | { type: 'send'; text: string; attachments?: AttachmentInput[]; correction?: boolean }
     | { type: 'testProject' }
     | { type: 'stop' }

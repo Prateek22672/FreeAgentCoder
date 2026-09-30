@@ -1,6 +1,7 @@
 import { compactNumber, formatAgo, formatDate, formatDuration, formatLatency, formatUsd, fullNumber } from '../../shared/format';
 import { detectProvider, KEY_STEPS, RECOMMENDED_SETUP } from '../../shared/keyFormat';
 import type {
+    PlansView,
     CapacityWindow,
     HealthEntry,
     HealthStatus,
@@ -25,6 +26,7 @@ type Msg<T extends ToWebview['type']> = Extract<ToWebview, { type: T }>;
 const TABS: [SettingsSection, string, IconName][] = [
     ['overview', 'Overview', 'grid'],
     ['keys', 'API Keys', 'key'],
+    ['plans', 'Plans', 'layers'],
     ['usage', 'Usage', 'gauge'],
     ['health', 'Health', 'health'],
     ['memory', 'Memory', 'brain'],
@@ -35,6 +37,7 @@ const TABS: [SettingsSection, string, IconName][] = [
 ];
 
 const DESCRIPTIONS: Record<SettingsSection, string> = {
+    plans: 'What is free, and what the paid tier offers when your free limits run out.',
     overview: "Prompts left today, this project's status, and the features you can turn on or off.",
     memory: "Lessons from your corrections, added to future tasks so the same mistake isn't repeated.",
     keys: 'Add several keys per provider: when one hits its limit, the next takes over.',
@@ -562,6 +565,7 @@ class AddKeyForm {
 export class SettingsPanel {
     readonly el = h('div', { class: 'settings' });
     private readonly nav = h('nav', { class: 'settings-nav', attrs: { role: 'tablist' } });
+    private readonly plansBody = h('div', { class: 'plans' });
     private readonly scroller = h('div', { class: 'settings-scroll' });
     private readonly form = new AddKeyForm();
     private readonly keySummary = h('div', { class: 'key-summary' });
@@ -596,6 +600,7 @@ export class SettingsPanel {
         this.sections = {
             overview: make('overview'),
             keys: make('keys', trustCard(), this.keySummary, button('Add API key', 'primary block', () => this.form.open(), 'plus'), this.form.el, this.keyGroups),
+            plans: make('plans', this.plansBody),
             usage: make('usage'),
             health: make('health'),
             memory: make('memory'),
@@ -630,6 +635,53 @@ export class SettingsPanel {
         this.renderHealth();
         this.renderModel();
         this.renderPermissions();
+    }
+
+    plans(message: Msg<'plans'>): void {
+        this.renderPlans({ plans: message.plans, error: message.error });
+    }
+
+    /** Two tiers, plainly: the free one you are on, and the paid one if it exists yet. */
+    private renderPlans(state: { loading?: boolean; plans?: PlansView; error?: string }): void {
+        const keys = this.data?.keys.length ?? 0;
+        const tier = (title: string, tag: string, lines: string[], ...actions: HTMLElement[]) =>
+            h(
+                'div',
+                { class: 'trust-card plan' },
+                h('div', {}, h('strong', { text: title }), h('span', { class: 'plan-tag', text: ` · ${tag}` }), ...lines.map((line) => h('span', { text: line })), ...actions),
+            );
+        const free = tier(
+            'Free',
+            'you are here',
+            [
+                `${keys} API key${keys === 1 ? '' : 's'} added.`,
+                'Gemini, Groq, Mistral and OpenRouter give keys away with no card.',
+                'Your code and prompts go only to the provider you chose, never through FreeAgentCoder.',
+            ],
+            button(keys ? 'Manage keys' : 'Add a free key', 'secondary block', () => this.setActive('keys'), 'key'),
+        );
+        let paid: HTMLElement;
+        if (state.loading) {
+            paid = h('p', { class: 'muted', text: 'Checking whether a paid tier is available…' });
+        } else if (state.error) {
+            paid = h('p', { class: 'muted', text: state.error });
+        } else if (!state.plans?.enabled) {
+            paid = h('p', { class: 'muted', text: 'There is no paid tier yet. The free tier is the whole product today.' });
+        } else {
+            const p = state.plans;
+            const quota = p.weeklyTokens >= 1_000_000 ? `${(p.weeklyTokens / 1_000_000).toFixed(p.weeklyTokens % 1_000_000 ? 1 : 0)}M` : p.weeklyTokens.toLocaleString('en-US');
+            paid = tier(
+                'Paid',
+                p.priceLabel || 'paid',
+                [
+                    p.weeklyTokens ? `${quota} tokens a week, used only when your free limits run out.` : 'Extra capacity when your free limits run out.',
+                    'Paid requests go through FreeAgentCoder\u2019s server, unlike the free tier.',
+                    ...(p.note ? [p.note] : []),
+                ],
+                ...(p.checkoutUrl ? [button('Get a licence', 'primary block', () => send({ type: 'openExternal', url: p.checkoutUrl }), 'plus')] : []),
+            );
+        }
+        this.plansBody.replaceChildren(free, paid);
     }
 
     /** Opens the add-key form for a provider, from anywhere in the panel. */
@@ -679,6 +731,11 @@ export class SettingsPanel {
 
     private setActive(id: SettingsSection): void {
         this.active = id;
+        if (id === 'plans') {
+            // Asked for on opening, never in the background.
+            this.renderPlans({ loading: true });
+            send({ type: 'openPlans' });
+        }
         for (const [key, section] of Object.entries(this.sections) as [SettingsSection, { el: HTMLElement }][]) {
             section.el.hidden = key !== id;
         }

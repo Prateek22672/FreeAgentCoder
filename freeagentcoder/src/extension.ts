@@ -19,6 +19,7 @@ export function activate(context: vscode.ExtensionContext): void {
         }),
         vscode.commands.registerCommand('freeagentcoder.manageKeys', () => view.show({ type: 'showSettings', section: 'keys' })),
         vscode.commands.registerCommand('freeagentcoder.showUsage', () => view.show({ type: 'showSettings', section: 'usage' })),
+        vscode.commands.registerCommand('freeagentcoder.plans', () => view.show({ type: 'showSettings', section: 'plans' })),
         vscode.commands.registerCommand('freeagentcoder.stop', () => controller.handle({ type: 'stop' })),
         vscode.commands.registerCommand('freeagentcoder.telemetry', () => controller.chooseTelemetry()),
         vscode.commands.registerCommand('freeagentcoder.testProject', async () => {

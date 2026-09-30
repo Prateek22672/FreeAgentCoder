@@ -15,6 +15,7 @@ import { AgentSession, type SessionLogEntry, type TurnPlan } from './agent/sessi
 import { PDF_READER_MODEL, planVisionRoute } from './agent/visionRoute';
 import { attachmentViews, prepareAttachments, type AttachmentReaders } from './attachments/prepare';
 import { readImagesLocally } from './attachments/ocr';
+import { SITE_URL } from './shared/site';
 import { Telemetry } from './telemetry/telemetry';
 import { complete, describeImages, digestDocument, readPdfWithGemini } from './attachments/reader';
 import { HistoryStore, newChatId } from './history/historyStore';
@@ -24,28 +25,7 @@ import { ErrorLog, redact } from './logs/errorLog';
 import { lessonsBlock, MemoryStore, type Lesson } from './memory/memoryStore';
 import { featureViews, isFeatureId, loadFeatures, saveFeatures, type Features } from './settings/features';
 import { compactNumber, errorMessage, formatDuration } from './shared/format';
-import {
-    AUTO_MODEL,
-    type AttachmentInput,
-    type FromWebview,
-    type HealthEntry,
-    type HealthStatus,
-    type HealthView,
-    type HistoryMode,
-    type KeySource,
-    type KeyStatus,
-    type KeyView,
-    type LessonView,
-    type OverviewView,
-    type PermissionMode,
-    type ProjectStatus,
-    type PromptsLeft,
-    type RoleHealth,
-    type RouteView,
-    type SettingsView,
-    type Tier,
-    type ToWebview,
-} from './shared/protocol';
+import { AUTO_MODEL, type AttachmentInput, type FromWebview, type HealthEntry, type HealthStatus, type HealthView, type HistoryMode, type KeySource, type KeyStatus, type KeyView, type LessonView, type OverviewView, type PermissionMode, type ProjectStatus, type PromptsLeft, type RoleHealth, type RouteView, type SettingsView, type Tier, type ToWebview, type PlansView } from './shared/protocol';
 import { adviseKeys, estimatePromptsLeft, providerCapacity } from './usage/advisor';
 import { capacityMessage, capacityRisk, estimateSavings, isDailyLimit, requestsNeeded, type TaskShape } from './usage/forecast';
 import { UsageStore } from './usage/usageStore';
@@ -245,6 +225,34 @@ export class Controller implements vscode.Disposable {
         }
     }
 
+    /**
+     * The paid tier as the site describes it. Asked for only when the Plans
+     * page is opened — the free tier never calls the site on its own — and
+     * every field is checked before it reaches the panel.
+     */
+    private async sendPlans(): Promise<void> {
+        try {
+            const response = await fetch(`${SITE_URL}/api/plans`, { signal: AbortSignal.timeout(8_000) });
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}`);
+            }
+            const raw = (await response.json()) as Partial<PlansView>;
+            const checkoutUrl = String(raw.checkoutUrl ?? '');
+            this.post({
+                type: 'plans',
+                plans: {
+                    enabled: raw.enabled === true,
+                    priceLabel: String(raw.priceLabel ?? '').slice(0, 40),
+                    weeklyTokens: Math.max(0, Math.round(Number(raw.weeklyTokens) || 0)),
+                    checkoutUrl: /^https:\/\/\S+$/.test(checkoutUrl) ? checkoutUrl : '',
+                    note: String(raw.note ?? '').slice(0, 200),
+                },
+            });
+        } catch {
+            this.post({ type: 'plans', error: 'Could not reach the site to check plans. Your free tier is not affected.' });
+        }
+    }
+
     /** The command: what anonymous counts are, and whether to send them. */
     chooseTelemetry(): Promise<void> {
         return this.telemetry.choose();
@@ -284,6 +292,8 @@ export class Controller implements vscode.Disposable {
                 return this.send('Continue where you left off.', [], false);
             case 'testProject':
                 return this.send(TEST_PROMPT, [], false, { test: true });
+            case 'openPlans':
+                return this.sendPlans();
             case 'stop':
                 this.session.stop();
                 return;

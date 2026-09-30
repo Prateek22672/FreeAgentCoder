@@ -107,6 +107,11 @@
         "command": "freeagentcoder.telemetry",
         "title": "Anonymous Usage Data",
         "category": "FreeAgentCoder"
+      },
+      {
+        "command": "freeagentcoder.plans",
+        "title": "Plans",
+        "category": "FreeAgentCoder"
       }
     ],
     "configuration": {
