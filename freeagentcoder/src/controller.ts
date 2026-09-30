@@ -17,6 +17,8 @@ import { attachmentViews, prepareAttachments, type AttachmentReaders } from './a
 import { readImagesLocally } from './attachments/ocr';
 import { SITE_URL } from './shared/site';
 import { Telemetry } from './telemetry/telemetry';
+import { enabledSpecialists, RemoteConfig } from './agent/remoteConfig';
+import { chooseSpecialist, specialistSection } from './agent/specialists';
 import { complete, describeImages, digestDocument, readPdfWithGemini } from './attachments/reader';
 import { HistoryStore, newChatId } from './history/historyStore';
 import { KeyStore } from './keys/keyStore';
@@ -153,6 +155,9 @@ export class Controller implements vscode.Disposable {
     private readonly dailyWarned = new Set<string>();
     private checksCache?: { root: string; at: number; checks: ProjectCheck[] };
     private readonly telemetry: Telemetry;
+    private readonly remoteConfig: RemoteConfig;
+    /** The method chosen for the task in progress, for counting outcomes by kind of work. */
+    private lastSpecialist?: string;
     /** Why the last request failed in the current task, as a short cause. */
     private lastFailure?: string;
 
@@ -163,6 +168,8 @@ export class Controller implements vscode.Disposable {
         this.errorLog = new ErrorLog(context);
         this.memory = new MemoryStore(context.globalState);
         this.features = loadFeatures(context.globalState);
+        this.remoteConfig = new RemoteConfig(context);
+        this.remoteConfig.refresh();
         this.telemetry = new Telemetry(context, () => {
             const keys = this.keys.list();
             return { count: keys.length, providers: keys.map((key) => key.provider) };
@@ -469,7 +476,12 @@ export class Controller implements vscode.Disposable {
 
         const correction = !test && (explicitCorrection || isCorrection(prompt, this.session.hasHistory, attachments.length > 0));
         const selected = parseModelChoice(this.model);
-        const { tier, reason } = selected
+        // The kind of work sets the method. Follow-ups and corrections keep the method they already have.
+        const specialist =
+            !test && !correction && !isFollowUp(prompt) && this.features.seniorMode
+                ? chooseSpecialist(prompt, enabledSpecialists(this.remoteConfig.current))
+                : undefined;
+        const base = selected
             ? { tier: 'deep' as Tier, reason: `Selected model: ${providerLabel(selected.provider)} · ${selected.model}` }
             : test
               ? { tier: 'deep' as Tier, reason: "Test run: your project's own checks" }
@@ -478,8 +490,16 @@ export class Controller implements vscode.Disposable {
               : attachments.length
                 ? { tier: 'deep' as Tier, reason: 'Request with attachments' }
                 : classifyTask(prompt, this.session.lastTier);
+        // A short request can still be the kind of work that needs a plan and checks.
+        const { tier, reason } =
+            specialist && specialist.minTier === 'deep' && base.tier === 'fast' && !selected
+                ? { tier: 'deep' as Tier, reason: `${specialist.name}: planned and checked` }
+                : base;
         const load = (id: string) => this.usage.today(id).requests;
-        const route = planRoute(keys, this.model, tier, load);
+        // On Auto, the admin can point a kind of work at a model; it is tried first, and the rest still follow.
+        const preferred = !selected && specialist ? this.remoteConfig.current[specialist.id]?.model : undefined;
+        const preferredProvider = preferred ? parseModelChoice(preferred)?.provider : undefined;
+        const route = planRoute(keys, preferred && keys.some((k) => k.provider === preferredProvider) ? preferred : this.model, tier, load);
         if (selected && route.steps[0]?.provider !== selected.provider) {
             this.post({
                 type: 'error',
@@ -526,6 +546,14 @@ export class Controller implements vscode.Disposable {
               : playbooks.length && !followUp
                 ? buildBrief(playbooks, release, prompt)
                 : prompt;
+        if (specialist) {
+            const section = specialistSection(specialist, this.remoteConfig.current[specialist.id]?.extra);
+            agentPrompt = agentPrompt.includes('</task-brief>')
+                ? agentPrompt.replace('</task-brief>', `\n${section}\n</task-brief>`)
+                : `<task-brief source="FreeAgentCoder">\nThe editor added this brief to set the method for this kind of task. Follow it; the user did not type it.\n\n${section}\n</task-brief>\n\n## Request\n${prompt}`;
+            notes.push(`Method: ${specialist.name}`);
+        }
+        this.lastSpecialist = specialist?.id ?? (isFollowUp(prompt) ? this.lastSpecialist : undefined);
         if (!test && firstDeep && structure) {
             agentPrompt += `\n\n${structureBlock(structure)}`;
         }
@@ -868,6 +896,7 @@ export class Controller implements vscode.Disposable {
         this.telemetry.taskFinished(
             end.reason === 'completed' ? 'done' : end.reason === 'aborted' ? 'stopped' : 'failed',
             end.reason === 'max_steps' ? 'max-steps' : (this.lastFailure ?? 'unknown'),
+            this.lastSpecialist,
         );
         this.lastFailure = undefined;
         void vscode.commands.executeCommand('setContext', 'freeagentcoder.hasRunTask', true);

@@ -22,6 +22,8 @@ export interface Counters {
     /** Images read on this computer, and images sent to a vision model. */
     readLocally: number;
     readByModel: number;
+    /** Tasks and failures by specialist ("fix", "build"…), to see which kind of work struggles. */
+    bySpecialist: Record<string, { tasks: number; failed: number }>;
 }
 
 export interface Report {
@@ -42,7 +44,7 @@ export interface Report {
 }
 
 export function emptyCounters(): Counters {
-    return { tasks: 0, tasksDone: 0, tasksStopped: 0, tasksFailed: 0, failures: {}, readLocally: 0, readByModel: 0 };
+    return { tasks: 0, tasksDone: 0, tasksStopped: 0, tasksFailed: 0, failures: {}, readLocally: 0, readByModel: 0, bySpecialist: {} };
 }
 
 const MAX_FAILURE_KINDS = 20;
@@ -55,6 +57,17 @@ export function addFailure(counters: Counters, kind: string): void {
         return;
     }
     counters.failures[slug] = (counters.failures[slug] ?? 0) + 1;
+}
+
+export function addSpecialistOutcome(counters: Counters, specialist: string, failed: boolean): void {
+    if (!/^[a-z]{2,20}$/.test(specialist)) {
+        return;
+    }
+    const row = (counters.bySpecialist[specialist] ??= { tasks: 0, failed: 0 });
+    row.tasks += 1;
+    if (failed) {
+        row.failed += 1;
+    }
 }
 
 export interface ReportInput {

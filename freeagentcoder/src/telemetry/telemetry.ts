@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import * as vscode from 'vscode';
 import { SITE_URL } from '../shared/site';
-import { addFailure, buildReport, describeReport, emptyCounters, type Counters, type Report } from './payload';
+import { addFailure, addSpecialistOutcome, buildReport, describeReport, emptyCounters, type Counters, type Report } from './payload';
 
 /**
  * Anonymous counts, sent only if the user says yes.
@@ -79,8 +79,11 @@ export class Telemetry {
     }
 
     /** Counts a finished task. Kept on this computer whether or not it is ever sent. */
-    taskFinished(outcome: 'done' | 'stopped' | 'failed', cause?: string): void {
+    taskFinished(outcome: 'done' | 'stopped' | 'failed', cause?: string, specialist?: string): void {
         this.counters.tasks += 1;
+        if (specialist) {
+            addSpecialistOutcome(this.counters, specialist, outcome === 'failed');
+        }
         if (outcome === 'done') {
             this.counters.tasksDone += 1;
         } else if (outcome === 'stopped') {

@@ -122,6 +122,12 @@
           "default": "",
           "scope": "application",
           "markdownDescription": "Where anonymous usage counts are sent, if you have agreed to send any. Leave empty to use the project's own site. Nothing is sent unless you said yes in **FreeAgentCoder: Anonymous Usage Data**."
+        },
+        "freeagentcoder.specialistUpdates": {
+          "type": "boolean",
+          "default": true,
+          "scope": "application",
+          "markdownDescription": "Once a day, check the project's site for updated specialist instructions (how debugging, building, design and other kinds of work are approached). A plain request that sends nothing about you or your project. Turn off to keep the built-in instructions only."
         }
       }
     },
