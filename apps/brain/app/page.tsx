@@ -80,8 +80,13 @@ export default function Home() {
                         FreeAgentCoder
                     </Link>
                     <nav className="hidden items-center gap-6 text-[14px] text-muted md:flex">
-                        <a href="/playground" className="font-medium text-fg hover:text-accent">
+                        <a
+                            href="/playground"
+                            className="inline-flex items-center gap-1.5 rounded-full border border-accent/50 bg-accent/10 px-3 py-1 font-medium text-accent transition-colors hover:bg-accent hover:text-accent-fg"
+                        >
+                            <Icon name="spark" size={13} />
                             Playground
+                            <span className="rounded-full bg-accent px-1.5 text-[10px] font-bold uppercase tracking-wide text-accent-fg">New</span>
                         </a>
                         <a href="#brain" className="hover:text-fg">
                             Read a repo
@@ -126,12 +131,17 @@ export default function Home() {
                     <div className="mx-auto mt-9 max-w-2xl rounded-xl border border-line-strong bg-panel/90 p-3 text-left shadow-2xl backdrop-blur sm:p-4">
                         <RepoForm examples={EXAMPLES} />
                     </div>
-                    <p className="mt-4 text-center text-[14px] text-muted">
-                        No repository?{' '}
-                        <a href="/playground" className="font-medium text-accent underline underline-offset-4 hover:opacity-80">
-                            Start from nothing in the Playground →
+                    <div className="mt-6 flex flex-col items-center gap-2">
+                        <span className="text-[13px] text-faint">No repository? Build something new.</span>
+                        <a
+                            href="/playground"
+                            className="cta-glow group inline-flex h-12 items-center gap-2.5 rounded-full bg-accent px-7 text-[15px] font-semibold text-accent-fg transition-transform hover:scale-[1.03]"
+                        >
+                            <Icon name="spark" size={17} />
+                            Start now in the Playground
+                            <Icon name="arrowRight" size={17} className="transition-transform group-hover:translate-x-1" />
                         </a>
-                    </p>
+                    </div>
                     <div className="mt-5 flex flex-wrap items-center justify-center gap-x-5 gap-y-2 text-[13px] text-faint">
                         <span className="flex items-center gap-1.5">
                             <Icon name="shield" size={14} /> Read-only, nothing executed

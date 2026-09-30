@@ -152,3 +152,13 @@ body:has([data-reveal]) { overflow-x: clip; }
 }
 
 .faq summary::-webkit-details-marker { display: none; }
+
+/* The playground call to action: a soft pulse of the accent, so it reads as
+   the thing to press. Still for anyone who asked for reduced motion. */
+.cta-glow { box-shadow: 0 0 0 0 color-mix(in srgb, var(--accent) 55%, transparent), 0 10px 30px -8px color-mix(in srgb, var(--accent) 60%, transparent); animation: cta-pulse 2.6s ease-out infinite; }
+@keyframes cta-pulse {
+  0% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--accent) 55%, transparent), 0 10px 30px -8px color-mix(in srgb, var(--accent) 60%, transparent); }
+  70% { box-shadow: 0 0 0 14px color-mix(in srgb, var(--accent) 0%, transparent), 0 10px 30px -8px color-mix(in srgb, var(--accent) 60%, transparent); }
+  100% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--accent) 0%, transparent), 0 10px 30px -8px color-mix(in srgb, var(--accent) 60%, transparent); }
+}
+@media (prefers-reduced-motion: reduce) { .cta-glow { animation: none; } }
