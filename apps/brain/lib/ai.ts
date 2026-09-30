@@ -12,7 +12,7 @@ import { ModelRouter, OpenAICompatProvider, PRESETS, createProvider, type Router
 /** Large-context providers first: answers are built from many excerpts. */
 const ORDER = ['gemini', 'mistral', 'openrouter', 'cerebras', 'groq'];
 
-const globalRouter = globalThis as unknown as { __brainRouter?: ModelRouter | null };
+const globalRouter = globalThis as unknown as { __brainRouter?: ModelRouter | null; __brainEntries?: RouterEntry[] };
 
 function customEntry(): RouterEntry | undefined {
     const baseURL = process.env.BRAIN_OPENAI_BASE_URL?.trim();
@@ -61,6 +61,23 @@ export function providerLabel(id: string): string {
     return PRESETS[id]?.label ?? id;
 }
 
+/**
+ * The chain for the free trial: keys added on the admin page first, then keys
+ * from the environment. Rebuilt only when the pool changes, so the router
+ * keeps what it has learned about cooldowns between requests.
+ */
+let trial: { from: RouterEntry[]; router?: ModelRouter } | undefined;
+export async function getTrialRouter(): Promise<ModelRouter | undefined> {
+    const { poolEntries } = await import('./keypool');
+    const pooled = await poolEntries();
+    if (trial && trial.from === pooled) return trial.router ?? getRouter();
+    const base = getRouter();
+    const envEntries = base ? (globalRouter.__brainEntries ?? []) : [];
+    const all = [...pooled, ...envEntries];
+    trial = { from: pooled, router: all.length ? new ModelRouter(all) : undefined };
+    return trial.router;
+}
+
 export function getRouter(): ModelRouter | undefined {
     if (globalRouter.__brainRouter !== undefined) return globalRouter.__brainRouter ?? undefined;
     const entries: RouterEntry[] = [];
@@ -79,6 +96,7 @@ export function getRouter(): ModelRouter | undefined {
             label: preset.label,
         });
     }
+    globalRouter.__brainEntries = entries;
     globalRouter.__brainRouter = entries.length ? new ModelRouter(entries) : null;
     return globalRouter.__brainRouter ?? undefined;
 }

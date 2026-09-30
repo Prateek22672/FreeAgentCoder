@@ -1,0 +1,47 @@
+'use server';
+
+import { revalidatePath } from 'next/cache';
+import { isSignedIn } from '@/lib/admin';
+import { addPoolKey, removePoolKey, setPoolKeyEnabled } from '@/lib/keypool';
+import { SPECIALIST_INFO, writeSpecialists, type SpecialistSetting } from '@/lib/specialists';
+
+export interface FormState {
+    error?: string;
+    saved?: boolean;
+}
+
+export async function addKeyAction(_state: FormState | undefined, form: FormData): Promise<FormState> {
+    if (!(await isSignedIn())) return { error: 'Sign in first.' };
+    const result = await addPoolKey(String(form.get('provider') ?? ''), String(form.get('label') ?? ''), String(form.get('key') ?? ''));
+    if ('error' in result) return { error: result.error };
+    revalidatePath('/admin');
+    return { saved: true };
+}
+
+export async function toggleKeyAction(form: FormData): Promise<void> {
+    if (!(await isSignedIn())) return;
+    await setPoolKeyEnabled(String(form.get('id') ?? ''), form.get('enabled') === 'true');
+    revalidatePath('/admin');
+}
+
+export async function removeKeyAction(form: FormData): Promise<void> {
+    if (!(await isSignedIn())) return;
+    await removePoolKey(String(form.get('id') ?? ''));
+    revalidatePath('/admin');
+}
+
+export async function saveSpecialistsAction(_state: FormState | undefined, form: FormData): Promise<FormState> {
+    if (!(await isSignedIn())) return { error: 'Sign in first.' };
+    const settings: Record<string, SpecialistSetting> = {};
+    for (const { id } of SPECIALIST_INFO) {
+        settings[id] = {
+            enabled: form.get(`${id}.enabled`) === 'on',
+            extra: String(form.get(`${id}.extra`) ?? ''),
+            model: String(form.get(`${id}.model`) ?? ''),
+        };
+    }
+    const error = await writeSpecialists(settings);
+    if (error) return { error };
+    revalidatePath('/admin');
+    return { saved: true };
+}

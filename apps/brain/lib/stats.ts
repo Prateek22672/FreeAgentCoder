@@ -35,6 +35,7 @@ export interface Report {
         failures: Record<string, number>;
         readLocally: number;
         readByModel: number;
+        bySpecialist: Record<string, { tasks: number; failed: number }>;
     };
 }
 
@@ -86,8 +87,20 @@ export function parseReport(body: unknown): Report | undefined {
             failures,
             readLocally: count(counters.readLocally),
             readByModel: count(counters.readByModel),
+            bySpecialist: specialistCounts(counters.bySpecialist),
         },
     };
+}
+
+function specialistCounts(raw: unknown): Record<string, { tasks: number; failed: number }> {
+    const out: Record<string, { tasks: number; failed: number }> = {};
+    if (!raw || typeof raw !== 'object') return out;
+    for (const [id, value] of Object.entries(raw as Record<string, unknown>).slice(0, 12)) {
+        if (!/^[a-z]{2,20}$/.test(id) || !value || typeof value !== 'object') continue;
+        const row = value as Record<string, unknown>;
+        out[id] = { tasks: count(row.tasks, 10_000), failed: count(row.failed, 10_000) };
+    }
+    return out;
 }
 
 function today(offset = 0): string {
@@ -113,6 +126,13 @@ export async function recordReport(report: Report): Promise<void> {
             DAY_TTL,
         ),
         Object.keys(counters.failures).length ? store.addCounts(`pb:fail:${day}`, counters.failures, DAY_TTL) : Promise.resolve(),
+        Object.keys(counters.bySpecialist).length
+            ? store.addCounts(
+                  `pb:spec:${day}`,
+                  Object.fromEntries(Object.entries(counters.bySpecialist).flatMap(([id, row]) => [[`${id}:tasks`, row.tasks], [`${id}:failed`, row.failed]])),
+                  DAY_TTL,
+              )
+            : Promise.resolve(),
         store.addMember(`pb:active:${day}`, report.install, DAY_TTL),
         store.addMember('pb:installs', report.install, INSTALL_TTL),
         store.put(
@@ -152,6 +172,8 @@ export interface Stats {
     versions: { version: string; installs: number }[];
     platforms: { platform: string; installs: number }[];
     reportingInstalls: number;
+    /** Tasks and failures by specialist over the period. */
+    bySpecialist: Record<string, { tasks: number; failed: number }>;
     durable: boolean;
 }
 
@@ -172,7 +194,8 @@ async function activeOver(days: number): Promise<number> {
 }
 
 export async function readStats(days = 30): Promise<Stats> {
-    const [totals, failureTotals, dailyRaw, activeToday, week, month, ids] = await Promise.all([
+    const [specTotals, totals, failureTotals, dailyRaw, activeToday, week, month, ids] = await Promise.all([
+        sumDays('pb:spec', days),
         sumDays('pb:day', days),
         sumDays('pb:fail', days),
         Promise.all(
@@ -223,6 +246,12 @@ export async function readStats(days = 30): Promise<Stats> {
             .map(([version, installs]) => ({ version, installs })),
         platforms: sorted(tally(snapshots.map((snapshot) => snapshot.platform))).map(([platform, installs]) => ({ platform, installs })),
         reportingInstalls: snapshots.length,
+        bySpecialist: Object.entries(specTotals).reduce<Record<string, { tasks: number; failed: number }>>((acc, [field, value]) => {
+            const [id, kind] = field.split(':');
+            if (!id || (kind !== 'tasks' && kind !== 'failed')) return acc;
+            (acc[id] ??= { tasks: 0, failed: 0 })[kind] += value;
+            return acc;
+        }, {}),
         durable: Boolean(process.env.KV_REST_API_URL && process.env.KV_REST_API_TOKEN),
     };
 }

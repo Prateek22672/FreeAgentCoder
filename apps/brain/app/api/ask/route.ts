@@ -1,6 +1,6 @@
 import { AllProvidersFailedError, ContextTooLargeError, type ModelRouter } from '@agentic/core';
 import { EVIDENCE_RULES, buildEvidenceBlock, checkCitations, excerpt, extractTerms, isSecretFile, rankHits, redactSecrets, roleOf } from '@agentic/project-brain';
-import { getRouter, providerLabel, routerForKey } from '@/lib/ai';
+import { getTrialRouter, providerLabel, routerForKey } from '@/lib/ai';
 import { refundTrial, trialStatus, useTrial } from '@/lib/trial';
 import { fail, isResponse, readBody, requireBrain } from '@/lib/http';
 import type { Brain } from '@/lib/store';
@@ -72,7 +72,7 @@ export async function POST(request: Request) {
         if (!router) return fail('That key does not look right. Paste the whole key, and pick the provider it came from.', 400, { badKey: true });
         access = { mode: 'own', provider: providerLabel(ownProvider) };
     } else {
-        router = getRouter();
+        router = await getTrialRouter();
         if (!router) return fail('Add your own free AI key to ask questions. It takes about a minute.', 402, { needKey: true, reason: 'no-server-key' });
         const trial = trialStatus(request);
         setCookie = trial.setCookie;
