@@ -6,7 +6,7 @@ import { configPath, detectShell, isGitRepo, loadConfig, loadProjectInstructions
 import { planFyx, type FyxContext, type FyxPlan } from './fyx/plan';
 import { FYX_MODEL, FyxProvider } from './fyx/provider';
 import { LearnedCommands } from './fyx/learned';
-import { classifyTask, isFollowUp, isValidModelChoice, KEY_PROVIDERS, parseModelChoice, planRoute, providerLabel, providerViews } from './agent/catalog';
+import { classifyTask, FYX_CHOICE, isFollowUp, isValidModelChoice, KEY_PROVIDERS, parseModelChoice, planRoute, providerLabel, providerViews } from './agent/catalog';
 import { ChainBuilder, isAuthFailure, verifyKey, type CallResult, type RoutableKey } from './agent/chain';
 import { correctionBrief, isCorrection, learnPrompt, LEARN_SYSTEM, parseLessons, rememberCommand } from './agent/correction';
 import { DIFF_SCHEME, DiffDocuments } from './agent/diffDocuments';
@@ -477,12 +477,16 @@ export class Controller implements vscode.Disposable {
         }
 
         this.turnWatch = { prompt, runs: [], edits: 0 };
-        if (!test && !explicitCorrection && !attachments.length && this.fyxEnabled()) {
-            const plan = await this.fyxPlan(cwd, prompt);
+        const fyxPicked = this.model === FYX_CHOICE;
+        let fyxHandover = false;
+        if (!test && !explicitCorrection && (fyxPicked || this.fyxEnabled())) {
+            const plan = attachments.length ? undefined : await this.fyxPlan(cwd, prompt);
             if (plan) {
                 await this.runFyx(cwd, prompt, plan);
                 return;
             }
+            // Fyx was picked, but this needs an AI model: say so at the top, and carry on with Auto.
+            fyxHandover = fyxPicked;
         }
 
         const keys = await this.routableKeys();
@@ -561,6 +565,9 @@ export class Controller implements vscode.Disposable {
                 : choosePlaybooks(prompt, tier, new Set(await readdir(cwd).catch(() => [] as string[])));
         const release = !test && senior && (carryChecks ? this.session.lastRelease : releaseIntent(prompt));
         const notes = route.note ? [route.note] : [];
+        if (fyxHandover) {
+            notes.unshift('Fyx is for basic tasks: zip, git, installing packages, running your project and file chores. This request needs an AI model, so it is going to Auto. Fyx stays selected for your next basic task.');
+        }
         if (keys[0]?.provider === TRIAL_PROVIDER) {
             notes.push("Running on FreeAgentCoder's free trial: a daily allowance on our keys, sent through FreeAgentCoder's server. Add your own free Gemini or Groq key in Settings → API Keys for faster, private requests with no daily cap of ours.");
         }

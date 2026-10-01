@@ -95,6 +95,9 @@ function closeSettings(): void {
 }
 
 function modelName(ref: string): string {
+    if (ref === 'fyx') {
+        return 'Fyx';
+    }
     const colon = ref.indexOf(':');
     return colon > 0 ? (ref.slice(colon + 1).split('/').pop() ?? ref) : ref;
 }
@@ -191,7 +194,7 @@ function renderComposer(): void {
     modeButton.replaceChildren(icon(mode.icon), h('span', { text: mode.label }), icon('chevronDown', 'caret'));
     modeButton.title = `Permissions — ${mode.description}`;
     const model = settings?.model ?? 'auto';
-    modelButton.replaceChildren(icon(model === 'auto' ? 'spark' : 'layers'), h('span', { text: model === 'auto' ? 'Auto' : modelName(model) }), icon('chevronDown', 'caret'));
+    modelButton.replaceChildren(icon(model === 'auto' ? 'spark' : model === 'fyx' ? 'bolt' : 'layers'), h('span', { text: model === 'auto' ? 'Auto' : modelName(model) }), icon('chevronDown', 'caret'));
     modelButton.title = model === 'auto' ? 'Smart routing: fast models for quick tasks, strong models for builds' : `Model: ${model}`;
     sendButton.replaceChildren(icon(running ? 'stop' : 'send'));
     sendButton.title = running ? 'Stop (Esc)' : 'Send (Enter)';
@@ -318,20 +321,11 @@ modelButton.addEventListener('click', () => {
         { kind: 'item', label: 'Auto', description: 'Fast models for quick tasks, strongest for builds', icon: 'spark', selected: current === 'auto', run: () => setModel('auto') },
         {
             kind: 'item',
-            label: settings?.fyx === false ? 'Fyx · off' : 'Fyx · 0 tokens',
-            description:
-                settings?.fyx === false
-                    ? 'Click to turn on: zip, git, install, run the project and other chores, done on your machine with no AI model'
-                    : 'Built in and on, whatever model you pick: zip, git, install, run the project and other chores, with no AI model. Click to turn off',
+            label: 'Fyx · 0 tokens',
+            description: 'For basic tasks: zip, git, install, run the project, file chores. Done on your machine with no AI model. Not for complex work: those go to Auto',
             icon: 'bolt',
-            selected: settings?.fyx !== false,
-            run: () => {
-                const enabled = settings?.fyx === false;
-                if (settings) {
-                    settings.fyx = enabled;
-                }
-                send({ type: 'setFyx', enabled });
-            },
+            selected: current === 'fyx',
+            run: () => setModel('fyx'),
         },
     ];
     const withKeys = new Set((settings?.keys ?? []).filter((k) => k.enabled && k.status !== 'invalid').map((k) => k.provider));

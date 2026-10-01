@@ -66,8 +66,11 @@ export function parseModelChoice(choice: string): { provider: string; model: str
     return KEY_PROVIDERS.includes(provider) && model ? { provider, model } : undefined;
 }
 
+/** Fyx picked in the model menu: basic tasks with no model; anything else goes to Auto. */
+export const FYX_CHOICE = 'fyx';
+
 export function isValidModelChoice(choice: unknown): choice is string {
-    return typeof choice === 'string' && (choice === AUTO_MODEL || parseModelChoice(choice) !== undefined);
+    return typeof choice === 'string' && (choice === AUTO_MODEL || choice === FYX_CHOICE || parseModelChoice(choice) !== undefined);
 }
 
 export interface KeyRef {
