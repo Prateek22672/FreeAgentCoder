@@ -5,7 +5,8 @@ import { notFound } from 'next/navigation';
 import { StructuredData, faqPage, graph, organization, website } from '@/components/StructuredData';
 import { Icon } from '@/components/icons';
 import { ARTICLES, articleBySlug, type Block } from '@/lib/articles';
-import { MARKETPLACE, SITE_URL, canonical } from '@/lib/site';
+import { InstallLink } from '@/components/InstallLink';
+import { SITE_URL, canonical } from '@/lib/site';
 import { Logo } from '@/components/Logo';
 
 type Params = Promise<{ slug: string }>;
@@ -176,9 +177,7 @@ export default async function ArticlePage({ params }: { params: Params }) {
                 <Link href="/" className="flex items-center gap-2 font-display text-[15px] font-semibold text-fg">
                     <Logo /> FreeAgentCoder
                 </Link>
-                <a href={MARKETPLACE} target="_blank" rel="noreferrer noopener" className="rounded-md bg-fg px-3 py-1.5 text-[13px] font-semibold text-bg hover:opacity-90">
-                    Install extension
-                </a>
+                <InstallLink className="rounded-md bg-fg px-3 py-1.5 text-[13px] font-semibold text-bg hover:opacity-90">Install extension</InstallLink>
             </header>
 
             <article className="pt-10">
@@ -210,9 +209,9 @@ export default async function ArticlePage({ params }: { params: Params }) {
                         <Link href="/" className="inline-flex h-10 items-center gap-2 rounded-md bg-accent px-4 text-sm font-semibold text-accent-fg hover:brightness-110">
                             Analyze a repository <Icon name="arrowRight" size={15} />
                         </Link>
-                        <a href={MARKETPLACE} target="_blank" rel="noreferrer noopener" className="inline-flex h-10 items-center gap-2 rounded-md border border-line-strong px-4 text-sm text-fg hover:bg-panel-2">
+                        <InstallLink className="inline-flex h-10 items-center gap-2 rounded-md border border-line-strong px-4 text-sm text-fg hover:bg-panel-2">
                             <Icon name="code" size={15} /> Install for VS Code
-                        </a>
+                        </InstallLink>
                     </div>
                 </section>
 

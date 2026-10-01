@@ -1,6 +1,7 @@
 'use client';
 
 import { useRef, useState } from 'react';
+import { InstallLink } from '@/components/InstallLink';
 import { AgentDemo } from './AgentDemo';
 import { ease, span, useScrollProgress } from './progress';
 
@@ -31,6 +32,7 @@ function InstallCommand() {
             >
                 {copied ? 'Copied' : 'Copy'}
             </button>
+            <InstallLink className="shrink-0 rounded-[8px] bg-white px-3 py-1 text-[12px] font-semibold text-zinc-950 transition-transform hover:scale-[1.04]">Install</InstallLink>
         </div>
     );
 }

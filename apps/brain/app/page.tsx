@@ -10,7 +10,8 @@ import { WorkRail, type WorkCard } from '@/components/landing/cinema/WorkRail';
 import { RepoForm } from '@/components/RepoForm';
 import { StructuredData, brainApp, extensionApp, faqPage, graph, organization, website } from '@/components/StructuredData';
 import { ARTICLES } from '@/lib/articles';
-import { GITHUB, MARKETPLACE } from '@/lib/site';
+import { InstallLink } from '@/components/InstallLink';
+import { GITHUB, MARKETPLACE, VSCODE_INSTALL } from '@/lib/site';
 
 /** Answers to what people actually ask before installing. Shown on the page and given to search engines. */
 const FAQ = [
@@ -81,7 +82,7 @@ const FOOTER: { title: string; links: { label: string; href: string; external?: 
         links: [
             { label: 'Playground', href: '/playground' },
             { label: 'Read a repo', href: '#brain' },
-            { label: 'Extension', href: MARKETPLACE, external: true },
+            { label: 'Install in VS Code', href: VSCODE_INSTALL },
             { label: 'Questions', href: '#faq' },
         ],
     },
@@ -206,9 +207,7 @@ export default function Home() {
                             </a>
                             <p className="mt-7 max-w-[17rem] text-[14px] leading-relaxed text-white/75">
                                 No card required · No sign-up ·{' '}
-                                <a href={MARKETPLACE} target="_blank" rel="noreferrer noopener" className="underline decoration-white/40 underline-offset-4 hover:decoration-white">
-                                    or install for VS Code
-                                </a>
+                                <InstallLink className="underline decoration-white/40 underline-offset-4 hover:decoration-white">or install in VS Code</InstallLink>
                             </p>
                         </div>
                         <ChromeStar className="pointer-events-none absolute inset-y-0 right-[-10%] h-full w-[80%] opacity-60 md:relative md:right-0 md:w-full md:opacity-100" />
@@ -230,9 +229,13 @@ export default function Home() {
                                 <ul className="mt-4 space-y-2.5 text-[14.5px]">
                                     {col.links.map((link) => (
                                         <li key={link.label}>
-                                            <a href={link.href} {...(link.external ? { target: '_blank', rel: 'noreferrer noopener' } : {})} className="hover:text-zinc-500">
-                                                {link.label}
-                                            </a>
+                                            {link.href === VSCODE_INSTALL ? (
+                                                <InstallLink className="hover:text-zinc-500">{link.label}</InstallLink>
+                                            ) : (
+                                                <a href={link.href} {...(link.external ? { target: '_blank', rel: 'noreferrer noopener' } : {})} className="hover:text-zinc-500">
+                                                    {link.label}
+                                                </a>
+                                            )}
                                         </li>
                                     ))}
                                 </ul>

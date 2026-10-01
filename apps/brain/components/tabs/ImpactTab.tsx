@@ -1,5 +1,6 @@
 'use client';
 
+import { InstallLink } from '@/components/InstallLink';
 import { buildPlan, createTask, taskUrl } from '@agentic/project-brain';
 import { useEffect, useMemo, useState } from 'react';
 import { callBrain, type TabProps } from '@/lib/client';
@@ -13,7 +14,6 @@ const RISK = {
     high: 'text-bad border-bad/40 bg-bad/10',
 };
 
-const MARKETPLACE = 'https://marketplace.visualstudio.com/items?itemName=PrateekKoratala.freeagentcoder';
 
 function FileList({ files, open, limit = 12 }: { files: string[]; open: TabProps['open']; limit?: number }) {
     const [all, setAll] = useState(false);
@@ -139,9 +139,7 @@ function PlanPanel({ result, data, open, seedFile }: { result: ImpactResult; dat
                 <p className="mt-3 max-w-2xl text-[12px] leading-relaxed text-faint">
                     Opens FreeAgentCoder with this plan written into its chat. Nothing runs until you read it and press Send. Open this project&apos;s folder in VS Code first.
                     No extension yet?{' '}
-                    <a href={MARKETPLACE} target="_blank" rel="noreferrer noopener" className="text-muted underline underline-offset-4 hover:text-fg">
-                        Install FreeAgentCoder
-                    </a>{' '}
+                    <InstallLink className="text-muted underline underline-offset-4 hover:text-fg">Install FreeAgentCoder</InstallLink>{' '}
                     — it&apos;s free.
                 </p>
             </div>

@@ -25,7 +25,10 @@ export const SITE_URL = canonicalUrl().replace(/\/$/, '');
  */
 export const INDEXABLE = !/(^|\.)vercel\.app$/i.test(new URL(SITE_URL).hostname);
 
-export const MARKETPLACE = 'https://marketplace.visualstudio.com/items?itemName=PrateekKoratala.freeagentcoder';
+export const EXTENSION_ID = 'PrateekKoratala.freeagentcoder';
+export const MARKETPLACE = `https://marketplace.visualstudio.com/items?itemName=${EXTENSION_ID}`;
+/** Opens VS Code on the extension, as the Marketplace's own Install button does. */
+export const VSCODE_INSTALL = `vscode:extension/${EXTENSION_ID}`;
 export const GITHUB = 'https://github.com/Prateek22672/FreeAgentCoder';
 export const PRODUCT = 'FreeAgentCoder';
 export const TAGLINE = 'Your codebase has a brain.';
