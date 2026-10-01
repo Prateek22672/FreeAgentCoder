@@ -164,8 +164,18 @@ export function Playground() {
     }, [busy]);
 
     useEffect(() => {
-        setProject(loadSaved<Project>(STORAGE));
-        setTurns(loadSaved<Turn[]>(HISTORY) ?? []);
+        // A request typed on the home page (?ask=…) starts a fresh project and goes straight to the agent.
+        const ask = new URLSearchParams(window.location.search).get('ask')?.trim().slice(0, 400);
+        if (ask) {
+            const starter = starterById('react') ?? STARTERS[0]!;
+            pendingRequest.current = ask;
+            setProject({ name: ask.slice(0, 40), files: { ...starter.files } });
+            setTurns([]);
+            window.history.replaceState(null, '', '/playground');
+        } else {
+            setProject(loadSaved<Project>(STORAGE));
+            setTurns(loadSaved<Turn[]>(HISTORY) ?? []);
+        }
         setReady(true);
     }, []);
 

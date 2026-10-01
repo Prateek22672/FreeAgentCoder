@@ -26,9 +26,12 @@ export function RepoForm({ examples }: { examples: string[] }) {
   const [task, setTask] = useState('');
   const [error, setError] = useState<string>();
 
+  const [opening, setOpening] = useState<string>();
   const go = (input: string) => {
     const path = toPath(input, task);
     if (!path) return setError('Enter a repository as owner/name, or paste its github.com URL.');
+    // Said straight away, so it is clear something real is happening.
+    setOpening(path.split('?')[0]!.replace(/^\/r\//, ''));
     // A real page load: the workbench needs its own isolation headers for Run.
     window.location.assign(path);
   };
@@ -81,17 +84,31 @@ export function RepoForm({ examples }: { examples: string[] }) {
             type="submit"
             className="ml-auto inline-flex h-9 items-center gap-1.5 rounded-[9px] bg-[#d97757] px-4 text-[14px] font-semibold text-white shadow-[0_8px_24px_-10px_#d97757] transition-transform hover:scale-[1.03]"
           >
-            Start
-            <svg viewBox="0 0 16 16" width={14} height={14} fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-              <path d="M3 8h10M9 4l4 4-4 4" />
-            </svg>
+            {opening ? (
+              <>
+                <span className="inline-block size-3.5 animate-spin rounded-full border-2 border-white/40 border-t-white" /> Reading
+              </>
+            ) : (
+              <>
+                Start
+                <svg viewBox="0 0 16 16" width={14} height={14} fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                  <path d="M3 8h10M9 4l4 4-4 4" />
+                </svg>
+              </>
+            )}
           </button>
         </div>
       </div>
       {error && <p className="mt-2 text-sm text-bad">{error}</p>}
-      <p className="mt-2.5 px-1 text-[12px] leading-relaxed text-white/40">
-        Leave the change empty to just look around. Read-only: the code is never run or stored.
-      </p>
+      {opening ? (
+        <p className="mt-2.5 flex items-center gap-2 px-1 text-[12.5px] text-[#4ade80]" role="status">
+          <span className="size-1.5 animate-pulse rounded-full bg-[#4ade80]" /> Reading {opening} from GitHub: its stack, layers and files, in a few seconds…
+        </p>
+      ) : (
+        <p className="mt-2.5 px-1 text-[12px] leading-relaxed text-white/40">
+          This is the real thing, not a demo: press an example and see it in about 3 seconds. Read-only, so the code is never run or stored.
+        </p>
+      )}
     </form>
   );
 }

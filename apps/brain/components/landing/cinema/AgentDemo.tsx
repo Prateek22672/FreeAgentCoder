@@ -58,8 +58,16 @@ const SPARK = 'M8 1.5c.5 3.4 2.4 5.6 6 6.5-3.6.9-5.5 3.1-6 6.5-.5-3.4-2.4-5.6-6-
 
 export function AgentDemo({ width }: { width: string }) {
     const [t, setT] = useState(0);
+    // Once someone clicks into the box it is theirs: the demo stops, and Enter builds it for real.
+    const [draft, setDraft] = useState<string>();
+    const [going, setGoing] = useState(false);
+    const engaged = draft !== undefined;
 
     useEffect(() => {
+        if (engaged) {
+            setT(0);
+            return;
+        }
         if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
             setT(DONE + 1);
             return;
@@ -67,18 +75,28 @@ export function AgentDemo({ width }: { width: string }) {
         const started = performance.now();
         const timer = window.setInterval(() => setT((performance.now() - started) % LOOP), 50);
         return () => window.clearInterval(timer);
-    }, []);
+    }, [engaged]);
 
-    const typing = t >= TYPE_FROM && t < SENT;
+    const build = () => {
+        const ask = (draft ?? '').trim();
+        if (!ask) {
+            return;
+        }
+        setGoing(true);
+        // A real page load: the Playground needs its own isolation headers to run the app.
+        window.location.assign(`/playground?ask=${encodeURIComponent(ask.slice(0, 400))}`);
+    };
+
+    const typing = !engaged && t >= TYPE_FROM && t < SENT;
     const typed = typing ? PROMPT.slice(0, Math.min(PROMPT.length, Math.floor((t - TYPE_FROM) / TYPE_MS))) : '';
-    const sent = t >= SENT;
+    const sent = !engaged && t >= SENT;
     const done = t >= DONE;
     const seconds = Math.max(1, Math.floor((t - REPLY) / 1000));
     const tokens = done ? '6.1K' : sent ? `${(1 + Math.min(5, (t - SENT) / 1000)).toFixed(1)}K` : '0';
 
     return (
         // The wrapper is the size container; the panel inside is measured against it.
-        <div className={`${width} [container-type:inline-size]`} aria-hidden>
+        <div className={`${width} [container-type:inline-size]`}>
             <div className="relative flex aspect-[0.56] w-full flex-col overflow-hidden rounded-[3.6cqw] border border-white/10 bg-[#181818] text-[#cccccc] shadow-[0_40px_90px_-30px_rgb(0_0_0/0.9)]">
                 {/* Panel header, as in the extension. */}
                 <div className="flex items-center gap-[2.4cqw] border-b border-white/[0.06] px-[4cqw] py-[3cqw]">
@@ -92,7 +110,7 @@ export function AgentDemo({ width }: { width: string }) {
                 </div>
 
                 {/* The conversation, newest at the bottom. */}
-                <div className="flex min-h-0 flex-1 flex-col justify-end gap-[2.4cqw] overflow-hidden px-[4cqw] pb-[2cqw] pt-[3cqw]">
+                <div aria-hidden className="flex min-h-0 flex-1 flex-col justify-end gap-[2.4cqw] overflow-hidden px-[4cqw] pb-[2cqw] pt-[3cqw]">
                     {!sent && (
                         <div className="m-auto flex flex-col items-center gap-[2cqw] text-center">
                             <Logo size={28} className="size-[9cqw] text-[#d97757]" />
@@ -189,17 +207,40 @@ export function AgentDemo({ width }: { width: string }) {
 
                 {/* The composer: where the request is typed. */}
                 <div className="px-[3.4cqw] pb-[2.4cqw]">
-                    <div className="rounded-[3cqw] border bg-[#1f1f1f] transition-colors" style={{ borderColor: typing ? ACCENT : 'rgba(255,255,255,0.12)' }}>
-                        <p className="min-h-[9cqw] px-[3cqw] pt-[2.4cqw] text-[3.4cqw] leading-snug">
-                            {typed ? (
-                                <span className="text-white">
-                                    {typed}
-                                    <span className="ml-[0.4cqw] inline-block h-[3.4cqw] w-[0.45cqw] translate-y-[0.5cqw] animate-pulse bg-white" />
-                                </span>
-                            ) : (
-                                <span className="text-white/35">Ask FreeAgentCoder to build, fix or explain…</span>
-                            )}
-                        </p>
+                    <form
+                        onSubmit={(e) => {
+                            e.preventDefault();
+                            build();
+                        }}
+                        className="rounded-[3cqw] border bg-[#1f1f1f] transition-colors"
+                        style={{ borderColor: typing || engaged ? ACCENT : 'rgba(255,255,255,0.12)' }}
+                    >
+                        {engaged ? (
+                            <input
+                                autoFocus
+                                value={draft}
+                                onChange={(e) => setDraft(e.target.value)}
+                                placeholder="Describe an app, then press Enter"
+                                aria-label="Describe what to build"
+                                className="block min-h-[9cqw] w-full bg-transparent px-[3cqw] pt-[2.4cqw] text-[3.4cqw] text-white outline-none placeholder:text-white/40"
+                            />
+                        ) : (
+                            <button
+                                type="button"
+                                onClick={() => setDraft('')}
+                                className="block min-h-[9cqw] w-full cursor-text px-[3cqw] pt-[2.4cqw] text-left text-[3.4cqw] leading-snug"
+                                aria-label="Try it: describe what to build"
+                            >
+                                {typed ? (
+                                    <span className="text-white">
+                                        {typed}
+                                        <span className="ml-[0.4cqw] inline-block h-[3.4cqw] w-[0.45cqw] translate-y-[0.5cqw] animate-pulse bg-white" />
+                                    </span>
+                                ) : (
+                                    <span className="text-white/35">Click and type what to build. It really builds it.</span>
+                                )}
+                            </button>
+                        )}
                         <div className="flex items-center gap-[2.4cqw] px-[2.4cqw] pb-[2cqw] pt-[1cqw] text-[2.9cqw] text-white/55">
                             <Icon d={CLIP} />
                             <span className="flex items-center gap-[0.8cqw]">
@@ -208,20 +249,33 @@ export function AgentDemo({ width }: { width: string }) {
                             <span className="flex items-center gap-[0.8cqw]">
                                 <Icon d={SPARK} className="!size-[3cqw]" /> Auto ⌄
                             </span>
-                            <span
+                            <button
+                                type="submit"
+                                aria-label="Build it"
+                                disabled={engaged && !draft?.trim()}
                                 className="ml-auto flex size-[6.4cqw] items-center justify-center rounded-[1.6cqw] text-white transition-opacity"
-                                style={{ background: ACCENT, opacity: typed ? 1 : 0.45 }}
+                                style={{ background: ACCENT, opacity: typed || draft?.trim() ? 1 : 0.45 }}
+                                onClick={(e) => {
+                                    if (!engaged) {
+                                        e.preventDefault();
+                                        setDraft('');
+                                    }
+                                }}
                             >
-                                <Icon d="M8 13V3M3.5 7.5 8 3l4.5 4.5" className="!size-[3.4cqw]" />
-                            </span>
+                                {going ? (
+                                    <span className="inline-block size-[3cqw] animate-spin rounded-full border-[0.5cqw] border-white/30 border-t-white" />
+                                ) : (
+                                    <Icon d="M8 13V3M3.5 7.5 8 3l4.5 4.5" className="!size-[3.4cqw]" />
+                                )}
+                            </button>
                         </div>
-                    </div>
+                    </form>
                     <div className="mt-[1.8cqw] flex items-center gap-[2.4cqw] px-[0.6cqw] text-[2.7cqw] text-white/45">
                         <span className="flex items-center gap-[1cqw]">
                             <span className="size-[1.6cqw] rounded-full bg-[#4ade80]" /> 5 keys active
                         </span>
                         <span>{tokens} tokens today</span>
-                        <span className="ml-auto">Context {done ? '9' : sent ? '7' : '2'}%</span>
+                        <span className="ml-auto">{engaged ? (going ? 'Opening the Playground…' : 'Enter builds it, live') : `Context ${done ? '9' : sent ? '7' : '2'}%`}</span>
                     </div>
                 </div>
             </div>
