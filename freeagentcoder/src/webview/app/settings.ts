@@ -793,7 +793,7 @@ export class SettingsPanel {
                     { class: 'empty-card' },
                     icon('key'),
                     h('strong', { text: 'No API keys yet' }),
-                    h('span', { text: 'Gemini, Groq, Mistral, OpenRouter and Cohere give free keys with no card. Each takes about a minute to create.' }),
+                    h('span', { text: 'Gemini, Groq and OpenRouter give free keys that work straight away, with no card. Each takes about a minute.' }),
                 ),
             );
         }

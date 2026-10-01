@@ -12,6 +12,9 @@ interface DayEvents {
     recoveries: number;
     deepTasks?: number;
     deepRequests?: number;
+    /** Tasks Fyx did on this machine with no model, and the tokens a model would likely have used. */
+    fyxTasks?: number;
+    fyxTokensSaved?: number;
 }
 
 /** How one key is doing with one model since VS Code started. */
@@ -210,6 +213,26 @@ export class UsageStore implements vscode.Disposable {
 
     weakFallbacksToday(): number {
         return this.data.events[dayKey()]?.weakFallbacks ?? 0;
+    }
+
+    /** A task Fyx did without a model, and roughly what a model would have spent on it. */
+    recordFyx(tokensSaved: number): void {
+        const events = this.todayEvents();
+        events.fyxTasks = (events.fyxTasks ?? 0) + 1;
+        events.fyxTokensSaved = (events.fyxTokensSaved ?? 0) + Math.max(0, Math.round(tokensSaved));
+        this.touch();
+    }
+
+    /** Fyx's tasks and estimated tokens saved over the last `days` days. */
+    fyxStats(days: number): { tasks: number; tokensSaved: number } {
+        let tasks = 0;
+        let tokensSaved = 0;
+        for (let i = 0; i < days; i++) {
+            const events = this.data.events[dayKey(Date.now() - i * 86_400_000)];
+            tasks += events?.fyxTasks ?? 0;
+            tokensSaved += events?.fyxTokensSaved ?? 0;
+        }
+        return { tasks, tokensSaved };
     }
 
     /** Tasks finished over the last `days` days: how many, how many completed, and their totals. */

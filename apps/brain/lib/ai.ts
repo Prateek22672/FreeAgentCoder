@@ -10,7 +10,7 @@ import 'server-only';
 import { ModelRouter, OpenAICompatProvider, PRESETS, createProvider, type RouterEntry } from '@agentic/core';
 
 /** Large-context providers first: answers are built from many excerpts. */
-const ORDER = ['gemini', 'mistral', 'openrouter', 'groq', 'cerebras'];
+const ORDER = ['gemini', 'openrouter', 'mistral', 'groq'];
 
 const globalRouter = globalThis as unknown as { __brainRouter?: ModelRouter | null; __brainEntries?: RouterEntry[] };
 
@@ -33,7 +33,7 @@ export function configuredProviders(): string[] {
 }
 
 /** Providers a visitor can bring their own key for. */
-export const OWN_KEY_PROVIDERS = ['gemini', 'groq', 'cerebras', 'openrouter', 'mistral'] as const;
+export const OWN_KEY_PROVIDERS = ['gemini', 'groq', 'openrouter', 'mistral'] as const;
 export type OwnKeyProvider = (typeof OWN_KEY_PROVIDERS)[number];
 
 /**

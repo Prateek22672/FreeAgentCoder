@@ -20,7 +20,7 @@ import { NO_STORE_MESSAGE, settingsNeedStore, store } from './kv';
 
 // No Cohere: its trial keys are not allowed for production or commercial use,
 // and serving this site's visitors is exactly that.
-export const POOL_PROVIDERS = ['gemini', 'groq', 'mistral', 'openrouter', 'openai', 'anthropic', 'cerebras'] as const;
+export const POOL_PROVIDERS = ['gemini', 'groq', 'openrouter', 'mistral', 'openai', 'anthropic'] as const;
 
 interface StoredKey {
     id: string;

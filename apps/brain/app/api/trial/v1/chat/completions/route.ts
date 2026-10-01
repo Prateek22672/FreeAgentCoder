@@ -21,11 +21,10 @@ const MODELS: Record<string, { fast: string; deep: string }> = {
     mistral: { fast: 'mistral-small-latest', deep: 'mistral-medium-latest' },
     openrouter: { fast: 'openrouter/free', deep: 'openrouter/free' },
     openai: { fast: 'gpt-5-mini', deep: 'gpt-5' },
-    cerebras: { fast: 'gpt-oss-120b', deep: 'gpt-oss-120b' },
 };
 const ORDER = {
-    fast: ['groq', 'gemini', 'mistral', 'openrouter', 'openai', 'cerebras'],
-    deep: ['gemini', 'mistral', 'openrouter', 'groq', 'openai', 'cerebras'],
+    fast: ['groq', 'gemini', 'openrouter', 'mistral', 'openai'],
+    deep: ['gemini', 'openrouter', 'mistral', 'groq', 'openai'],
 };
 const MAX_BODY = 2_000_000;
 const MAX_OUTPUT = 8_192;

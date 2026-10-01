@@ -4,6 +4,8 @@ import { Beyond } from '@/components/landing/cinema/Beyond';
 import { Carousel } from '@/components/landing/cinema/Carousel';
 import { ChromeStar } from '@/components/landing/cinema/ChromeStar';
 import { Arrow, Hero, Star } from '@/components/landing/cinema/Hero';
+import { Chores } from '@/components/landing/cinema/Chores';
+import { marketplaceStats } from '@/lib/marketplace';
 import { Library } from '@/components/landing/cinema/Library';
 import { PillNav } from '@/components/landing/cinema/PillNav';
 import { WorkRail, type WorkCard } from '@/components/landing/cinema/WorkRail';
@@ -105,13 +107,15 @@ const FOOTER: { title: string; links: { label: string; href: string; external?: 
     },
 ];
 
-export default function Home() {
+export default async function Home() {
+    const market = await marketplaceStats();
     return (
         <div className="relative overflow-x-clip bg-[#efeff2]">
             <StructuredData data={graph([organization, website, extensionApp, brainApp, faqPage(FAQ)])} />
             <PillNav />
             <main>
-                <Hero />
+                <Hero trust={market ? { installs: market.installs, rating: market.rating, ratings: market.ratings } : undefined} />
+                <Chores />
                 <Carousel />
                 <Beyond />
                 <WorkRail cards={WORK} archive={{ href: '#guides', title: 'Read every guide', action: 'Open guides' }} />

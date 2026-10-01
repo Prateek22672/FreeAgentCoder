@@ -27,17 +27,16 @@ export const RECOMMENDED_SETUP: { id: string; goodFor: string }[] = [
     { id: 'gemini', goodFor: 'Complex builds and big projects: a 1M-token context' },
     { id: 'groq', goodFor: 'Very fast answers and small edits' },
     { id: 'openrouter', goodFor: 'Free models from several makers behind one key' },
-    { id: 'mistral', goodFor: 'One more free provider to share the load' },
-    { id: 'cohere', goodFor: 'A last backup: 1,000 calls a month, for personal use only' },
+    { id: 'mistral', goodFor: 'Optional: free only after choosing the Experiment plan and verifying a phone number' },
+    { id: 'cohere', goodFor: 'Optional: 1,000 calls a month, for personal use only' },
 ];
 
 /** What the user will see on the provider's site, so they don't have to hunt for it. */
 export const KEY_STEPS: Record<string, string[]> = {
     gemini: ['Sign in with your Google account.', 'Click "Create API key" and pick any project.', 'Copy the key — it starts with AIza.'],
     groq: ['Sign in with Google or GitHub.', 'Click "Create API Key" and name it.', 'Copy it straight away — it starts with gsk_ and is shown only once.'],
-    cerebras: ['Cerebras is paid now: its trial needs a card.', 'Open API Keys in the sidebar, generate a key and copy it — it starts with csk-.'],
     cohere: ['Sign up; no card is asked for.', 'Your trial key is on the API Keys page. Copy it.', 'Trial keys allow 1,000 calls a month and are for personal, non-commercial use.'],
-    mistral: ['Sign in, then verify your phone number (the free "Experiment" plan needs it).', 'Open API Keys, create one, and copy it.'],
+    mistral: ['Sign in, then choose the free "Experiment" plan and verify your phone number. Without that plan, Mistral keys are refused.', 'Open API Keys, create one, and copy it.'],
     openrouter: ['Sign in with Google or GitHub.', 'Click "Create Key" and copy it — it starts with sk-or-v1-.'],
     openai: ['Open API keys in your OpenAI account.', 'Create a new secret key and copy it — it is shown only once.'],
     anthropic: ['Open API keys in the Anthropic console.', 'Create a key and copy it — it starts with sk-ant-.'],

@@ -167,6 +167,15 @@ export default async function AdminPage() {
                 </ol>
             </section>
 
+            <Section title="Fyx — chores done with no AI model (from people who share anonymous counts)">
+                <Stat label="Fyx tasks" value={format(stats.bySpecialist.fyx?.tasks ?? 0)} hint="Done without a model" />
+                <Stat
+                    label="Fyx failures"
+                    value={format(stats.bySpecialist.fyx?.failed ?? 0)}
+                    hint={stats.bySpecialist.fyx?.tasks ? `${Math.round(((stats.bySpecialist.fyx.failed ?? 0) / stats.bySpecialist.fyx.tasks) * 100)}% handed back to the agent` : 'None yet'}
+                />
+            </Section>
+
             <Section title="Specialists — how each kind of work is done">
                 <SpecialistsForm info={SPECIALIST_INFO} settings={specialists} stats={stats.bySpecialist} />
             </Section>

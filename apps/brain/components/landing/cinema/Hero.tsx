@@ -33,7 +33,18 @@ export function Arrow({ size = 13 }: { size?: number }) {
  * The opening card. Scrolling pushes its contents back into the card, as if
  * the camera pulls away, and then the whole card rises off the page.
  */
-export function Hero() {
+/** The live Marketplace figures, shown as they are. */
+export interface Trust {
+    installs: number;
+    rating: number;
+    ratings: number;
+}
+
+function installs(n: number): string {
+    return n >= 1_000 ? `${(Math.floor(n / 100) / 10).toLocaleString('en-US')}K+` : n.toLocaleString('en-US');
+}
+
+export function Hero({ trust }: { trust?: Trust }) {
     const host = useRef<HTMLElement>(null);
     const content = useRef<HTMLDivElement>(null);
     const live = useRef<HTMLDivElement>(null);
@@ -89,6 +100,32 @@ export function Hero() {
                                         <span className="transition-transform group-hover:translate-x-0.5"><Arrow size={14} /></span>
                                     </a>
                                 </div>
+                                <a
+                                    href="https://marketplace.visualstudio.com/items?itemName=PrateekKoratala.freeagentcoder"
+                                    target="_blank"
+                                    rel="noreferrer noopener"
+                                    className="mt-5 inline-flex flex-wrap items-center gap-x-3 gap-y-1 rounded-full border border-white/10 bg-white/[0.06] py-1.5 pl-2 pr-4 text-[12.5px] text-white/75 backdrop-blur transition-colors hover:bg-white/10"
+                                >
+                                    <span className="flex items-center gap-1.5 rounded-full bg-[#4ade80]/15 px-2 py-0.5 font-medium text-[#4ade80]">
+                                        <svg viewBox="0 0 16 16" width={12} height={12} fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                                            <path d="M8 1.5 13.5 4v4c0 3.2-2.3 5.6-5.5 6.5C4.8 13.6 2.5 11.2 2.5 8V4L8 1.5Z" />
+                                            <path d="m5.5 8 1.8 1.8L10.8 6.3" />
+                                        </svg>
+                                        Visual Studio Marketplace
+                                    </span>
+                                    {trust ? (
+                                        <>
+                                            {trust.ratings > 0 && (
+                                                <span>
+                                                    <span className="text-amber-300">★</span> {trust.rating.toFixed(1)} from {trust.ratings} review{trust.ratings === 1 ? '' : 's'}
+                                                </span>
+                                            )}
+                                            <span>{installs(trust.installs)} installs</span>
+                                        </>
+                                    ) : (
+                                        <span>Free · open in VS Code</span>
+                                    )}
+                                </a>
                             </div>
                             <p className="hidden max-w-[19rem] text-right text-[13px] leading-relaxed text-white/60 xl:block">
                                 From a GitHub link to a verified change: it maps the code, plans the edit and runs your tests before it says done.

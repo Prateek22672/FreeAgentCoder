@@ -11,6 +11,7 @@ FreeAgentCoder plans, writes, runs and verifies code in your project. Add free A
 It is a free alternative to paid AI coding assistants: no subscription, no per-seat fee and no usage metering of ours. The only limits are the free tiers of the keys you bring, and you can add as many keys as you like.
 
 - **Free to use.** Runs on the free tiers of AI providers with your own keys. No account, no subscription.
+- **Fyx saves your tokens.** Everyday chores (zip a folder, run the project on localhost, git pull, push or commit, install packages, create or move files) are done on your machine by **Fyx**, our built-in task engine, without an AI model: they finish in seconds and use **no tokens**, so your free keys last for real work.
 - **A real agent.** Explores your project, makes a plan, edits files, runs your build and tests, and fixes what breaks.
 - **Every step visible.** A live plan, inline diffs, live terminal output, and one-click undo.
 - **Your keys stay on your device.** Encrypted in VS Code Secret Storage, never uploaded to FreeAgentCoder or anyone else, and sent only to the provider each key belongs to.
@@ -53,10 +54,8 @@ It is a free alternative to paid AI coding assistants: no subscription, no per-s
    - Google Gemini: https://aistudio.google.com/apikey
    - Groq: https://console.groq.com/keys
    - OpenRouter: https://openrouter.ai/keys
-   - Mistral: https://console.mistral.ai/api-keys
-   - Cohere: https://dashboard.cohere.com/api-keys
 
-   None of these asks for a card.
+   None of these asks for a card. Optional extras: Mistral (only after choosing its free Experiment plan and verifying a phone number) and Cohere (1,000 calls a month, personal use only). Every key is checked with a real request when you add it, and a key that needs billing is refused with the reason.
 
    **One key per account.** A second key from the same account shares that account's limits, so it adds nothing; add a different provider instead. Provider terms don't allow making extra accounts to get around limits.
 5. **Ask.** Open a project folder and describe what you want, for example *"Explain how this project is structured and how to run it."* Or click **Test my project**.
@@ -153,12 +152,11 @@ When you ask for something big, such as *"build a Flutter wallpaper app that's r
 | --- | --- | --- |
 | Google Gemini | Free tier | 1M-token context; daily request quota |
 | Groq | Free tier | Very fast; small per-minute token limit |
-| Mistral | Free tier | "Experiment" plan, needs phone verification |
+| Mistral | Optional | Free only on its "Experiment" plan, after phone verification; otherwise refused |
 | OpenRouter | Free models | 50 requests a day, or 1,000 after a one-time $10 top-up |
-| Cohere | Free trial key | 1,000 calls a month; personal, non-commercial use only |
+| Cohere | Optional | 1,000 calls a month; personal, non-commercial use only |
 | OpenAI | Paid | Bring your own key |
 | Anthropic | Paid | Bring your own key |
-| Cerebras | Paid | Its $5 trial needs a card and expires after 30 days |
 
 Free-tier limits change often, so check each provider's site. Keys you already have in environment variables (such as `GEMINI_API_KEY`) or in the Agentic CLI config (`~/.agentic/config.json`) are picked up too, marked **ENV** or **CLI**.
 

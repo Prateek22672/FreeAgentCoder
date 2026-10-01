@@ -9,7 +9,7 @@
 import { useCallback, useEffect, useState } from 'react';
 
 export interface KeyProvider {
-    id: 'gemini' | 'groq' | 'cerebras' | 'openrouter' | 'mistral';
+    id: 'gemini' | 'groq' | 'openrouter' | 'mistral';
     label: string;
     url: string;
     urlLabel: string;
@@ -22,7 +22,7 @@ export const KEY_PROVIDERS: KeyProvider[] = [
     { id: 'gemini', label: 'Google Gemini', url: 'https://aistudio.google.com/apikey', urlLabel: 'aistudio.google.com/apikey', goodFor: 'Best for large codebases — reads a lot of code at once', prefix: /^AIza/ },
     { id: 'groq', label: 'Groq', url: 'https://console.groq.com/keys', urlLabel: 'console.groq.com/keys', goodFor: 'Very fast answers to short questions', prefix: /^gsk_/ },
     { id: 'openrouter', label: 'OpenRouter', url: 'https://openrouter.ai/keys', urlLabel: 'openrouter.ai/keys', goodFor: 'Free models from several makers behind one key', prefix: /^sk-or-/ },
-    { id: 'mistral', label: 'Mistral', url: 'https://console.mistral.ai/api-keys', urlLabel: 'console.mistral.ai/api-keys', goodFor: 'A solid all-rounder' },
+    { id: 'mistral', label: 'Mistral', url: 'https://console.mistral.ai/api-keys', urlLabel: 'console.mistral.ai/api-keys', goodFor: 'Optional: free only after choosing its Experiment plan and verifying a phone number' },
 ];
 
 export function detectProvider(key: string): KeyProvider['id'] | undefined {

@@ -1,7 +1,7 @@
 {
   "name": "freeagentcoder",
   "displayName": "Free Agent Coder: Free AI Coding Agent & Chat, Copilot Alternative",
-  "description": "Free AI coding agent and chat for VS Code: a free alternative to Copilot, Cursor, Codex and Claude Code. Plans, edits, runs and tests your code on free Gemini, Groq, Mistral, OpenRouter or Cohere keys, or bring your own Claude or OpenAI key. No subscription, open source.",
+  "description": "Free AI coding agent and chat for VS Code: a free alternative to Copilot, Cursor, Codex and Claude Code. Plans, edits, runs and tests your code on free Gemini, Groq or OpenRouter keys, or bring your own Claude or OpenAI key. No subscription, open source.",
   "version": "0.4.0",
   "publisher": "PrateekKoratala",
   "license": "MIT",
@@ -122,6 +122,12 @@
           "scope": "application",
           "markdownDescription": "Where anonymous usage counts are sent, if you have agreed to send any. Leave empty to use the project's own site. Nothing is sent unless you said yes in **FreeAgentCoder: Anonymous Usage Data**."
         },
+        "freeagentcoder.fyx": {
+          "type": "boolean",
+          "default": true,
+          "scope": "application",
+          "markdownDescription": "**Fyx** does everyday tasks on your machine without an AI model: zipping and unzipping, git (status, pull, push, commit with your message, branches, clone, fork), installing and adding packages, running your project's scripts, creating, moving and copying files, and counting lines or sizes. They finish in seconds and use no tokens, and every command still asks the usual permission. It also learns: a short request the AI agent finished with a single command is done by Fyx the next time. Anything else goes to the AI agent as usual."
+        },
         "freeagentcoder.freeTrial": {
           "type": "boolean",
           "default": true,
@@ -175,7 +181,7 @@
           {
             "id": "keys",
             "title": "Add a free API key",
-            "description": "Get one free key from each provider (Gemini, Groq, Mistral, OpenRouter, Cohere). None of them asks for a card. The settings page has a direct link for each.\n**One key per account:** a second key from the same account shares its limits and adds nothing.\nKeys stay on this device, encrypted in VS Code Secret Storage.\n[Add a free key](command:freeagentcoder.manageKeys)",
+            "description": "Get one free key from each of Gemini, Groq and OpenRouter. None of them asks for a card, and each is checked with a real request when you add it. The settings page has a direct link for each.\n**One key per account:** a second key from the same account shares its limits and adds nothing.\nKeys stay on this device, encrypted in VS Code Secret Storage.\n[Add a free key](command:freeagentcoder.manageKeys)",
             "media": {
               "image": "media/walkthrough/keys.png",
               "altText": "The API Keys page, with a direct link to get a free key from each provider"

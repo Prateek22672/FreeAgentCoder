@@ -1,8 +1,11 @@
-import { readdir } from 'node:fs/promises';
+import { readdir, readFile } from 'node:fs/promises';
 import * as path from 'node:path';
 import * as vscode from 'vscode';
 import { ModelRouter, PRESETS, tokenize, type SearchHit } from '@agentic/core';
-import { configPath, isGitRepo, loadConfig, loadProjectInstructions, type AgenticConfig } from '@agentic/core/node';
+import { configPath, detectShell, isGitRepo, loadConfig, loadProjectInstructions, type AgenticConfig } from '@agentic/core/node';
+import { planFyx, type FyxContext, type FyxPlan } from './fyx/plan';
+import { FYX_MODEL, FyxProvider } from './fyx/provider';
+import { LearnedCommands } from './fyx/learned';
 import { classifyTask, isFollowUp, isValidModelChoice, KEY_PROVIDERS, parseModelChoice, planRoute, providerLabel, providerViews } from './agent/catalog';
 import { ChainBuilder, isAuthFailure, verifyKey, type CallResult, type RoutableKey } from './agent/chain';
 import { correctionBrief, isCorrection, learnPrompt, LEARN_SYSTEM, parseLessons, rememberCommand } from './agent/correction';
@@ -143,6 +146,11 @@ export class Controller implements vscode.Disposable {
     private chatId = newChatId();
     private chatCreatedAt = Date.now();
     private turnRequests = 0;
+    /** Set while Fyx is doing a task, so it is counted as Fyx's and not as a model's. */
+    private fyxTurn?: { kind: string; saved: number; prompt: string; learned: boolean };
+    /** The request and the commands the agent ran this turn, so Fyx can learn one-command chores. */
+    private turnWatch: { prompt: string; runs: { command: string; ok: boolean }[]; edits: number } = { prompt: '', runs: [], edits: 0 };
+    private learnedCommands?: LearnedCommands;
     private consentShown = false;
     private learning?: { prompt: string; evidence: string };
     private projectCache?: { root: string; at: number; stack: string[]; instructionsFile?: string; git: boolean };
@@ -463,6 +471,15 @@ export class Controller implements vscode.Disposable {
             return;
         }
 
+        this.turnWatch = { prompt, runs: [], edits: 0 };
+        if (!test && !explicitCorrection && !attachments.length && this.model === AUTO_MODEL && this.fyxEnabled()) {
+            const plan = await this.fyxPlan(cwd, prompt);
+            if (plan) {
+                await this.runFyx(cwd, prompt, plan);
+                return;
+            }
+        }
+
         const keys = await this.routableKeys();
         if (!keys.length) {
             this.post({
@@ -642,6 +659,134 @@ export class Controller implements vscode.Disposable {
             test,
             checks,
         });
+    }
+
+    private fyxEnabled(): boolean {
+        return vscode.workspace.getConfiguration('freeagentcoder').get<boolean>('fyx', true);
+    }
+
+    private learned(): LearnedCommands {
+        return (this.learnedCommands ??= new LearnedCommands(this.context.globalState));
+    }
+
+    /** What Fyx needs to know about the project: its folders, package manager, scripts and shell. */
+    private async fyxContext(cwd: string): Promise<FyxContext> {
+        const entries = await readdir(cwd, { withFileTypes: true }).catch(() => []);
+        const names = new Set(entries.map((e) => e.name));
+        let scripts: string[] = [];
+        try {
+            const pkg = JSON.parse(await readFile(path.join(cwd, 'package.json'), 'utf8')) as { scripts?: Record<string, string> };
+            scripts = Object.keys(pkg.scripts ?? {});
+        } catch {
+            // No package.json: no scripts.
+        }
+        const packageManager = names.has('pnpm-lock.yaml')
+            ? 'pnpm'
+            : names.has('yarn.lock')
+              ? 'yarn'
+              : names.has('bun.lockb') || names.has('bun.lock')
+                ? 'bun'
+                : names.has('package.json')
+                  ? 'npm'
+                  : undefined;
+        const config = await loadConfig().catch(() => ({}) as AgenticConfig);
+        // A repository whose app lives one folder down, like homes/ or frontend/ and backend/.
+        const subprojects: NonNullable<FyxContext['subprojects']> = [];
+        for (const entry of entries.filter((e) => e.isDirectory() && !e.name.startsWith('.') && e.name !== 'node_modules').slice(0, 30)) {
+            try {
+                const dir = path.join(cwd, entry.name);
+                const pkg = JSON.parse(await readFile(path.join(dir, 'package.json'), 'utf8')) as { scripts?: Record<string, string> };
+                const inside = new Set(await readdir(dir).catch(() => [] as string[]));
+                subprojects.push({
+                    dir: entry.name,
+                    packageManager: inside.has('pnpm-lock.yaml') ? 'pnpm' : inside.has('yarn.lock') ? 'yarn' : inside.has('bun.lockb') || inside.has('bun.lock') ? 'bun' : 'npm',
+                    scripts: Object.keys(pkg.scripts ?? {}),
+                });
+            } catch {
+                // No package.json in this folder.
+            }
+        }
+        return {
+            subprojects,
+            platform: process.platform,
+            shell: detectShell(config.shell).kind,
+            dirs: entries.filter((e) => e.isDirectory()).map((e) => e.name),
+            files: entries.filter((e) => e.isFile()).map((e) => e.name),
+            packageManager,
+            scripts,
+            git: names.has('.git'),
+        };
+    }
+
+    private async fyxPlan(cwd: string, prompt: string): Promise<FyxPlan | undefined> {
+        try {
+            return planFyx(prompt, await this.fyxContext(cwd)) ?? this.learned().plan(prompt);
+        } catch (error) {
+            this.errorLog.add({ kind: 'extension', source: 'Fyx', message: errorMessage(error), recovered: true, action: 'Handed the request to the AI agent' });
+            return undefined;
+        }
+    }
+
+    /** Roughly what a model spends on a task: this user's own average, or a typical small task until there is one. */
+    private typicalTaskTokens(): { tokens: number; basis: string } {
+        const stats = this.usage.taskStats(30);
+        if (stats.tasks >= 3 && stats.tokens > 0) {
+            return { tokens: Math.round(stats.tokens / stats.tasks), basis: 'your average task' };
+        }
+        return { tokens: 6_000, basis: 'a typical small task' };
+    }
+
+    /** Runs a chore through the agent loop with Fyx as the "model": the same cards, permissions and Stop, and no tokens. */
+    private async runFyx(cwd: string, prompt: string, plan: FyxPlan): Promise<void> {
+        const typical = this.typicalTaskTokens();
+        const savedNote = `**Fyx** did this on your machine without an AI model: 0 tokens, about ${compactNumber(typical.tokens)} saved compared with ${typical.basis}.`;
+        this.router.replaceChain([{ provider: new FyxProvider(plan, savedNote), model: FYX_MODEL, contextWindow: 1_000_000, label: 'Fyx' }]);
+        this.fyxTurn = { kind: plan.kind, saved: typical.tokens, prompt, learned: plan.kind === 'learned' };
+        this.introduceFyx();
+        await this.session.run(cwd, prompt, {
+            tier: 'fast',
+            tierReason: 'Fyx: an everyday task, done on your machine with no AI model',
+            pinned: false,
+            notes: [`Fyx: ${plan.intro}`],
+            agentPrompt: prompt,
+            playbooks: [],
+            release: false,
+            correction: false,
+            attachments: [],
+            lessons: 0,
+        });
+    }
+
+    /** Once, the first time Fyx does a task: what it is, and how to turn it off. */
+    private introduceFyx(): void {
+        const shown = 'freeagentcoder.fyx.introduced';
+        if (this.context.globalState.get<boolean>(shown)) {
+            return;
+        }
+        void this.context.globalState.update(shown, true);
+        void vscode.window
+            .showInformationMessage(
+                'Meet Fyx. Everyday tasks like zipping a folder, git, installing packages and running scripts now run on your machine without an AI model, so they finish in seconds and use no tokens. It still asks before running anything.',
+                'Got it',
+                'Turn Fyx off',
+            )
+            .then((choice) => {
+                if (choice === 'Turn Fyx off') {
+                    void vscode.workspace.getConfiguration('freeagentcoder').update('fyx', false, vscode.ConfigurationTarget.Global);
+                }
+            });
+    }
+
+    /** Watches what the agent runs, so a request it settled with one command can be done by Fyx next time. */
+    private watchTurn(message: ToWebview): void {
+        if (message.type !== 'toolEnd') {
+            return;
+        }
+        if (message.tool === 'run_command' && message.display?.type === 'command' && !message.display.background) {
+            this.turnWatch.runs.push({ command: message.display.command, ok: message.ok });
+        } else if (message.tool === 'write_file' || message.tool === 'edit_file') {
+            this.turnWatch.edits++;
+        }
     }
 
     private async projectChecks(root: string): Promise<ProjectCheck[]> {
@@ -887,6 +1032,24 @@ export class Controller implements vscode.Disposable {
     }
 
     private async afterTurn(end: Extract<ToWebview, { type: 'turnEnd' }>): Promise<void> {
+        const fyx = this.fyxTurn;
+        this.fyxTurn = undefined;
+        const watched = this.turnWatch;
+        if (fyx) {
+            if (end.reason === 'completed') {
+                this.usage.recordFyx(fyx.saved);
+                if (fyx.learned) {
+                    void this.learned().used(fyx.prompt);
+                }
+            }
+            this.turnRequests = 0;
+            this.telemetry.taskFinished(end.reason === 'completed' ? 'done' : end.reason === 'aborted' ? 'stopped' : 'failed', `fyx:${fyx.kind}`, 'fyx');
+            return;
+        }
+        // The agent settled a short request with one command and nothing else: Fyx can do it next time.
+        if (end.reason === 'completed' && watched.edits === 0 && watched.runs.length === 1 && watched.runs[0]!.ok && this.fyxEnabled()) {
+            void this.learned().learn(watched.prompt, watched.runs[0]!.command);
+        }
         this.usage.recordTask({
             tokens: end.tokens,
             requests: this.turnRequests,
@@ -1043,6 +1206,9 @@ export class Controller implements vscode.Disposable {
     private async addKey(message: Extract<FromWebview, { type: 'addKey' }>): Promise<void> {
         const reply = (ok: boolean, text: string) => this.post({ type: 'keyResult', requestId: message.requestId, ok, message: text });
         const secret = message.secret.trim();
+        if (message.provider === 'cerebras') {
+            return reply(false, 'Cerebras keys need a paid account now, so FreeAgentCoder no longer uses them. Add a free Gemini, Groq or OpenRouter key instead.');
+        }
         if (!KEY_PROVIDERS.includes(message.provider)) {
             return reply(false, 'Choose a provider.');
         }
@@ -1473,6 +1639,7 @@ export class Controller implements vscode.Disposable {
     }
 
     private post(message: ToWebview): void {
+        this.watchTurn(message);
         if (TRANSCRIPT_TYPES.has(message.type)) {
             this.remember(message);
         }

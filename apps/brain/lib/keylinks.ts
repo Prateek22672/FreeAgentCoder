@@ -12,7 +12,6 @@ import { store } from './kv';
 export const KEY_LINKS: Record<string, string> = {
     gemini: 'https://aistudio.google.com/apikey',
     groq: 'https://console.groq.com/keys',
-    cerebras: 'https://cloud.cerebras.ai',
     mistral: 'https://console.mistral.ai/api-keys',
     cohere: 'https://dashboard.cohere.com/api-keys',
     openrouter: 'https://openrouter.ai/keys',

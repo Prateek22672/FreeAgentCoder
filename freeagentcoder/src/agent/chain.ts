@@ -172,11 +172,24 @@ export async function verifyKey(provider: string, secret: string): Promise<{ sta
     if (!preset) {
         return { state: 'invalid', message: `Unknown provider "${provider}".` };
     }
+    if (!preset.free && provider === 'cerebras') {
+        return { state: 'invalid', message: 'Cerebras keys need a paid account now, so FreeAgentCoder no longer uses them. Add a free Gemini, Groq or OpenRouter key instead.' };
+    }
     try {
-        const models = await createProvider(preset, { apiKey: secret }).listModels(AbortSignal.timeout(15_000));
-        return { state: 'valid', message: models.length ? `Verified · ${models.length} models available` : 'Verified' };
+        const client = createProvider(preset, { apiKey: secret, maxOutputTokens: 1 });
+        const models = await client.listModels(AbortSignal.timeout(15_000));
+        // A key can list models and still be refused every answer (no plan, no credit), so ask for one token.
+        for await (const event of client.stream({ model: preset.defaultModel, system: 'Reply with one word.', messages: [{ role: 'user', content: 'hi' }], tools: [], signal: AbortSignal.timeout(20_000) })) {
+            if (event.type === 'done') {
+                break;
+            }
+        }
+        return { state: 'valid', message: models.length ? `Verified: it answered a test request · ${models.length} models available` : 'Verified: it answered a test request' };
     } catch (err) {
         if (err instanceof ProviderError) {
+            if (needsBilling(err)) {
+                return { state: 'invalid', message: billingMessage(provider, name) };
+            }
             if (isAuthFailure(err)) {
                 return { state: 'invalid', message: `${name} rejected this key. Check that you copied all of it.` };
             }
@@ -186,5 +199,21 @@ export async function verifyKey(provider: string, secret: string): Promise<{ sta
         }
         const detail = err instanceof Error ? err.message.replace(/^\w+:\s*/, '').slice(0, 120) : String(err);
         return { state: 'unknown', message: `Couldn't reach ${name} to verify the key (${detail}). It will be checked on first use.` };
+    }
+}
+
+/** The key is real, but its account cannot answer: no plan chosen, no credit, billing required. */
+export function needsBilling(error: ProviderError): boolean {
+    return /\b(billing|payment|insufficient[_ ](balance|credit|funds|quota)|credit balance|no credits?|out of credits|subscription|activate|upgrade your plan|plan (is )?(required|inactive)|402)\b/i.test(error.message) || error.status === 402;
+}
+
+export function billingMessage(provider: string, name: string): string {
+    switch (provider) {
+        case 'mistral':
+            return 'Mistral accepted this key but will not answer with it: the account has no active plan. In console.mistral.ai, choose the free Experiment plan (it asks to verify a phone number), or use a free Gemini, Groq or OpenRouter key instead.';
+        case 'openrouter':
+            return 'OpenRouter accepted this key but refused a request for lack of credit. Free models (ending in :free) need no credit; if this keeps happening, check the key has no spending limit of $0 set.';
+        default:
+            return `${name} accepted this key but its account needs billing before it answers. Use a free Gemini, Groq or OpenRouter key instead, or add billing at ${name}.`;
     }
 }

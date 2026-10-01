@@ -3,16 +3,16 @@ import { AUTO_MODEL, type ProviderView, type Tier } from '../shared/protocol';
 import { getKeyUrl } from '../shared/site';
 
 /** Providers a user adds keys for, in display order. */
-// Cerebras is last, with the paid ones: it has no free tier any more, but keys
-// people already saved keep working.
-export const KEY_PROVIDERS = ['gemini', 'groq', 'mistral', 'openrouter', 'cohere', 'openai', 'anthropic', 'cerebras'];
+// Gemini, Groq and OpenRouter are the dependable free ones; Mistral and Cohere are
+// optional extras. Cerebras is gone: its free keys stopped working.
+export const KEY_PROVIDERS = ['gemini', 'groq', 'openrouter', 'mistral', 'cohere', 'openai', 'anthropic'];
 
 /** Fast first: Groq answers in a second or two, and small requests fit its free tier. Cohere last: 1,000 calls a month. */
 const FAST_ORDER = ['groq', 'gemini', 'mistral', 'openrouter', 'cohere', 'trial'];
 /** Strongest first: Gemini's 1M-token context carries long, multi-file work. */
 const DEEP_ORDER = ['gemini', 'mistral', 'openrouter', 'cohere', 'groq', 'trial'];
 /** Paid keys are only routed automatically when no free key is active. */
-const PAID_ORDER = ['anthropic', 'openai', 'cerebras'];
+const PAID_ORDER = ['anthropic', 'openai'];
 
 const TIER_MODELS: Record<string, Record<Tier, string>> = {
     groq: { fast: 'openai/gpt-oss-120b', deep: 'openai/gpt-oss-120b' },
