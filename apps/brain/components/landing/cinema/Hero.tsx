@@ -1,40 +1,9 @@
 'use client';
 
-import { useRef, useState } from 'react';
+import { useRef } from 'react';
 import { InstallLink } from '@/components/InstallLink';
 import { AgentDemo } from './AgentDemo';
 import { ease, span, useScrollProgress } from './progress';
-
-/** What you type in VS Code's Quick Open (Ctrl+P) to install the extension. */
-const INSTALL = 'ext install PrateekKoratala.freeagentcoder';
-
-/** The install command, one click to copy: the real first step, not a badge. */
-function InstallCommand() {
-    const [copied, setCopied] = useState(false);
-    const copy = () => {
-        void navigator.clipboard?.writeText(INSTALL).then(() => {
-            setCopied(true);
-            window.setTimeout(() => setCopied(false), 1600);
-        });
-    };
-    return (
-        <div className="mt-7 hidden max-w-full items-center gap-3 rounded-[12px] border border-white/10 bg-black/40 py-1.5 pl-3 pr-1.5 backdrop-blur sm:inline-flex">
-            <span className="shrink-0 rounded-md bg-white/10 px-1.5 py-0.5 font-mono text-[10.5px] text-white/60">Ctrl P</span>
-            <code className="truncate font-mono text-[12.5px] text-white/85">
-                <span className="text-white/40">&gt; </span>
-                {INSTALL}
-            </code>
-            <button
-                type="button"
-                onClick={copy}
-                aria-label="Copy the install command"
-                className="shrink-0 rounded-[8px] bg-white/10 px-2.5 py-1 text-[12px] font-medium text-white transition-colors hover:bg-white hover:text-zinc-950"
-            >
-                {copied ? 'Copied' : 'Copy'}
-            </button>
-        </div>
-    );
-}
 
 export function Star({ size = 14, className }: { size?: number; className?: string }) {
     return (
@@ -120,7 +89,6 @@ export function Hero() {
                                         <span className="transition-transform group-hover:translate-x-0.5"><Arrow size={14} /></span>
                                     </a>
                                 </div>
-                                <InstallCommand />
                             </div>
                             <p className="hidden max-w-[19rem] text-right text-[13px] leading-relaxed text-white/60 md:block">
                                 From a GitHub link to a verified change: it maps the code, plans the edit and runs your tests before it says done.
