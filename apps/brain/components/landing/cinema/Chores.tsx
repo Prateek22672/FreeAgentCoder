@@ -1,76 +1,125 @@
+'use client';
+
+import { useEffect, useState } from 'react';
+import { Logo } from '@/components/Logo';
 import { InstallLink } from '@/components/InstallLink';
 import { Arrow } from './Hero';
 
-/** Real requests and what Fyx runs for them. The commands are the ones it really produces. */
-const CHORES: { ask: string; run: string; result: string }[] = [
-    { ask: 'run the website locally', run: 'npm --prefix homes run dev', result: 'Running at http://localhost:5173' },
-    { ask: 'zip the homes folder', run: 'tar -a -c -f homes.zip homes', result: 'homes.zip · node_modules and .git left out' },
-    { ask: 'commit everything with message "fix navbar" and push', run: 'git add -A && git commit && git push', result: 'Committed and pushed' },
-    { ask: 'install the dependencies', run: 'npm install', result: 'Installed with your package manager' },
-    { ask: 'create a new branch called feature/login', run: 'git switch -c feature/login', result: 'On feature/login' },
-    { ask: 'clone https://github.com/expressjs/express', run: 'git clone …/expressjs/express', result: 'Cloned' },
-    { ask: 'add axios and zod', run: 'npm install axios zod', result: 'Added' },
-    { ask: 'what are the biggest folders?', run: 'measures every folder', result: 'node_modules 129 MB · dist 38 MB…' },
+/** Real requests, and the commands Fyx really produces for them. */
+const CHORES = [
+    { word: 'run your project', ask: 'run the website locally', run: 'npm --prefix homes run dev', result: 'Running at http://localhost:5173' },
+    { word: 'zip a folder', ask: 'zip the homes folder', run: 'tar -a -c -f homes.zip homes', result: 'homes.zip · node_modules left out' },
+    { word: 'push to git', ask: 'commit with message "fix navbar" and push', run: 'git commit -m "fix navbar" && git push', result: 'Committed and pushed' },
+    { word: 'install packages', ask: 'add axios and zod', run: 'npm install axios zod', result: 'Added 2 packages' },
+    { word: 'make a branch', ask: 'create a branch called feature/login', run: 'git switch -c feature/login', result: 'On feature/login' },
+];
+
+const STATS = [
+    { value: '0', label: 'tokens' },
+    { value: '0.2 s', label: 'vs 4 min 36 s' },
+    { value: '1', label: 'command, you approve' },
 ];
 
 /**
- * Fyx: the chores people hate, done on their machine without an AI model.
- * The comparison is one measured run, said as such.
+ * Fyx in one card: a rotating line of chores it does, three small numbers, and
+ * the extension's panel doing the same chore, as in the hero.
  */
 export function Chores() {
-    return (
-        <section className="force-dark bg-[#070708] px-5 py-28 text-white sm:px-10" aria-labelledby="fyx-title">
-            <div className="mx-auto max-w-6xl">
-                <p className="font-mono text-[11px] uppercase tracking-[0.22em] text-white/50">Fyx · built in</p>
-                <h2 id="fyx-title" className="cine-display mt-5 max-w-4xl text-[clamp(2.4rem,6vw,4.6rem)] font-medium leading-[0.98] tracking-[-0.04em]">
-                    The chores, done for you. <span className="text-white/40">Zero tokens.</span>
-                </h2>
-                <p className="mt-6 max-w-2xl text-[16px] leading-relaxed text-white/65">
-                    Getting a project running on localhost, zipping a folder, pushing to git: nobody enjoys them, and an AI model is slow and wasteful at them. <b className="text-white">Fyx</b>, FreeAgentCoder&rsquo;s own task engine, does them on your machine without a model. Ask in plain words, approve the command, and carry on: it hands you the localhost link and your free keys stay for real work.
-                </p>
+    const [index, setIndex] = useState(0);
+    const [still, setStill] = useState(false);
 
-                <div className="mt-12 grid gap-4 md:grid-cols-[1.1fr_1fr]">
-                    <div className="rounded-[20px] border border-white/10 bg-white/[0.03] p-6">
-                        <p className="text-[13px] text-white/50">One real request, measured</p>
-                        <p className="mt-2 text-[17px] font-medium">&ldquo;make the whole homes folder into a zip named home-zip&rdquo;</p>
-                        <div className="mt-6 grid grid-cols-2 gap-3">
-                            <div className="rounded-[14px] border border-white/10 bg-black/40 p-4">
-                                <p className="text-[12px] uppercase tracking-[0.14em] text-white/45">An AI model</p>
-                                <p className="cine-display mt-3 text-[2rem] font-medium leading-none">4 min 36 s</p>
-                                <p className="mt-2 text-[13.5px] text-white/60">17,000 tokens · 9 steps · switched model 3 times · zipped 129 MB of node_modules</p>
-                            </div>
-                            <div className="rounded-[14px] border border-[#4ade80]/30 bg-[#4ade80]/[0.06] p-4">
-                                <p className="text-[12px] uppercase tracking-[0.14em] text-[#4ade80]">Fyx</p>
-                                <p className="cine-display mt-3 text-[2rem] font-medium leading-none">0.2 s</p>
-                                <p className="mt-2 text-[13.5px] text-white/70">0 tokens · 1 command · node_modules and .git left out</p>
-                            </div>
-                        </div>
-                        <p className="mt-5 text-[13px] leading-relaxed text-white/50">
-                            It learns as you go: when the agent finishes a short request with a single command, Fyx does that request itself the next time. Anything it is not sure about goes to the AI agent, as before.
+    useEffect(() => {
+        if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+            setStill(true);
+            return;
+        }
+        const timer = window.setInterval(() => setIndex((i) => (i + 1) % CHORES.length), 3_200);
+        return () => window.clearInterval(timer);
+    }, []);
+
+    const chore = CHORES[index]!;
+
+    return (
+        <section className="bg-[#efeff2] px-2 py-2 sm:px-3 sm:py-3" aria-labelledby="fyx-title">
+            <div className="fyx-card relative overflow-hidden rounded-[22px] px-6 py-14 text-white sm:rounded-[28px] sm:px-12 sm:py-16">
+                <div className="relative grid items-center gap-12 lg:grid-cols-[1.15fr_1fr]">
+                    <div>
+                        <span className="inline-flex items-center gap-1.5 rounded-full border border-white/20 bg-white/10 px-3 py-1 text-[12px] font-medium backdrop-blur">
+                            <Bolt /> Meet Fyx · built in
+                        </span>
+                        <h2 id="fyx-title" className="cine-display mt-6 text-[clamp(2.2rem,5.4vw,4.2rem)] font-medium leading-[1.02] tracking-[-0.04em]">
+                            Fyx can{' '}
+                            <span key={chore.word} className={`fyx-word inline-block text-[#ffd2bf] ${still ? '' : 'fyx-word-in'}`}>
+                                {chore.word}
+                            </span>
+                            <br />
+                            <span className="text-white/55">with zero tokens.</span>
+                        </h2>
+                        <p className="mt-5 max-w-md text-[15px] leading-relaxed text-white/70">
+                            Our own task engine for everyday chores. No AI model, so it is instant and your free keys stay for real work. Anything complex goes to the agent.
                         </p>
+                        <dl className="mt-8 grid max-w-md grid-cols-3 gap-3">
+                            {STATS.map((s) => (
+                                <div key={s.label} className="rounded-[14px] border border-white/15 bg-white/[0.08] px-3 py-3 backdrop-blur">
+                                    <dd className="cine-display text-[1.6rem] font-medium leading-none">{s.value}</dd>
+                                    <dt className="mt-1.5 text-[11.5px] text-white/60">{s.label}</dt>
+                                </div>
+                            ))}
+                        </dl>
+                        <InstallLink className="group mt-8 inline-flex items-center gap-2 rounded-[12px] bg-white px-5 py-3 text-[14.5px] font-medium text-zinc-950 shadow-[0_14px_40px_-12px_rgb(0_0_0/0.5)] transition-transform hover:scale-[1.03]">
+                            Get Fyx in VS Code, free <span className="transition-transform group-hover:translate-x-0.5"><Arrow size={14} /></span>
+                        </InstallLink>
                     </div>
 
-                    <ul className="grid gap-2.5">
-                        {CHORES.map((chore) => (
-                            <li key={chore.ask} className="rounded-[14px] border border-white/10 bg-white/[0.03] px-4 py-3">
-                                <p className="text-[14px] text-white">&ldquo;{chore.ask}&rdquo;</p>
-                                <p className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-[12.5px]">
-                                    <code className="font-mono text-white/55">$ {chore.run}</code>
-                                    <span className="text-[#4ade80]">✓ {chore.result}</span>
-                                    <span className="ml-auto font-mono text-white/35">0 tokens</span>
-                                </p>
-                            </li>
-                        ))}
-                    </ul>
-                </div>
-
-                <div className="mt-10 flex flex-wrap items-center gap-3">
-                    <InstallLink className="inline-flex items-center gap-2 rounded-[12px] bg-white px-5 py-3 text-[14.5px] font-medium text-zinc-950 transition-transform hover:scale-[1.03]">
-                        Get Fyx in VS Code, free <Arrow size={14} />
-                    </InstallLink>
-                    <span className="text-[13px] text-white/45">Every command still asks your permission first.</span>
+                    {/* The extension's panel, doing the chore named on the left. */}
+                    <div className="mx-auto w-full max-w-[400px] rounded-[18px] border border-white/10 bg-[#181818] text-[#cccccc] shadow-[0_40px_90px_-30px_rgb(0_0_0/0.9)]" aria-hidden>
+                        <div className="flex items-center gap-2 border-b border-white/[0.06] px-4 py-3">
+                            <Logo size={15} className="text-[#d97757]" />
+                            <span className="flex-1 text-[14px] font-semibold text-white">FreeAgentCoder</span>
+                            <span className="flex items-center gap-1 rounded-full border border-[#d97757]/40 bg-[#d97757]/10 px-2 py-0.5 text-[11px] font-medium text-[#ffb59a]">
+                                <Bolt /> Fyx · 0 tokens
+                            </span>
+                        </div>
+                        <div key={chore.ask} className={`flex flex-col gap-3 px-4 py-4 ${still ? '' : 'fyx-panel-in'}`}>
+                            <div className="self-end rounded-[12px] border border-white/10 bg-[#222] px-3 py-2 text-[13px] text-white">{chore.ask}</div>
+                            <div className="flex items-center gap-1.5 text-[12.5px]">
+                                <Logo size={12} className="text-[#d97757]" />
+                                <span className="font-semibold text-white">Fyx</span>
+                                <span className="text-white/40">· on your machine, no AI model</span>
+                            </div>
+                            <div className="overflow-hidden rounded-[10px] border border-white/10 bg-[#0f0f0f]">
+                                <div className="flex items-center justify-between border-b border-white/[0.06] px-3 py-1.5 text-[11px] text-white/45">
+                                    <span>Command</span>
+                                    <span className="text-[#4ade80]">approved</span>
+                                </div>
+                                <p className="truncate px-3 pt-2 font-mono text-[12px] text-white/85">$ {chore.run}</p>
+                                <p className="px-3 pb-2.5 pt-1 text-[12px] text-[#4ade80]">✓ {chore.result}</p>
+                            </div>
+                            <div className="flex items-center gap-2 border-t border-dashed border-white/10 pt-2.5 text-[12px]">
+                                <span className="text-[#4ade80]">✓</span>
+                                <span className="font-semibold text-white">Done</span>
+                                <span className="text-white/45">1 step · 0.2 s · 0 tokens</span>
+                            </div>
+                        </div>
+                        <div className="px-3 pb-3">
+                            <div className="flex items-center gap-2 rounded-[10px] border border-white/10 bg-[#1f1f1f] px-3 py-2 text-[12px] text-white/40">
+                                <span className="flex-1">Ask FreeAgentCoder to build, fix or explain…</span>
+                                <span className="flex items-center gap-1 text-[#ffb59a]">
+                                    <Bolt /> Fyx
+                                </span>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </section>
+    );
+}
+
+function Bolt() {
+    return (
+        <svg viewBox="0 0 16 16" width={12} height={12} fill="currentColor" aria-hidden>
+            <path d="M9 1.5 3.5 9h4L7 14.5 12.5 7h-4L9 1.5Z" />
+        </svg>
     );
 }

@@ -113,18 +113,8 @@ export function Hero({ trust }: { trust?: Trust }) {
                                         </svg>
                                         Visual Studio Marketplace
                                     </span>
-                                    {trust ? (
-                                        <>
-                                            {trust.ratings > 0 && (
-                                                <span>
-                                                    <span className="text-amber-300">★</span> {trust.rating.toFixed(1)} from {trust.ratings} review{trust.ratings === 1 ? '' : 's'}
-                                                </span>
-                                            )}
-                                            <span>{installs(trust.installs)} installs</span>
-                                        </>
-                                    ) : (
-                                        <span>Free · open in VS Code</span>
-                                    )}
+                                    {/* The real install count, shown once it reaches 1,000 and kept up to date from the Marketplace. */}
+                                    {trust && trust.installs >= 1_000 ? <span>{installs(trust.installs)} installs</span> : <span>Free · install in one click</span>}
                                 </a>
                             </div>
                             <p className="hidden max-w-[19rem] text-right text-[13px] leading-relaxed text-white/60 xl:block">

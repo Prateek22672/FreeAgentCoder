@@ -220,3 +220,17 @@
 [data-still].cine-rail > div { position: relative; height: auto; padding: 120px 0; }
 [data-still].cine-rail > div > div { overflow-x: auto; max-width: 100vw; }
 @media (prefers-reduced-motion: reduce) { .cine-bar, .cine-fade-in { animation: none; transform: none; } }
+
+/* The Fyx card: a warm gradient with a soft glow, and words that swap in. */
+.fyx-card {
+  background:
+    radial-gradient(60% 70% at 100% 0%, rgba(255, 140, 90, 0.55), transparent 65%),
+    radial-gradient(55% 60% at 0% 100%, rgba(120, 70, 255, 0.45), transparent 65%),
+    radial-gradient(40% 40% at 60% 60%, rgba(255, 90, 140, 0.25), transparent 70%),
+    linear-gradient(135deg, #1a0f1f 0%, #2a1320 45%, #3a1a14 100%);
+}
+@keyframes fyx-word { from { opacity: 0; transform: translateY(0.35em); filter: blur(6px); } }
+.fyx-word-in { animation: fyx-word 0.55s cubic-bezier(0.2, 0.7, 0.2, 1) both; }
+@keyframes fyx-panel { from { opacity: 0; transform: translateY(8px); } }
+.fyx-panel-in { animation: fyx-panel 0.5s cubic-bezier(0.2, 0.7, 0.2, 1) both; }
+@media (prefers-reduced-motion: reduce) { .fyx-word-in, .fyx-panel-in { animation: none; } }
