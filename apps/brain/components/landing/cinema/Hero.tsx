@@ -90,13 +90,13 @@ export function Hero() {
                                     </a>
                                 </div>
                             </div>
-                            <p className="hidden max-w-[19rem] text-right text-[13px] leading-relaxed text-white/60 md:block">
+                            <p className="hidden max-w-[19rem] text-right text-[13px] leading-relaxed text-white/60 xl:block">
                                 From a GitHub link to a verified change: it maps the code, plans the edit and runs your tests before it says done.
                             </p>
                         </div>
                     </div>
-                    <div ref={live} className="absolute right-[8%] top-[15%] hidden rotate-[-2deg] will-change-transform md:block">
-                        <AgentDemo width="w-[min(340px,44vh)]" />
+                    <div ref={live} className="absolute right-[7%] top-[13%] hidden will-change-transform md:block">
+                        <AgentDemo width="w-[min(340px,44vh,26vw)]" />
                     </div>
                 </div>
             </div>
