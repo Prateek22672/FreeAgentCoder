@@ -3,7 +3,7 @@ import { compactNumber } from '../../shared/format';
 import type { AttachmentInput, PermissionMode, SettingsSection, SettingsView, ToWebview } from '../../shared/protocol';
 import { button, fill, h, iconButton, send } from './dom';
 import { icon, type IconName } from './icons';
-import { SettingsPanel, setupGuide } from './settings';
+import { freeKeysCard, SettingsPanel, setupGuide } from './settings';
 import { Transcript } from './transcript';
 
 const MODES: Record<PermissionMode, { label: string; icon: IconName; description: string }> = {
@@ -124,6 +124,7 @@ function renderWelcome(): void {
               })
             : null,
         needsKey ? h('p', { class: 'welcome-note' }, icon('lock'), 'Keys stay on this device, encrypted in VS Code Secret Storage.') : null,
+        needsKey ? freeKeysCard() : null,
         h(
             'div',
             { class: 'suggestions' },

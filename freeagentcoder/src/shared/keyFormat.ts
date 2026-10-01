@@ -27,7 +27,6 @@ export const RECOMMENDED_SETUP: { id: string; goodFor: string }[] = [
     { id: 'gemini', goodFor: 'Complex builds and big projects: a 1M-token context' },
     { id: 'groq', goodFor: 'Very fast answers and small edits' },
     { id: 'openrouter', goodFor: 'Free models from several makers behind one key' },
-    { id: 'mistral', goodFor: 'Optional: free only after choosing the Experiment plan and verifying a phone number' },
     { id: 'cohere', goodFor: 'Optional: 1,000 calls a month, for personal use only' },
 ];
 
@@ -41,3 +40,27 @@ export const KEY_STEPS: Record<string, string[]> = {
     openai: ['Open API keys in your OpenAI account.', 'Create a new secret key and copy it — it is shown only once.'],
     anthropic: ['Open API keys in the Anthropic console.', 'Create a key and copy it — it starts with sk-ant-.'],
 };
+
+/**
+ * Which keys work on a free tier with no card, and which do not, said plainly
+ * where keys are added. Checked against each provider's own pages, 1 October 2026.
+ */
+export const FREE_KEYS: { name: string; note: string }[] = [
+    { name: 'Google Gemini', note: 'Free daily limit, no card' },
+    { name: 'Groq', note: '1,000 requests a day, no card' },
+    { name: 'OpenRouter', note: 'Free models, 50 requests a day, no card' },
+    { name: 'Cohere', note: '1,000 calls a month, no card, personal use only' },
+];
+
+export const NOT_FREE_KEYS: { name: string; note: string }[] = [
+    { name: 'Mistral', note: 'refused unless you pick its free plan and verify a phone' },
+    { name: 'Cerebras', note: 'needs a card' },
+    { name: 'OpenAI', note: 'paid only' },
+    { name: 'Anthropic (Claude)', note: 'paid only' },
+    { name: 'DeepSeek', note: 'needs a top-up' },
+    { name: 'Together AI', note: 'needs a $5 purchase' },
+    { name: 'Moonshot (Kimi)', note: 'needs a top-up' },
+];
+
+export const SHARED_KEY_WARNING =
+    'Keys copied from websites, videos or GitHub do not work: providers find and cancel them within hours. Make your own; it takes a minute and is free.';

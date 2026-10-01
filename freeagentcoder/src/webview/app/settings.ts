@@ -1,5 +1,5 @@
 import { compactNumber, formatAgo, formatDate, formatDuration, formatLatency, formatUsd, fullNumber } from '../../shared/format';
-import { detectProvider, KEY_STEPS, RECOMMENDED_SETUP } from '../../shared/keyFormat';
+import { detectProvider, FREE_KEYS, KEY_STEPS, NOT_FREE_KEYS, RECOMMENDED_SETUP, SHARED_KEY_WARNING } from '../../shared/keyFormat';
 import type {
     PlansView,
     CapacityWindow,
@@ -222,6 +222,26 @@ export function setupCount(data: SettingsView): number {
 }
 
 /** One free key from each provider, with direct links. Undefined once all of them are added. */
+/** Which keys work free and which do not, so nobody pastes a key that will only fail. */
+export function freeKeysCard(): HTMLElement {
+    const list = (items: { name: string; note: string }[], cls: string) =>
+        h('ul', { class: `keys-list ${cls}` }, ...items.map((k) => h('li', {}, h('strong', { text: k.name }), h('span', { class: 'muted', text: ` · ${k.note}` }))));
+    return h(
+        'div',
+        { class: 'card free-keys' },
+        h('div', { class: 'card-head' }, icon('key'), h('span', { class: 'card-title', text: 'Which keys work for free' })),
+        h(
+            'div',
+            { class: 'card-body' },
+            h('p', { class: 'keys-label ok', text: 'Free, no card needed' }),
+            list(FREE_KEYS, 'ok'),
+            h('p', { class: 'keys-label no', text: 'Not free: these keys fail without billing' }),
+            list(NOT_FREE_KEYS, 'no'),
+            h('p', { class: 'keys-warning' }, icon('alert'), h('span', { text: SHARED_KEY_WARNING })),
+        ),
+    );
+}
+
 export function setupGuide(data: SettingsView, onAdd: (provider: string) => void): HTMLElement | undefined {
     const have = usableProviders(data);
     const count = setupCount(data);
@@ -797,6 +817,7 @@ export class SettingsPanel {
                 ),
             );
         }
+        groups.push(freeKeysCard());
         for (const provider of data.providers) {
             const providerKeys = keys.filter((k) => k.provider === provider.id);
             if (!providerKeys.length) {

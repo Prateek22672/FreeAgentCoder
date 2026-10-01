@@ -1,5 +1,6 @@
 'use client';
 
+import { FreeKeys } from './FreeKeys';
 import { useState } from 'react';
 import { KEY_PROVIDERS, detectProvider, maskKey, providerById, useOwnKey, type KeyProvider } from '@/lib/keys';
 import { Icon } from './icons';
@@ -85,6 +86,8 @@ export function KeyPanel({ reason, onSaved }: { reason?: string; onSaved?: () =>
                         </li>
                     ))}
                 </ol>
+
+                <FreeKeys tone="panel" />
 
                 <form
                     onSubmit={(e) => {

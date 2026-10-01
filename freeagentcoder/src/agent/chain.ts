@@ -191,7 +191,7 @@ export async function verifyKey(provider: string, secret: string): Promise<{ sta
                 return { state: 'invalid', message: billingMessage(provider, name) };
             }
             if (isAuthFailure(err)) {
-                return { state: 'invalid', message: `${name} rejected this key. Check that you copied all of it.` };
+                return { state: 'invalid', message: `${name} rejected this key. Check that you copied all of it. A key found online will not work: providers cancel shared keys, so make your own (free, about a minute).` };
             }
             if (err.kind === 'rate_limit') {
                 return { state: 'valid', message: 'Key works, but it is rate-limited right now.' };

@@ -116,6 +116,9 @@ export function Hero({ trust }: { trust?: Trust }) {
                                     {/* The real install count, shown once it reaches 1,000 and kept up to date from the Marketplace. */}
                                     {trust && trust.installs >= 1_000 ? <span>{installs(trust.installs)} installs</span> : <span>Free · install in one click</span>}
                                 </a>
+                                <p className="mt-3 max-w-[30rem] text-[12px] leading-relaxed text-white/45">
+                                    Free keys that work: Gemini, Groq, OpenRouter and Cohere, no card needed. Mistral, Cerebras and keys copied from the internet will fail.
+                                </p>
                             </div>
                             <p className="hidden max-w-[19rem] text-right text-[13px] leading-relaxed text-white/60 xl:block">
                                 From a GitHub link to a verified change: it maps the code, plans the edit and runs your tests before it says done.
