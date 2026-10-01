@@ -45,9 +45,9 @@ export function RepoForm({ examples }: { examples: string[] }) {
     >
       {/* No autofocus: the form sits far down the landing page, and focusing
           it on load would scroll straight past the hero. */}
-      <div className="rounded-[14px] border border-white/12 bg-[#1f1f1f] transition-colors focus-within:border-[#d97757]">
-        <div className="flex items-center gap-2 border-b border-white/[0.07] px-3.5 py-2.5">
-          <svg viewBox="0 0 16 16" width={15} height={15} className="shrink-0 text-white/45" fill="currentColor" aria-hidden>
+      <div className="rounded-[18px] border border-black/30 bg-[#161616] p-2 shadow-[0_30px_60px_-30px_rgb(0_0_0/0.7)] transition-colors focus-within:border-[#d97757]">
+        <div className="flex items-center gap-2.5 pl-3">
+          <svg viewBox="0 0 16 16" width={18} height={18} className="shrink-0 text-white/50" fill="currentColor" aria-hidden>
             <path d="M8 .2a8 8 0 0 0-2.5 15.6c.4 0 .5-.2.5-.4v-1.5c-2.2.5-2.7-1-2.7-1-.4-.9-.9-1.2-.9-1.2-.7-.5.1-.5.1-.5.8.1 1.2.8 1.2.8.7 1.3 1.9.9 2.3.7.1-.5.3-.9.5-1.1-1.8-.2-3.6-.9-3.6-4 0-.9.3-1.6.8-2.1-.1-.2-.4-1 .1-2.1 0 0 .7-.2 2.2.8a7.6 7.6 0 0 1 4 0c1.5-1 2.2-.8 2.2-.8.4 1.1.2 1.9.1 2.1.5.6.8 1.3.8 2.1 0 3.1-1.9 3.8-3.6 4 .3.3.6.8.6 1.5v2.2c0 .2.1.5.6.4A8 8 0 0 0 8 .2Z" />
           </svg>
           <input
@@ -56,33 +56,13 @@ export function RepoForm({ examples }: { examples: string[] }) {
               setValue(e.target.value);
               setError(undefined);
             }}
-            placeholder="github.com/owner/repository"
+            placeholder="Paste a GitHub repo"
             aria-label="GitHub repository"
-            className="min-w-0 flex-1 bg-transparent font-mono text-[14px] text-white outline-none placeholder:text-white/35"
+            className="min-w-0 flex-1 bg-transparent py-3 text-[15.5px] text-white outline-none placeholder:text-white/40"
           />
-        </div>
-        <input
-          value={task}
-          onChange={(e) => setTask(e.target.value)}
-          placeholder="What should change? e.g. add Stripe checkout, replace Prisma with Drizzle"
-          aria-label="What do you want to change"
-          className="block w-full bg-transparent px-3.5 pb-1 pt-3 text-[14px] text-white outline-none placeholder:text-white/35"
-        />
-        <div className="flex flex-wrap items-center gap-2 px-2.5 pb-2.5 pt-2">
-          {examples.length > 0 && <span className="pl-1 text-[12px] text-white/40">Try</span>}
-          {examples.map((example) => (
-            <button
-              key={example}
-              type="button"
-              onClick={() => go(example)}
-              className="rounded-full border border-white/10 bg-white/[0.04] px-2.5 py-1 font-mono text-[11.5px] text-white/65 transition-colors hover:border-[#d97757] hover:text-white"
-            >
-              {example}
-            </button>
-          ))}
           <button
             type="submit"
-            className="ml-auto inline-flex h-9 items-center gap-1.5 rounded-[9px] bg-[#d97757] px-4 text-[14px] font-semibold text-white shadow-[0_8px_24px_-10px_#d97757] transition-transform hover:scale-[1.03]"
+            className="inline-flex h-11 shrink-0 items-center gap-1.5 rounded-[12px] bg-[#d97757] px-5 text-[15px] font-semibold text-white shadow-[0_8px_24px_-10px_#d97757] transition-transform hover:scale-[1.03]"
           >
             {opening ? (
               <>
@@ -98,17 +78,36 @@ export function RepoForm({ examples }: { examples: string[] }) {
             )}
           </button>
         </div>
+        <input
+          value={task}
+          onChange={(e) => setTask(e.target.value)}
+          placeholder="Optional: what should change?"
+          aria-label="What do you want to change"
+          className="mt-1 block w-full rounded-[10px] bg-white/[0.04] px-3.5 py-2.5 text-[13.5px] text-white outline-none placeholder:text-white/35 focus:bg-white/[0.07]"
+        />
       </div>
-      {error && <p className="mt-2 text-sm text-bad">{error}</p>}
-      {opening ? (
-        <p className="mt-2.5 flex items-center gap-2 px-1 text-[12.5px] text-[#4ade80]" role="status">
-          <span className="size-1.5 animate-pulse rounded-full bg-[#4ade80]" /> Reading {opening} from GitHub: its stack, layers and files, in a few seconds…
-        </p>
-      ) : (
-        <p className="mt-2.5 px-1 text-[12px] leading-relaxed text-white/40">
-          This is the real thing, not a demo: press an example and see it in about 3 seconds. Read-only, so the code is never run or stored.
-        </p>
-      )}
+      {error && <p className="mt-2 text-center text-sm text-bad">{error}</p>}
+      <div className="mt-4 flex flex-wrap items-center justify-center gap-2">
+        {opening ? (
+          <p className="flex items-center gap-2 text-[13px] font-medium text-zinc-800" role="status">
+            <span className="size-1.5 animate-pulse rounded-full bg-[#16a34a]" /> Reading {opening} from GitHub, a few seconds…
+          </p>
+        ) : (
+          <>
+            {examples.length > 0 && <span className="text-[13px] text-zinc-600">Try a real one:</span>}
+            {examples.map((example) => (
+              <button
+                key={example}
+                type="button"
+                onClick={() => go(example)}
+                className="rounded-full border border-black/10 bg-white/70 px-3 py-1 font-mono text-[12.5px] text-zinc-800 shadow-sm transition-colors hover:border-[#d97757] hover:bg-white"
+              >
+                {example}
+              </button>
+            ))}
+          </>
+        )}
+      </div>
     </form>
   );
 }

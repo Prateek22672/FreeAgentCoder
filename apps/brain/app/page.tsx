@@ -8,6 +8,7 @@ import { Chores } from '@/components/landing/cinema/Chores';
 import { marketplaceStats } from '@/lib/marketplace';
 import { PillNav } from '@/components/landing/cinema/PillNav';
 import { RepoForm } from '@/components/RepoForm';
+import { RepoPreview } from '@/components/landing/cinema/RepoPreview';
 import { StructuredData, brainApp, extensionApp, faqPage, graph, organization, website } from '@/components/StructuredData';
 import { ARTICLES } from '@/lib/articles';
 import { InstallLink } from '@/components/InstallLink';
@@ -48,7 +49,7 @@ const FAQ = [
         a: 'It covers the same job — an AI that works through coding tasks — without a subscription, inside the VS Code you already use. The guides below compare each one honestly.',
     },
 ];
-const EXAMPLES = ['shadcn-ui/taxonomy', 'fastapi/full-stack-fastapi-template', 'expressjs/express'];
+const EXAMPLES = ['expressjs/express', 'vercel/swr', 'shadcn-ui/taxonomy'];
 
 const STEPS: { icon: IconName; title: string; body: string }[] = [
     { icon: 'github', title: 'Connect a repository', body: 'Paste any public GitHub repository. Its source is read in about three seconds, never run, never stored.' },
@@ -106,29 +107,22 @@ export default async function Home() {
                         <p className="cine-display mt-5 max-w-3xl text-[clamp(2.2rem,5vw,3.8rem)] font-medium leading-[1.02] tracking-[-0.035em] text-white">
                             See how any repository is built <span className="text-white/40">before you change it.</span>
                         </p>
-                        <div className="silver-card mt-10 grid gap-8 rounded-[28px] p-3 sm:p-5 lg:grid-cols-[1.35fr_1fr] lg:items-center lg:gap-10 lg:p-6">
-                            {/* The panel, shaped like the extension's. */}
-                            <div className="rounded-[18px] border border-black/40 bg-[#181818] shadow-[0_40px_80px_-30px_rgb(0_0_0/0.6)]">
-                                <div className="flex items-center gap-2 border-b border-white/[0.06] px-4 py-3">
-                                    <Logo size={15} className="text-[#d97757]" />
-                                    <span className="flex-1 text-[14px] font-semibold text-white">Project Brain</span>
-                                    <span className="rounded-full border border-white/10 px-2 py-0.5 text-[11px] text-white/55">reads, never runs</span>
-                                </div>
-                                <div className="p-3 sm:p-4">
-                                    <RepoForm examples={EXAMPLES} />
-                                </div>
+                        <div className="silver-card mt-10 rounded-[28px] px-4 py-8 sm:px-10 sm:py-12">
+                            <div className="mx-auto max-w-3xl">
+                                <RepoForm examples={EXAMPLES} />
                             </div>
-                            <ol className="grid gap-5 px-2 pb-2 sm:grid-cols-2 lg:grid-cols-1 lg:px-0 lg:pb-0">
+                            <ol className="mx-auto mt-8 grid max-w-4xl grid-cols-2 gap-x-6 gap-y-3 text-[13.5px] text-zinc-700 md:grid-cols-4">
                                 {STEPS.map((step, i) => (
-                                    <li key={step.title} className="flex gap-3.5">
-                                        <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-zinc-900 font-mono text-[12px] text-white">{i + 1}</span>
-                                        <span>
-                                            <span className="block text-[15px] font-semibold text-zinc-900">{step.title}</span>
-                                            <span className="mt-0.5 block text-[13.5px] leading-relaxed text-zinc-600">{step.body}</span>
-                                        </span>
+                                    <li key={step.title} className="flex items-center gap-2.5">
+                                        <span className="flex size-6 shrink-0 items-center justify-center rounded-full bg-zinc-900 font-mono text-[11px] text-white">{i + 1}</span>
+                                        {step.title}
                                     </li>
                                 ))}
                             </ol>
+                            <div className="mx-auto mt-10 max-w-5xl">
+                                <p className="mb-3 text-center text-[12.5px] text-zinc-600">What you get back, in about 3 seconds</p>
+                                <RepoPreview />
+                            </div>
                         </div>
                     </section>
 
