@@ -65,25 +65,36 @@ void main(){
     float t = -b - sqrt(disc);
     float tEnd = -b + sqrt(disc);
     bool hit = false;
-    for (int i = 0; i < 140; i++) {
+    // How wide one pixel is at the star: edges closer than this are blended, not cut.
+    float px = 2.2 / min(R.x, R.y);
+    float closest = 1e3;
+    float tClosest = t;
+    for (int i = 0; i < 220; i++) {
         vec3 p = ro + rd * t;
         float f = shape(p);
         // shape() is not a true distance: divide by its slope for a safe step.
-        vec2 e = vec2(0.003, 0.0);
+        vec2 e = vec2(0.002, 0.0);
         vec3 g = vec3(shape(p + e.xyy), shape(p + e.yxy), shape(p + e.yyx)) - f;
-        float d = f / max(length(g) / 0.003, 1.0);
-        if (d < 0.002) { hit = true; break; }
-        t += max(d * 0.8, 0.0015);
+        float d = f / max(length(g) / 0.002, 1.0);
+        if (d < closest) { closest = d; tClosest = t; }
+        if (d < 0.0008) { hit = true; break; }
+        t += max(d * 0.7, 0.0008);
         if (t > tEnd) break;
     }
-    if (!hit) { gl_FragColor = vec4(0.0); return; }
+    float alpha = 1.0;
+    if (!hit) {
+        // A ray that grazed the edge: draw it faintly, so the outline is smooth.
+        if (closest > px) { gl_FragColor = vec4(0.0); return; }
+        alpha = 1.0 - closest / px;
+        t = tClosest;
+    }
     vec3 p = ro + rd * t;
     vec3 n = normalAt(p);
     vec3 col = env(reflect(rd, n));
     float fres = pow(1.0 - max(dot(-rd, n), 0.0), 3.0);
     col = col + vec3(0.6, 0.6, 0.64) * fres * 0.35;
     col = pow(col, vec3(0.92));
-    gl_FragColor = vec4(col, 1.0);
+    gl_FragColor = vec4(col * alpha, alpha);
 }`;
 
 function compile(gl: WebGLRenderingContext, type: number, source: string) {
@@ -102,7 +113,7 @@ export function ChromeStar({ className = '' }: { className?: string }) {
         const el = canvas.current;
         if (!el) return;
         const still = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-        const gl = el.getContext('webgl', { premultipliedAlpha: true, alpha: true, antialias: false });
+        const gl = el.getContext('webgl', { premultipliedAlpha: true, alpha: true, antialias: true });
         if (!gl) return setFallback(true);
         let program: WebGLProgram;
         try {
@@ -128,9 +139,9 @@ export function ChromeStar({ className = '' }: { className?: string }) {
 
         const size = () => {
             // Ray marching is per pixel, so keep the pixel count modest.
-            const scale = Math.min(window.devicePixelRatio || 1, 1.5);
-            const w = Math.min(el.clientWidth * scale, 900);
-            const h = Math.min(el.clientHeight * scale, 900);
+            const scale = Math.min(window.devicePixelRatio || 1, 2);
+            const w = Math.min(el.clientWidth * scale, 1600);
+            const h = Math.min(el.clientHeight * scale, 1600);
             el.width = Math.max(1, Math.round(w));
             el.height = Math.max(1, Math.round(h));
             gl.viewport(0, 0, el.width, el.height);

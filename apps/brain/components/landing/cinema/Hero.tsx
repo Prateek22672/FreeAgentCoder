@@ -122,7 +122,7 @@ export function Hero({ trust }: { trust?: Trust }) {
                             </p>
                         </div>
                     </div>
-                    <div ref={live} className="absolute right-[7%] top-[13%] hidden will-change-transform md:block">
+                    <div ref={live} data-fly="from" className="absolute right-[7%] top-[13%] hidden will-change-transform md:block">
                         <AgentDemo width="w-[min(340px,44vh,26vw)]" />
                     </div>
                 </div>

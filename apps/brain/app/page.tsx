@@ -7,6 +7,7 @@ import { Arrow, Hero, Star } from '@/components/landing/cinema/Hero';
 import { Chores } from '@/components/landing/cinema/Chores';
 import { marketplaceStats } from '@/lib/marketplace';
 import { PillNav } from '@/components/landing/cinema/PillNav';
+import { PanelFlight } from '@/components/landing/cinema/PanelFlight';
 import { RepoForm } from '@/components/RepoForm';
 import { RepoPreview } from '@/components/landing/cinema/RepoPreview';
 import { StructuredData, brainApp, extensionApp, faqPage, graph, organization, website } from '@/components/StructuredData';
@@ -94,6 +95,7 @@ export default async function Home() {
         <div className="relative overflow-x-clip bg-[#efeff2]">
             <StructuredData data={graph([organization, website, extensionApp, brainApp, faqPage(FAQ)])} />
             <PillNav />
+            <PanelFlight />
             <main>
                 <Hero trust={market ? { installs: market.installs, rating: market.rating, ratings: market.ratings } : undefined} />
                 <Carousel />

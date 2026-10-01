@@ -56,7 +56,8 @@ const CLIP = 'M10.5 4.5 5.3 9.7a1.6 1.6 0 0 0 2.3 2.3l5.6-5.6a3 3 0 0 0-4.3-4.3L
 const BOLT = 'M9 1.5 3.5 9h4L7 14.5 12.5 7h-4L9 1.5Z';
 const SPARK = 'M8 1.5c.5 3.4 2.4 5.6 6 6.5-3.6.9-5.5 3.1-6 6.5-.5-3.4-2.4-5.6-6-6.5 3.6-.9 5.5-3.1 6-6.5Z';
 
-export function AgentDemo({ width }: { width: string }) {
+/** `frozen` shows the finished task and takes no input: for the copy that flies into the carousel. */
+export function AgentDemo({ width, frozen = false }: { width: string; frozen?: boolean }) {
     const [t, setT] = useState(0);
     // Once someone clicks into the box it is theirs: the demo stops, and Enter builds it for real.
     const [draft, setDraft] = useState<string>();
@@ -68,14 +69,14 @@ export function AgentDemo({ width }: { width: string }) {
             setT(0);
             return;
         }
-        if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+        if (frozen || window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
             setT(DONE + 1);
             return;
         }
         const started = performance.now();
         const timer = window.setInterval(() => setT((performance.now() - started) % LOOP), 50);
         return () => window.clearInterval(timer);
-    }, [engaged]);
+    }, [engaged, frozen]);
 
     const build = () => {
         const ask = (draft ?? '').trim();
@@ -227,6 +228,8 @@ export function AgentDemo({ width }: { width: string }) {
                         ) : (
                             <button
                                 type="button"
+                                disabled={frozen}
+                                tabIndex={frozen ? -1 : undefined}
                                 onClick={() => setDraft('')}
                                 className="block min-h-[9cqw] w-full cursor-text px-[3cqw] pt-[2.4cqw] text-left text-[3.4cqw] leading-snug"
                                 aria-label="Try it: describe what to build"

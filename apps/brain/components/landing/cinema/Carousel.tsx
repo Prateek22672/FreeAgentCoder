@@ -2,6 +2,7 @@
 
 import { useRef } from 'react';
 import { Logo } from '@/components/Logo';
+import { AgentDemo } from './AgentDemo';
 import { Arrow, Star } from './Hero';
 import { useScrollProgress } from './progress';
 
@@ -17,7 +18,6 @@ interface Card {
 
 /** Each card is one thing the product does, and links to where you can try it. */
 const CARDS: Card[] = [
-    { chip: 'Agent', corner: 'in VS Code', title: 'It does the work in your editor', body: 'Plans, edits, runs your tests and shows every diff.', look: 'cine-look-violet', href: '/free-ai-coding-agent-vscode' },
     { chip: 'Project Brain', corner: 'freeagentcoder', title: '', body: '', look: 'cine-look-chrome', dark: true, href: '#brain' },
     { chip: 'Specialists', corner: 'debug · refactor', title: 'Reproduce first, then fix', body: 'The right method for each kind of task, not one prompt for all.', look: 'cine-look-teal', href: '/free-ai-coding-agent-vscode' },
     { chip: 'Starters', corner: 'playground', title: 'Start from a running app', body: 'React, plain HTML or a Node API, live in your browser in a minute.', look: 'cine-look-moss', href: '/playground' },
@@ -76,6 +76,10 @@ export function Carousel() {
                     {WORDS}
                 </div>
                 <div ref={ring} className="absolute left-1/2 top-[47%]">
+                    {/* The hero's panel lands here as the front card; on wide screens it flies in from the hero. */}
+                    <div data-fly="to" className="cine-ring-card absolute left-0 top-0 w-[clamp(190px,27vw,330px)] overflow-hidden rounded-[18px] will-change-transform">
+                        <AgentDemo width="w-full" frozen />
+                    </div>
                     {CARDS.map((card) => (
                         <a
                             key={card.chip}
