@@ -77,7 +77,7 @@ export function Carousel() {
                 </div>
                 <div ref={ring} className="absolute left-1/2 top-[47%]">
                     {/* The hero's panel lands here as the front card; on wide screens it flies in from the hero. */}
-                    <div data-fly="to" className="cine-ring-card absolute left-0 top-0 w-[clamp(190px,27vw,330px)] overflow-hidden rounded-[18px] will-change-transform">
+                    <div data-fly="to" className="cine-ring-card panel-card absolute left-0 top-0 w-[clamp(190px,27vw,330px)] overflow-hidden rounded-[18px] will-change-transform">
                         <AgentDemo width="w-full" frozen />
                     </div>
                     {CARDS.map((card) => (

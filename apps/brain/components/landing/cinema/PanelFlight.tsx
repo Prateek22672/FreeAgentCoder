@@ -34,6 +34,11 @@ export function PanelFlight() {
             }
             // 0 while the carousel is below the screen, 1 once its top reaches the top.
             const top = carousel.getBoundingClientRect().top;
+            // Far from the hand-over: nothing to do this frame, and nothing to measure.
+            if (top > window.innerHeight * 1.05 || top < -window.innerHeight * 0.05) {
+                if (shown) hide(from, to);
+                return;
+            }
             const p = Math.min(1, Math.max(0, 1 - top / window.innerHeight));
             if (p <= 0 || p >= 1) {
                 if (shown) hide(from, to);
@@ -70,7 +75,7 @@ export function PanelFlight() {
     }, []);
 
     return (
-        <div ref={flyer} className="pointer-events-none fixed left-0 top-0 z-40 origin-top-left" style={{ visibility: 'hidden' }} aria-hidden>
+        <div ref={flyer} className="panel-card pointer-events-none fixed left-0 top-0 z-40 origin-top-left will-change-transform" style={{ visibility: 'hidden' }} aria-hidden>
             <AgentDemo width="w-full" frozen />
         </div>
     );

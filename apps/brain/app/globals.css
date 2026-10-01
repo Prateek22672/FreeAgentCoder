@@ -245,4 +245,9 @@
 }
 
 /* While the hero's panel flies into the carousel, the two resting copies step aside. */
-[data-flying] { visibility: hidden !important; }
+[data-flying], [data-flying] * { visibility: hidden !important; opacity: 0 !important; transition: none !important; }
+
+/* A panel that is only a picture (in the carousel, or in flight): no inner
+   animation or layers, so a tilted card paints as one piece with no ghosts. */
+.panel-still * { transition: none !important; animation: none !important; will-change: auto !important; transform: none !important; }
+.panel-card { contain: paint; isolation: isolate; backface-visibility: hidden; transform-style: flat; }

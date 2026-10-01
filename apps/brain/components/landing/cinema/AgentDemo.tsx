@@ -97,7 +97,7 @@ export function AgentDemo({ width, frozen = false }: { width: string; frozen?: b
 
     return (
         // The wrapper is the size container; the panel inside is measured against it.
-        <div className={`${width} [container-type:inline-size]`}>
+        <div className={`${width} [container-type:inline-size] ${frozen ? 'panel-still' : ''}`}>
             <div className="relative flex aspect-[0.56] w-full flex-col overflow-hidden rounded-[3.6cqw] border border-white/10 bg-[#181818] text-[#cccccc] shadow-[0_40px_90px_-30px_rgb(0_0_0/0.9)]">
                 {/* Panel header, as in the extension. */}
                 <div className="flex items-center gap-[2.4cqw] border-b border-white/[0.06] px-[4cqw] py-[3cqw]">
