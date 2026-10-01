@@ -70,10 +70,11 @@ export class RemoteConfig {
     }
 
     /** Refreshes in the background if a day has passed. Never throws, never blocks a task. */
-    refresh(): void {
-        if (!vscode.workspace.getConfiguration('freeagentcoder').get<boolean>('specialistUpdates', true)) {
-            return;
-        }
+    /** The newest released version, as the site last reported it. */
+    latest?: string;
+
+    refresh(onLatest?: (latest: string | undefined) => void): void {
+        const specialists = vscode.workspace.getConfiguration('freeagentcoder').get<boolean>('specialistUpdates', true);
         const last = this.context.globalState.get<number>(FETCHED) ?? 0;
         if (Date.now() - last < EVERY_MS) {
             return;
@@ -84,9 +85,14 @@ export class RemoteConfig {
                 if (!response.ok) {
                     return;
                 }
-                const parsed = parseConfig(await response.json());
-                this.config = parsed;
-                await this.context.globalState.update(STATE, parsed);
+                const body = (await response.json()) as { latest?: unknown };
+                this.latest = typeof body.latest === 'string' ? body.latest : undefined;
+                onLatest?.(this.latest);
+                if (specialists) {
+                    const parsed = parseConfig(body);
+                    this.config = parsed;
+                    await this.context.globalState.update(STATE, parsed);
+                }
                 await this.context.globalState.update(FETCHED, Date.now());
             } catch {
                 // Offline or the site is down: keep the last good config.

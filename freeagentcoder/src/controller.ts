@@ -19,6 +19,7 @@ import { PDF_READER_MODEL, planVisionRoute } from './agent/visionRoute';
 import { attachmentViews, prepareAttachments, type AttachmentReaders } from './attachments/prepare';
 import { readImagesLocally } from './attachments/ocr';
 import { SITE_URL, TRIAL_PROVIDER } from './shared/site';
+import { showWhatsNew, tellIfOutdated } from './updates';
 import { Telemetry } from './telemetry/telemetry';
 import { enabledSpecialists, RemoteConfig } from './agent/remoteConfig';
 import { chooseSpecialist, specialistSection } from './agent/specialists';
@@ -177,7 +178,8 @@ export class Controller implements vscode.Disposable {
         this.memory = new MemoryStore(context.globalState);
         this.features = loadFeatures(context.globalState);
         this.remoteConfig = new RemoteConfig(context);
-        this.remoteConfig.refresh();
+        showWhatsNew(context);
+        this.remoteConfig.refresh((latest) => tellIfOutdated(context, latest));
         this.telemetry = new Telemetry(context, () => {
             const keys = this.keys.list();
             return { count: keys.length, providers: keys.map((key) => key.provider) };
