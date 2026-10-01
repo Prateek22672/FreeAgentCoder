@@ -79,8 +79,21 @@ export class Telemetry {
     }
 
     /** Counts a finished task. Kept on this computer whether or not it is ever sent. */
-    taskFinished(outcome: 'done' | 'stopped' | 'failed', cause?: string, specialist?: string): void {
+    taskFinished(
+        outcome: 'done' | 'stopped' | 'failed',
+        cause?: string,
+        specialist?: string,
+        shape?: { corrected: boolean; changedCode: boolean; verified: boolean; requests: number; tokens: number },
+    ): void {
         this.counters.tasks += 1;
+        if (shape) {
+            const q = (this.counters.quality ??= { corrected: 0, codeTasks: 0, verified: 0, requests: 0, tokens: 0 });
+            q.corrected += shape.corrected ? 1 : 0;
+            q.codeTasks += shape.changedCode ? 1 : 0;
+            q.verified += shape.changedCode && shape.verified ? 1 : 0;
+            q.requests += Math.max(0, Math.round(shape.requests));
+            q.tokens += Math.max(0, Math.round(shape.tokens));
+        }
         if (specialist) {
             addSpecialistOutcome(this.counters, specialist, outcome === 'failed');
         }

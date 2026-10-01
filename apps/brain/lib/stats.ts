@@ -1,5 +1,6 @@
 import 'server-only';
 import { kvConfigured, store } from './kv';
+import { recordQuality } from './score';
 
 /**
  * The anonymous counts the extension sends, and what the admin page reads back.
@@ -36,6 +37,7 @@ export interface Report {
         readLocally: number;
         readByModel: number;
         bySpecialist: Record<string, { tasks: number; failed: number }>;
+        quality: { corrected: number; codeTasks: number; verified: number; requests: number; tokens: number };
     };
 }
 
@@ -88,7 +90,19 @@ export function parseReport(body: unknown): Report | undefined {
             readLocally: count(counters.readLocally),
             readByModel: count(counters.readByModel),
             bySpecialist: specialistCounts(counters.bySpecialist),
+            quality: qualityCounts(counters.quality),
         },
+    };
+}
+
+function qualityCounts(raw: unknown): { corrected: number; codeTasks: number; verified: number; requests: number; tokens: number } {
+    const q = (raw && typeof raw === 'object' ? raw : {}) as Record<string, unknown>;
+    return {
+        corrected: count(q.corrected, 10_000),
+        codeTasks: count(q.codeTasks, 10_000),
+        verified: count(q.verified, 10_000),
+        requests: count(q.requests, 1_000_000),
+        tokens: count(q.tokens, 1_000_000_000),
     };
 }
 
@@ -134,6 +148,17 @@ export async function recordReport(report: Report): Promise<void> {
               )
             : Promise.resolve(),
         store.addMember(`pb:active:${day}`, report.install, DAY_TTL),
+        report.counters.tasks
+            ? recordQuality(report.install, {
+                  tasks: counters.tasks,
+                  done: counters.tasksDone,
+                  failed: counters.tasksFailed,
+                  ...counters.quality,
+                  // A done task can never have more corrections than tasks.
+                  corrected: Math.min(counters.quality.corrected, counters.tasks),
+                  verified: Math.min(counters.quality.verified, counters.quality.codeTasks),
+              })
+            : Promise.resolve(),
         store.addMember('pb:installs', report.install, INSTALL_TTL),
         store.put(
             `pb:install:${report.install}`,

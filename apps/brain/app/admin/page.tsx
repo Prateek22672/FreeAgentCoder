@@ -14,6 +14,7 @@ import { Login } from './login';
 import { PlansForm } from './plans-form';
 import { ExtTrial, KeyPool, SpecialistsForm } from './engine-forms';
 import { extTrialStats, readExtTrialSettings } from '@/lib/extTrial';
+import { readScore, REGULAR_DAYS } from '@/lib/score';
 
 export const metadata: Metadata = { title: 'Admin', robots: { index: false, follow: false } };
 export const dynamic = 'force-dynamic';
@@ -38,7 +39,7 @@ export default async function AdminPage() {
     // Keys not checked in the last half hour are checked with their providers
     // now (a few seconds at most), so the health column is never stale.
     await checkPoolKeys().catch(() => undefined);
-    const [market, stats, keyLinks, plans, pool, specialists, extTrial, extTrialDays] = await Promise.all([
+    const [market, stats, keyLinks, plans, pool, specialists, extTrial, extTrialDays, score] = await Promise.all([
         marketplaceStats(),
         readStats(),
         readKeyLinks(),
@@ -47,6 +48,7 @@ export default async function AdminPage() {
         readSpecialists(),
         readExtTrialSettings(),
         extTrialStats(7),
+        readScore(30),
     ]);
     const trial = trialUsage();
     const ownKeys = configuredProviders();
@@ -165,6 +167,40 @@ export default async function AdminPage() {
                         browser tab.
                     </li>
                 </ol>
+            </section>
+
+            <section className="mt-8">
+                <h2 className="mb-3 text-xs font-semibold uppercase tracking-wide text-muted">Quality score — from regular users, last 30 days</h2>
+                <div className="grid gap-3 rounded-lg border border-line bg-panel p-4 md:grid-cols-[auto_1fr] md:items-center md:gap-8">
+                    <div>
+                        <div className="text-5xl font-semibold tabular-nums">{score.score ?? '—'}</div>
+                        <div className="mt-1 text-[12px] text-muted">out of 100{score.early ? ' · early: under 50 tasks, so it will move' : ''}</div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+                        {score.parts.map((p) => (
+                            <div key={p.name} className="rounded-md border border-line p-3">
+                                <div className="text-[11px] uppercase tracking-wide text-muted">
+                                    {p.name} · {p.weight}%
+                                </div>
+                                <div className="mt-1 text-xl font-semibold tabular-nums">{p.value === null ? '—' : `${p.value}`}</div>
+                                <div className="mt-0.5 text-[11px] text-muted">{p.detail}</div>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+                <p className="mt-2 text-[12px] text-muted">
+                    {score.tasks} tasks from {score.regularUsers} regular users (an install counts once it has reported on {REGULAR_DAYS} different days) ·{' '}
+                    {score.requestsPerTask ?? '—'} requests and {score.tokensPerTask?.toLocaleString('en-US') ?? '—'} tokens a task. Only people who agreed to share
+                    anonymous counts are included. Set SCORE_EXCLUDE_INSTALLS to leave your own test installs out.
+                </p>
+                <div className="mt-2 flex items-end gap-1" aria-label="Score by day, last 14 days">
+                    {score.trend.map((d) => (
+                        <div key={d.day} className="flex flex-1 flex-col items-center gap-1" title={`${d.day}: ${d.score ?? 'no tasks'} (${d.tasks} tasks)`}>
+                            <div className="w-full rounded-sm bg-accent/70" style={{ height: `${Math.max(2, ((d.score ?? 0) / 100) * 48)}px`, opacity: d.score === null ? 0.2 : 1 }} />
+                            <span className="text-[9px] text-faint">{d.day.slice(8)}</span>
+                        </div>
+                    ))}
+                </div>
             </section>
 
             <Section title="Fyx — chores done with no AI model (from people who share anonymous counts)">

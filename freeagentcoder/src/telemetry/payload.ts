@@ -24,6 +24,12 @@ export interface Counters {
     readByModel: number;
     /** Tasks and failures by specialist ("fix", "build"…), to see which kind of work struggles. */
     bySpecialist: Record<string, { tasks: number; failed: number }>;
+    /**
+     * For the quality score, as plain counts: tasks the user then corrected,
+     * tasks that changed code, those whose change was followed by a passing
+     * command, and the model requests and tokens the tasks used.
+     */
+    quality: { corrected: number; codeTasks: number; verified: number; requests: number; tokens: number };
 }
 
 export interface Report {
@@ -44,7 +50,7 @@ export interface Report {
 }
 
 export function emptyCounters(): Counters {
-    return { tasks: 0, tasksDone: 0, tasksStopped: 0, tasksFailed: 0, failures: {}, readLocally: 0, readByModel: 0, bySpecialist: {} };
+    return { tasks: 0, tasksDone: 0, tasksStopped: 0, tasksFailed: 0, failures: {}, readLocally: 0, readByModel: 0, bySpecialist: {}, quality: { corrected: 0, codeTasks: 0, verified: 0, requests: 0, tokens: 0 } };
 }
 
 const MAX_FAILURE_KINDS = 20;

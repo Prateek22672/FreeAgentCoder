@@ -149,7 +149,7 @@ export class Controller implements vscode.Disposable {
     /** Set while Fyx is doing a task, so it is counted as Fyx's and not as a model's. */
     private fyxTurn?: { kind: string; saved: number; prompt: string; learned: boolean };
     /** The request and the commands the agent ran this turn, so Fyx can learn one-command chores. */
-    private turnWatch: { prompt: string; runs: { command: string; ok: boolean }[]; edits: number } = { prompt: '', runs: [], edits: 0 };
+    private turnWatch: { prompt: string; runs: { command: string; ok: boolean }[]; edits: number; okAfterEdit?: boolean; correction?: boolean } = { prompt: '', runs: [], edits: 0 };
     private learnedCommands?: LearnedCommands;
     private consentShown = false;
     private learning?: { prompt: string; evidence: string };
@@ -501,6 +501,7 @@ export class Controller implements vscode.Disposable {
         }
 
         const correction = !test && (explicitCorrection || isCorrection(prompt, this.session.hasHistory, attachments.length > 0));
+        this.turnWatch.correction = correction;
         const selected = parseModelChoice(this.model);
         // The kind of work sets the method. Follow-ups and corrections keep the method they already have.
         const specialist =
@@ -796,8 +797,13 @@ export class Controller implements vscode.Disposable {
         }
         if (message.tool === 'run_command' && message.display?.type === 'command' && !message.display.background) {
             this.turnWatch.runs.push({ command: message.display.command, ok: message.ok });
-        } else if (message.tool === 'write_file' || message.tool === 'edit_file') {
+            // A command that passed after the latest edit: the change was checked.
+            if (this.turnWatch.edits > 0) {
+                this.turnWatch.okAfterEdit = message.ok;
+            }
+        } else if ((message.tool === 'write_file' || message.tool === 'edit_file') && message.ok) {
             this.turnWatch.edits++;
+            this.turnWatch.okAfterEdit = false;
         }
     }
 
@@ -1062,9 +1068,10 @@ export class Controller implements vscode.Disposable {
         if (end.reason === 'completed' && watched.edits === 0 && watched.runs.length === 1 && watched.runs[0]!.ok && this.fyxEnabled()) {
             void this.learned().learn(watched.prompt, watched.runs[0]!.command);
         }
+        const turnRequests = this.turnRequests;
         this.usage.recordTask({
             tokens: end.tokens,
-            requests: this.turnRequests,
+            requests: turnRequests,
             completed: end.reason === 'completed',
             durationMs: end.durationMs,
             tier: this.session.lastTier ?? 'fast',
@@ -1075,6 +1082,14 @@ export class Controller implements vscode.Disposable {
             end.reason === 'completed' ? 'done' : end.reason === 'aborted' ? 'stopped' : 'failed',
             end.reason === 'max_steps' ? 'max-steps' : (this.lastFailure ?? 'unknown'),
             this.lastSpecialist,
+            {
+                // A correction means the previous answer was not right: counted against accuracy.
+                corrected: !!watched.correction,
+                changedCode: watched.edits > 0,
+                verified: !!watched.okAfterEdit,
+                requests: turnRequests,
+                tokens: end.tokens,
+            },
         );
         this.lastFailure = undefined;
         void vscode.commands.executeCommand('setContext', 'freeagentcoder.hasRunTask', true);
