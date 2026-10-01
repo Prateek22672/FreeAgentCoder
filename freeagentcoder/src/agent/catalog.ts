@@ -8,9 +8,9 @@ import { getKeyUrl } from '../shared/site';
 export const KEY_PROVIDERS = ['gemini', 'groq', 'mistral', 'openrouter', 'cohere', 'openai', 'anthropic', 'cerebras'];
 
 /** Fast first: Groq answers in a second or two, and small requests fit its free tier. Cohere last: 1,000 calls a month. */
-const FAST_ORDER = ['groq', 'gemini', 'mistral', 'openrouter', 'cohere'];
+const FAST_ORDER = ['groq', 'gemini', 'mistral', 'openrouter', 'cohere', 'trial'];
 /** Strongest first: Gemini's 1M-token context carries long, multi-file work. */
-const DEEP_ORDER = ['gemini', 'mistral', 'openrouter', 'cohere', 'groq'];
+const DEEP_ORDER = ['gemini', 'mistral', 'openrouter', 'cohere', 'groq', 'trial'];
 /** Paid keys are only routed automatically when no free key is active. */
 const PAID_ORDER = ['anthropic', 'openai', 'cerebras'];
 
@@ -20,6 +20,8 @@ const TIER_MODELS: Record<string, Record<Tier, string>> = {
     gemini: { fast: 'gemini-3.5-flash-lite', deep: 'gemini-3.8-flash' },
     mistral: { fast: 'mistral-small-latest', deep: 'mistral-medium-latest' },
     cohere: { fast: 'command-a-plus-05-2026', deep: 'command-a-plus-05-2026' },
+    // The free trial picks the real model on the server; it only needs to know the tier.
+    trial: { fast: 'fast', deep: 'deep' },
     openrouter: { fast: 'openrouter/free', deep: 'openrouter/free' },
     openai: { fast: 'gpt-5-mini', deep: 'gpt-5' },
     anthropic: { fast: 'claude-haiku-4-5', deep: 'claude-sonnet-5' },
@@ -30,6 +32,7 @@ const SHORT_LABELS: Record<string, string> = {
     groq: 'Groq',
     cerebras: 'Cerebras (paid)',
     cohere: 'Cohere',
+    trial: 'Free trial',
     mistral: 'Mistral',
     openrouter: 'OpenRouter',
     openai: 'OpenAI',

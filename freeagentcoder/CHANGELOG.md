@@ -8,6 +8,8 @@
 - Specialists can be improved without a new release: once a day the extension checks the project's site for updated instructions. It is a plain request that sends nothing about you or your project, and **freeagentcoder.specialistUpdates** turns it off.
 - **Plans**, in Settings and as **FreeAgentCoder: Plans**. It shows the free tier you are on — your own keys, and the providers that give one away with no card — and, only if one has been switched on, a paid tier for when your free limits run out, with its price, its weekly quota and a button to get a licence. The page asks the project's site for this only when you open it; the free tier still makes no calls of its own. Where paid requests would go is said plainly: through FreeAgentCoder's server, unlike the free tier.
 
+- **A free trial, so the first task works with no key.** Until you add a key of your own, tasks run on a daily allowance on the project's keys: about two or three real tasks a day. Those requests go through FreeAgentCoder's server, and the panel says so when they do. Add your own free key and the trial steps aside; `freeagentcoder.freeTrial` turns it off.
+
 ### Changed
 
 - **Cohere is a new free provider.** Its trial key needs no card and allows 1,000 calls a month at 20 a minute, on Command A+. Cohere does not allow trial keys for production or commercial work, and the extension says so where you add one. It is the last free provider tried, because the monthly allowance runs out quickly.

@@ -257,3 +257,64 @@ export async function poolEntries(): Promise<RouterEntry[]> {
     shared.__poolCache = { at: Date.now(), entries };
     return entries;
 }
+
+/** One pool key, ready for a raw OpenAI-compatible request: what the extension's free trial forwards to. */
+export interface PoolTarget {
+    id: string;
+    provider: string;
+    label: string;
+    baseURL: string;
+    apiKey: string;
+    contextWindow: number;
+    maxRequestTokens?: number;
+    maxTokensParam: 'max_tokens' | 'max_completion_tokens';
+    headers: Record<string, string>;
+    /** Gemini wants each tool call's thought signature sent back. */
+    thoughtSignatures: boolean;
+    /** Successful calls today, so the least-used key goes first. */
+    usedToday: number;
+}
+
+/**
+ * Every enabled, unbenched, healthy pool key that speaks the OpenAI wire
+ * format. Anthropic keys are left out: their API is shaped differently.
+ */
+export async function poolTargets(): Promise<PoolTarget[]> {
+    // Local testing only: one stand-in model in place of the pool. Never read in production.
+    const fake = process.env.NODE_ENV !== 'production' ? process.env.TRIAL_TEST_UPSTREAM?.trim() : undefined;
+    if (fake) {
+        return [1, 2].map((n) => ({
+            id: `test-${n}`, provider: n === 1 ? 'groq' : 'gemini', label: `test ${n}`, baseURL: fake.replace(/\/+$/, ''), apiKey: 'test',
+            contextWindow: 131_072, maxRequestTokens: n === 1 ? 6_500 : 200_000, maxTokensParam: 'max_tokens' as const, headers: {}, thoughtSignatures: n === 2, usedToday: 0,
+        }));
+    }
+    const [pool, counts] = await Promise.all([readPool(), store.counts(`pb:keyuse:${today()}`)]);
+    const usable = pool.filter((k) => k.enabled && k.health?.state !== 'invalid');
+    const benched = await store.getMany(usable.map((k) => `pb:keybench:${k.id}`));
+    const targets: PoolTarget[] = [];
+    usable.forEach((k, i) => {
+        if (benched[i] !== null) return;
+        const preset = PRESETS[k.provider];
+        const apiKey = decrypt(k.cipher);
+        if (!preset || preset.kind !== 'openai' || !apiKey) return;
+        targets.push({
+            id: k.id,
+            provider: k.provider,
+            label: k.label,
+            baseURL: preset.baseURL.replace(/\/+$/, ''),
+            apiKey,
+            contextWindow: preset.contextWindow,
+            maxRequestTokens: preset.maxRequestTokens,
+            maxTokensParam: preset.maxTokensParam ?? 'max_tokens',
+            headers: preset.headers ?? {},
+            thoughtSignatures: Boolean(preset.thoughtSignatures),
+            usedToday: counts[`${k.id}:ok`] ?? 0,
+        });
+    });
+    return targets;
+}
+
+/** Counts one call made with a pool key outside the router, with the same benching rules. */
+export function recordPoolCall(id: string, ok: boolean): Promise<void> {
+    return record(id, ok);
+}

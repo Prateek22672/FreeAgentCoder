@@ -1,8 +1,8 @@
 # FreeAgentCoder — free AI coding agent for VS Code
 
 [![Visual Studio Marketplace](https://img.shields.io/visual-studio-marketplace/v/PrateekKoratala.freeagentcoder?label=Marketplace&color=d97757)](https://marketplace.visualstudio.com/items?itemName=PrateekKoratala.freeagentcoder)
-[![License: MIT](https://img.shields.io/badge/license-MIT-2ea043)](https://github.com/Prateek22672/FreeAgentCoder/blob/main/LICENSE.txt)
-[![Source](https://img.shields.io/badge/source-open-6e7681)](https://github.com/Prateek22672/FreeAgentCoder)
+[![License: MIT](https://img.shields.io/badge/license-MIT-2ea043)](https://github.com/Prateek22672/FreeAgentCoder-Codeloft/blob/main/LICENSE)
+[![Docs](https://img.shields.io/badge/docs-GitHub-6e7681)](https://github.com/Prateek22672/FreeAgentCoder-Codeloft)
 
 **An autonomous AI coding agent and chat that runs on your own free API keys.**
 
@@ -21,23 +21,23 @@ It is a free alternative to paid AI coding assistants: no subscription, no per-s
 
 <table>
   <tr>
-    <td width="50%"><img src="https://raw.githubusercontent.com/Prateek22672/FreeAgentCoder/main/freeagentcoder/media/screenshots/chat.png" alt="A task running: the plan, a file edit with its diff, and live status"></td>
-    <td width="50%"><img src="https://raw.githubusercontent.com/Prateek22672/FreeAgentCoder/main/freeagentcoder/media/screenshots/correction.png" alt="Correction mode: a pasted screenshot fixed point by point, with the lesson saved"></td>
+    <td width="50%"><img src="https://raw.githubusercontent.com/Prateek22672/FreeAgentCoder-Codeloft/main/media/screenshots/chat.png" alt="A task running: the plan, a file edit with its diff, and live status"></td>
+    <td width="50%"><img src="https://raw.githubusercontent.com/Prateek22672/FreeAgentCoder-Codeloft/main/media/screenshots/correction.png" alt="Correction mode: a pasted screenshot fixed point by point, with the lesson saved"></td>
   </tr>
   <tr>
     <td align="center"><b>Plans, edits and verifies</b> — every step visible</td>
     <td align="center"><b>Point out a fix</b> — with a screenshot, and it remembers</td>
   </tr>
   <tr>
-    <td width="50%"><img src="https://raw.githubusercontent.com/Prateek22672/FreeAgentCoder/main/freeagentcoder/media/screenshots/keys.png" alt="API keys: stored encrypted on your device, with usage and limits per key"></td>
-    <td width="50%"><img src="https://raw.githubusercontent.com/Prateek22672/FreeAgentCoder/main/freeagentcoder/media/screenshots/overview.png" alt="Overview: prompts left today, project status and feature switches"></td>
+    <td width="50%"><img src="https://raw.githubusercontent.com/Prateek22672/FreeAgentCoder-Codeloft/main/media/screenshots/keys.png" alt="API keys: stored encrypted on your device, with usage and limits per key"></td>
+    <td width="50%"><img src="https://raw.githubusercontent.com/Prateek22672/FreeAgentCoder-Codeloft/main/media/screenshots/overview.png" alt="Overview: prompts left today, project status and feature switches"></td>
   </tr>
   <tr>
     <td align="center"><b>Your keys stay on your device</b> — usage and limits per key</td>
     <td align="center"><b>Prompts left today</b> — savings and every feature switch</td>
   </tr>
   <tr>
-    <td colspan="2" align="center"><img src="https://raw.githubusercontent.com/Prateek22672/FreeAgentCoder/main/freeagentcoder/media/screenshots/health.png" width="50%" alt="Health: every job, the models serving it, and whether each key is working"></td>
+    <td colspan="2" align="center"><img src="https://raw.githubusercontent.com/Prateek22672/FreeAgentCoder-Codeloft/main/media/screenshots/health.png" width="50%" alt="Health: every job, the models serving it, and whether each key is working"></td>
   </tr>
   <tr>
     <td colspan="2" align="center"><b>Health</b> — every job, the models serving it, and whether each key is working right now</td>
@@ -48,7 +48,8 @@ It is a free alternative to paid AI coding assistants: no subscription, no per-s
 
 1. **Install.** A **Get started** guide opens by itself and shows you where everything is.
 2. **Find it in the right side bar.** FreeAgentCoder opens next to your code, like a pair programmer. Open it any time with **FreeAgentCoder: Open Chat** from the Command Palette (`Ctrl+Shift+P`).
-3. **Add free keys.** Settings → API Keys lists a direct link for each free provider. The best setup is **one key from each provider**:
+3. **Try it straight away.** With no key yet, your first tasks run on the **free trial**, a daily allowance on our keys.
+4. **Add free keys** when you want more. Settings → API Keys lists a direct link for each free provider. The best setup is **one key from each provider**:
    - Google Gemini: https://aistudio.google.com/apikey
    - Groq: https://console.groq.com/keys
    - OpenRouter: https://openrouter.ai/keys
@@ -58,7 +59,7 @@ It is a free alternative to paid AI coding assistants: no subscription, no per-s
    None of these asks for a card.
 
    **One key per account.** A second key from the same account shares that account's limits, so it adds nothing; add a different provider instead. Provider terms don't allow making extra accounts to get around limits.
-4. **Ask.** Open a project folder and describe what you want, for example *"Explain how this project is structured and how to run it."* Or click **Test my project**.
+5. **Ask.** Open a project folder and describe what you want, for example *"Explain how this project is structured and how to run it."* Or click **Test my project**.
 
 ## What you can ask it to do
 
@@ -77,7 +78,7 @@ It is a free alternative to paid AI coding assistants: no subscription, no per-s
 
 ## Plan in Project Brain, build here
 
-[Project Brain](https://github.com/Prateek22672/FreeAgentCoder/tree/main/apps/brain) is the website half of FreeAgentCoder. Paste a GitHub repository and it maps the stack and architecture, answers questions with real file references, and shows what a change would touch.
+[Project Brain](https://brain-rho-roan.vercel.app) is the website half of FreeAgentCoder. Paste a GitHub repository and it maps the stack and architecture, answers questions with real file references, and shows what a change would touch.
 
 Describe the change there and click **Work on this in VS Code**. FreeAgentCoder opens with the plan written into the chat: the files involved and the steps in order. **Nothing runs until you press Send.**
 
@@ -176,9 +177,10 @@ In the chat box, **Enter** sends, **Shift+Enter** adds a new line, **Esc** stops
 ## Privacy
 
 - **Your API keys stay on your device.** They're stored encrypted in VS Code's Secret Storage (your operating system's keychain: Windows Credential Manager, macOS Keychain or Linux Secret Service), are never uploaded to FreeAgentCoder or anyone else, and are sent only to the provider each key belongs to when you run a task. They're never shown again after you save them.
-- No account, no sign-up and no FreeAgentCoder server.
+- No account and no sign-up. With your own keys, nothing goes through a FreeAgentCoder server.
 - Attachments are saved in your project's `.freeagentcoder/` folder, which is git-ignored automatically. Lessons learned from your corrections are stored on this computer only, and you can review or delete them in Settings → Memory.
-- Your prompts and code are sent only to the providers whose keys you add, directly from your editor. Their terms apply, and some free tiers may use requests to improve their models, so check a provider's data policy before working on sensitive code.
+- **The free trial.** Until you add a key of your own, tasks run on FreeAgentCoder's free trial: a daily allowance on the project's keys. Those requests, including the code and prompts they contain, go through FreeAgentCoder's server to the provider and are not stored there; only counts are kept, against a random id made for the trial. Add your own key and the trial steps aside; turn it off with the `freeagentcoder.freeTrial` setting.
+- With your own keys, your prompts and code are sent only to the providers whose keys you add, directly from your editor. Their terms apply, and some free tiers may use requests to improve their models, so check a provider's data policy before working on sensitive code.
 - Chat history is saved only if you agree, and only on your computer. Turn it off or delete saved chats any time in Settings → History.
 - Errors are logged locally in Settings → Logs. **Copy diagnostics** removes API keys, tokens and your username from paths before copying.
 - Reading images on this computer downloads the reader once (about 6 MB) from a public CDN, and checks it against a fixed checksum before running it. Your image is never part of that: it is read on your machine and never uploaded.
@@ -190,7 +192,7 @@ In the chat box, **Enter** sends, **Shift+Enter** adds a new line, **Esc** stops
 ## Requirements
 
 - VS Code 1.137 or newer
-- At least one API key
+- Nothing else to start: the free trial runs your first tasks. Add a free key for more.
 - A project folder open in VS Code
 
 ## License

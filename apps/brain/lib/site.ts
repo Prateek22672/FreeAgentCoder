@@ -29,7 +29,7 @@ export const EXTENSION_ID = 'PrateekKoratala.freeagentcoder';
 export const MARKETPLACE = `https://marketplace.visualstudio.com/items?itemName=${EXTENSION_ID}`;
 /** Opens VS Code on the extension, as the Marketplace's own Install button does. */
 export const VSCODE_INSTALL = `vscode:extension/${EXTENSION_ID}`;
-export const GITHUB = 'https://github.com/Prateek22672/FreeAgentCoder';
+export const GITHUB = 'https://github.com/Prateek22672/FreeAgentCoder-Codeloft';
 export const PRODUCT = 'FreeAgentCoder';
 export const TAGLINE = 'Your codebase has a brain.';
 

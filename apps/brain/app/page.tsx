@@ -21,7 +21,7 @@ const FAQ = [
     },
     {
         q: 'Do I need an API key?',
-        a: 'Your first five requests each day are free here, so you can see how it works on your own code before committing. After that you paste your own free key — about a minute, no credit card. In VS Code you bring your own free keys from the start.',
+        a: 'Your first five requests each day are free here, so you can see how it works on your own code before committing. After that you paste your own free key — about a minute, no credit card. In VS Code, a free trial runs your first tasks with no key, then you add your own.',
     },
     {
         q: 'Does Project Brain change my repository?',

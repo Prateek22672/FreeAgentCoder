@@ -1,5 +1,6 @@
 import {
     createProvider,
+    OpenAICompatProvider,
     PRESETS,
     ProviderError,
     type ChatRequest,
@@ -9,6 +10,7 @@ import {
     type Usage,
 } from '@agentic/core';
 import type { KeyRef, RouteStep } from './catalog';
+import { TRIAL_PROVIDER, TRIAL_URL } from '../shared/site';
 
 export interface RoutableKey extends KeyRef {
     secret: string;
@@ -111,6 +113,11 @@ export class ChainBuilder {
             cached.label = key.label;
             return cached;
         }
+        if (key.provider === TRIAL_PROVIDER) {
+            const entry = this.trialEntry(key, model);
+            this.cache.set(cacheKey, entry);
+            return entry;
+        }
         const preset = PRESETS[key.provider];
         const inner = createProvider(preset, {
             apiKey: key.secret,
@@ -126,6 +133,29 @@ export class ChainBuilder {
         };
         this.cache.set(cacheKey, entry);
         return entry;
+    }
+
+    /**
+     * The free trial: OpenAI-compatible, with Gemini's thought signatures passed
+     * through, since the server may answer with Gemini. It reads no images; the
+     * extension reads them on this computer first.
+     */
+    private trialEntry(key: RoutableKey, model: string): RouterEntry {
+        const inner = new OpenAICompatProvider({
+            id: TRIAL_PROVIDER,
+            baseURL: TRIAL_URL,
+            apiKey: key.secret,
+            thoughtSignatures: true,
+            supportsImages: false,
+            maxOutputTokens: 8_192,
+            onHeaders: (headers) => this.hooks.onHeaders(key, headers),
+        });
+        return {
+            provider: new TrackedProvider(inner, key, this.hooks),
+            model,
+            contextWindow: 128_000,
+            label: key.label,
+        };
     }
 }
 

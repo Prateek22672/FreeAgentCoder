@@ -8,13 +8,12 @@
   "icon": "media/icon.png",
   "repository": {
     "type": "git",
-    "url": "https://github.com/Prateek22672/FreeAgentCoder",
-    "directory": "freeagentcoder"
+    "url": "https://github.com/Prateek22672/FreeAgentCoder-Codeloft"
   },
   "bugs": {
-    "url": "https://github.com/Prateek22672/FreeAgentCoder/issues"
+    "url": "https://github.com/Prateek22672/FreeAgentCoder-Codeloft/issues"
   },
-  "homepage": "https://github.com/Prateek22672/FreeAgentCoder/tree/main/freeagentcoder#readme",
+  "homepage": "https://brain-rho-roan.vercel.app",
   "galleryBanner": {
     "color": "#0c0c0d",
     "theme": "dark"
@@ -122,6 +121,12 @@
           "default": "",
           "scope": "application",
           "markdownDescription": "Where anonymous usage counts are sent, if you have agreed to send any. Leave empty to use the project's own site. Nothing is sent unless you said yes in **FreeAgentCoder: Anonymous Usage Data**."
+        },
+        "freeagentcoder.freeTrial": {
+          "type": "boolean",
+          "default": true,
+          "scope": "application",
+          "markdownDescription": "Until you add a key of your own, run tasks on FreeAgentCoder's free trial: a daily allowance on the project's keys. Those requests go through FreeAgentCoder's server to the provider. Turn off to use only your own keys."
         },
         "freeagentcoder.specialistUpdates": {
           "type": "boolean",

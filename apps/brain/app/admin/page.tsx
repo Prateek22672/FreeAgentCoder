@@ -12,7 +12,8 @@ import { trialUsage } from '@/lib/trial';
 import { signOutAction } from './actions';
 import { Login } from './login';
 import { PlansForm } from './plans-form';
-import { KeyPool, SpecialistsForm } from './engine-forms';
+import { ExtTrial, KeyPool, SpecialistsForm } from './engine-forms';
+import { extTrialStats, readExtTrialSettings } from '@/lib/extTrial';
 
 export const metadata: Metadata = { title: 'Admin', robots: { index: false, follow: false } };
 export const dynamic = 'force-dynamic';
@@ -37,13 +38,15 @@ export default async function AdminPage() {
     // Keys not checked in the last half hour are checked with their providers
     // now (a few seconds at most), so the health column is never stale.
     await checkPoolKeys().catch(() => undefined);
-    const [market, stats, keyLinks, plans, pool, specialists] = await Promise.all([
+    const [market, stats, keyLinks, plans, pool, specialists, extTrial, extTrialDays] = await Promise.all([
         marketplaceStats(),
         readStats(),
         readKeyLinks(),
         readPlans(),
         listPool(),
         readSpecialists(),
+        readExtTrialSettings(),
+        extTrialStats(7),
     ]);
     const trial = trialUsage();
     const ownKeys = configuredProviders();
@@ -170,6 +173,10 @@ export default async function AdminPage() {
 
             <Section title={`Key pool — the site’s free trial · stored in ${storeName}`}>
                 <KeyPool keys={pool} providers={POOL_PROVIDERS} needStore={settingsNeedStore} />
+            </Section>
+
+            <Section title="Extension free trial — people with no key yet">
+                <ExtTrial settings={extTrial} days={extTrialDays} poolKeys={pool.filter((k) => k.enabled && !k.benched && k.health?.state !== 'invalid' && k.provider !== 'anthropic').length} />
             </Section>
 
             <Section title="Paid tier">

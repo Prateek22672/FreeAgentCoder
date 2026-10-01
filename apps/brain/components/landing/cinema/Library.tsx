@@ -1,6 +1,8 @@
 'use client';
 
 import { useRef } from 'react';
+import { InstallLink } from '@/components/InstallLink';
+import { Arrow } from './Hero';
 import { clamp, ease, span, useScrollProgress } from './progress';
 
 interface Tile {
@@ -81,8 +83,19 @@ export function Library() {
                         keeps growing
                     </h2>
                     <p className="mx-auto mt-4 max-w-[26rem] text-[14.5px] leading-relaxed text-white/60 [text-shadow:0_2px_16px_rgb(0_0_0/0.9)]">
-                        Specialists, starters and guides, with more in every release. Every part is free and open source.
+                        Specialists, starters and guides, with more in every release. Every part of it is free.
                     </p>
+                    <div className="mt-7 flex flex-wrap justify-center gap-3">
+                        <a
+                            href="/playground"
+                            className="inline-flex items-center gap-2 rounded-[12px] bg-white px-5 py-3 text-[14.5px] font-medium text-zinc-950 shadow-[0_14px_40px_-12px_rgb(0_0_0/0.6)] transition-transform hover:scale-[1.03]"
+                        >
+                            Start building <Arrow size={14} />
+                        </a>
+                        <InstallLink className="inline-flex items-center gap-2 rounded-[12px] border border-white/15 bg-black/50 px-5 py-3 text-[14.5px] font-medium text-white backdrop-blur transition-colors hover:bg-white/15">
+                            Use it in your VS Code, free
+                        </InstallLink>
+                    </div>
                 </div>
             </div>
         </section>

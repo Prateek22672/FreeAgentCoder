@@ -4,6 +4,7 @@ import { revalidatePath } from 'next/cache';
 import { isSignedIn } from '@/lib/admin';
 import { addPoolKey, checkPoolKeys, listPool, removePoolKey, setPoolKeyEnabled } from '@/lib/keypool';
 import { SPECIALIST_INFO, writeSpecialists, type SpecialistSetting } from '@/lib/specialists';
+import { writeExtTrialSettings } from '@/lib/extTrial';
 
 export interface FormState {
     error?: string;
@@ -50,6 +51,20 @@ export async function saveSpecialistsAction(_state: FormState | undefined, form:
         };
     }
     const error = await writeSpecialists(settings);
+    if (error) return { error };
+    revalidatePath('/admin');
+    return { saved: true };
+}
+
+export async function saveExtTrialAction(_state: FormState | undefined, form: FormData): Promise<FormState> {
+    if (!(await isSignedIn())) return { error: 'Sign in first.' };
+    const error = await writeExtTrialSettings({
+        enabled: form.get('enabled') === 'on',
+        requestsPerInstall: Number(form.get('requestsPerInstall')),
+        tokensPerInstall: Number(form.get('tokensPerInstall')),
+        requestsPerAddress: Number(form.get('requestsPerAddress')),
+        dailyCap: Number(form.get('dailyCap')),
+    });
     if (error) return { error };
     revalidatePath('/admin');
     return { saved: true };

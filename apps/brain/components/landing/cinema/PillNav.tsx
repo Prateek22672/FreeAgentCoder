@@ -2,13 +2,14 @@
 
 import { useEffect, useState } from 'react';
 import { Logo } from '@/components/Logo';
+import { GITHUB } from '@/lib/site';
 
 const LINKS = [
     { href: '/playground', label: 'Playground' },
     { href: '#brain', label: 'Read a repo' },
     { href: '#work', label: 'What it does' },
     { href: '#guides', label: 'Guides' },
-    { href: 'https://github.com/Prateek22672/FreeAgentCoder', label: 'GitHub', external: true },
+    { href: GITHUB, label: 'GitHub', external: true },
 ];
 
 /**

@@ -3,7 +3,8 @@
 import { useActionState } from 'react';
 import type { PoolKeyView } from '@/lib/keypool';
 import type { SpecialistId, SpecialistSetting } from '@/lib/specialists';
-import { addKeyAction, checkKeysAction, removeKeyAction, saveSpecialistsAction, toggleKeyAction, type FormState } from './engine-actions';
+import { addKeyAction, checkKeysAction, removeKeyAction, saveExtTrialAction, saveSpecialistsAction, toggleKeyAction, type FormState } from './engine-actions';
+import type { ExtTrialDay, ExtTrialSettings } from '@/lib/extTrial';
 
 const field = 'h-10 w-full rounded-md border border-line-strong bg-panel px-3 text-[14px] text-fg outline-none placeholder:text-faint focus:border-accent';
 const label = 'block text-[11px] font-semibold uppercase tracking-wide text-muted';
@@ -222,5 +223,106 @@ export function SpecialistsForm({
                 <Status state={state} savedText="Saved. Extensions pick it up within a day." />
             </div>
         </form>
+    );
+}
+
+const n = (value: number) => value.toLocaleString('en-US');
+
+/** The extension's free trial: is it reaching people, how much it costs the pool, and its limits. */
+export function ExtTrial({ settings, days, poolKeys }: { settings: ExtTrialSettings; days: ExtTrialDay[]; poolKeys: number }) {
+    const [state, action, pending] = useActionState<FormState | undefined, FormData>(saveExtTrialAction, undefined);
+    const day = days[0];
+    const week = days.reduce((sum, d) => ({ requests: sum.requests + d.requests, newInstalls: sum.newInstalls + d.newInstalls }), { requests: 0, newInstalls: 0 });
+    const served = day ? day.requests : 0;
+    const refused = day ? day.refusedLimit + day.refusedClosed + day.refusedOff : 0;
+    const status = !settings.enabled
+        ? { tone: 'text-faint', text: 'Off: extension users without a key are told to add one.' }
+        : !poolKeys
+          ? { tone: 'text-bad', text: 'On, but the key pool has no working key, so no one can use it. Add or check keys above.' }
+          : day && day.failed > served && day.failed > 3
+            ? { tone: 'text-warn', text: 'On, but most requests failed today. Check the key health above.' }
+            : served
+              ? { tone: 'text-ok', text: `Working: ${n(day!.installs)} people used it today.` }
+              : { tone: 'text-muted', text: 'On and ready. No one has used it yet today.' };
+    const capShare = settings.dailyCap ? Math.min(100, Math.round((served / settings.dailyCap) * 100)) : 0;
+    const tiles: [string, string, string][] = [
+        ['People today', day ? n(day.installs) : '0', day ? `${n(day.newInstalls)} new` : ''],
+        ['Requests today', n(served), `${capShare}% of the ${n(settings.dailyCap)} daily cap`],
+        ['Tokens today', day ? n(day.tokens) : '0', 'Prompts and replies'],
+        ['Hit their limit', day ? n(day.reachedLimit) : '0', 'People today'],
+        ['Turned away', n(refused), day ? `${n(day.refusedClosed)} by the daily cap` : ''],
+        ['Last 7 days', n(week.requests), `${n(week.newInstalls)} new people`],
+    ];
+    const limits: [keyof ExtTrialSettings, string, number, string][] = [
+        ['requestsPerInstall', 'Requests per person, a day', settings.requestsPerInstall, 'A task is usually 8 to 15'],
+        ['tokensPerInstall', 'Tokens per person, a day', settings.tokensPerInstall, 'Stops one huge project draining it'],
+        ['requestsPerAddress', 'Requests per network, a day', settings.requestsPerAddress, 'Stops resets by reinstalling'],
+        ['dailyCap', 'Requests for everyone, a day', settings.dailyCap, 'Keep it under the pool\u2019s free quota'],
+    ];
+    return (
+        <div className="col-span-full grid gap-4">
+            <p className={`rounded-lg border border-line bg-panel px-4 py-3 text-[13.5px] ${status.tone}`}>{status.text}</p>
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
+                {tiles.map(([title, value, hint]) => (
+                    <div key={title} className="rounded-lg border border-line bg-panel p-3">
+                        <div className="text-[11px] uppercase tracking-wide text-muted">{title}</div>
+                        <div className="mt-1 text-xl font-semibold tabular-nums">{value}</div>
+                        {hint ? <div className="mt-0.5 text-[11px] text-muted">{hint}</div> : null}
+                    </div>
+                ))}
+            </div>
+            <div className="overflow-x-auto rounded-lg border border-line">
+                <table className="w-full text-[13px] tabular-nums">
+                    <thead className="bg-panel text-left text-[11px] uppercase tracking-wide text-muted">
+                        <tr>
+                            {['Day', 'People', 'New', 'Requests', 'Tokens', 'Hit limit', 'Turned away', 'Failed', 'Served by'].map((h) => (
+                                <th key={h} className="px-3 py-2">
+                                    {h}
+                                </th>
+                            ))}
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {days.map((d) => (
+                            <tr key={d.day} className="border-t border-line text-muted">
+                                <td className="px-3 py-2 text-fg">{d.day}</td>
+                                <td className="px-3 py-2">{n(d.installs)}</td>
+                                <td className="px-3 py-2">{n(d.newInstalls)}</td>
+                                <td className="px-3 py-2">{n(d.requests)}</td>
+                                <td className="px-3 py-2">{n(d.tokens)}</td>
+                                <td className="px-3 py-2">{n(d.reachedLimit)}</td>
+                                <td className="px-3 py-2">{n(d.refusedLimit + d.refusedClosed + d.refusedOff)}</td>
+                                <td className="px-3 py-2">{n(d.failed)}</td>
+                                <td className="px-3 py-2">
+                                    {Object.entries(d.providers)
+                                        .sort((a, b) => b[1] - a[1])
+                                        .map(([p, c]) => `${p} ${n(c)}`)
+                                        .join(' \u00b7 ') || '\u2014'}
+                                </td>
+                            </tr>
+                        ))}
+                    </tbody>
+                </table>
+            </div>
+            <form action={action} className="grid gap-3 rounded-lg border border-line bg-panel p-4 sm:grid-cols-2 lg:grid-cols-5 lg:items-end">
+                <label className="flex items-center gap-2 text-[14px] text-fg sm:col-span-2 lg:col-span-5">
+                    <input type="checkbox" name="enabled" defaultChecked={settings.enabled} className="size-4 accent-[var(--accent)]" />
+                    Offer the free trial to extension users who have no key
+                </label>
+                {limits.map(([name, title, value, hint]) => (
+                    <div key={name}>
+                        <span className={label}>{title}</span>
+                        <input name={name} type="number" min={0} defaultValue={value} className={`${field} mt-1`} />
+                        <span className="mt-1 block text-[11px] text-faint">{hint}</span>
+                    </div>
+                ))}
+                <div className="flex items-center gap-3">
+                    <button type="submit" disabled={pending} className={saveButton}>
+                        {pending ? 'Saving\u2026' : 'Save limits'}
+                    </button>
+                    <Status state={state} savedText="Saved." />
+                </div>
+            </form>
+        </div>
     );
 }

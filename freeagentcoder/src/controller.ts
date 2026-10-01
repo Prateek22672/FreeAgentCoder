@@ -15,7 +15,7 @@ import { AgentSession, type SessionLogEntry, type TurnPlan } from './agent/sessi
 import { PDF_READER_MODEL, planVisionRoute } from './agent/visionRoute';
 import { attachmentViews, prepareAttachments, type AttachmentReaders } from './attachments/prepare';
 import { readImagesLocally } from './attachments/ocr';
-import { SITE_URL } from './shared/site';
+import { SITE_URL, TRIAL_PROVIDER } from './shared/site';
 import { Telemetry } from './telemetry/telemetry';
 import { enabledSpecialists, RemoteConfig } from './agent/remoteConfig';
 import { chooseSpecialist, specialistSection } from './agent/specialists';
@@ -539,6 +539,9 @@ export class Controller implements vscode.Disposable {
                 : choosePlaybooks(prompt, tier, new Set(await readdir(cwd).catch(() => [] as string[])));
         const release = !test && senior && (carryChecks ? this.session.lastRelease : releaseIntent(prompt));
         const notes = route.note ? [route.note] : [];
+        if (keys[0]?.provider === TRIAL_PROVIDER) {
+            notes.push("Running on FreeAgentCoder's free trial: a daily allowance on our keys, sent through FreeAgentCoder's server. Add your own free Gemini or Groq key in Settings → API Keys for faster, private requests with no daily cap of ours.");
+        }
         let agentPrompt = test
             ? testBrief(checks, structure)
             : correction
@@ -1154,7 +1157,21 @@ export class Controller implements vscode.Disposable {
                 result.push(key);
             }
         }
+        // No key of their own yet: the free trial, so the first task works straight away.
+        if (!result.length && vscode.workspace.getConfiguration('freeagentcoder').get<boolean>('freeTrial', true) && !this.usage.invalidReason(TRIAL_PROVIDER)) {
+            result.push({ id: TRIAL_PROVIDER, provider: TRIAL_PROVIDER, label: 'FreeAgentCoder free trial', secret: `fact_${this.trialId()}` });
+        }
         return result;
+    }
+
+    /** A random id for the free trial alone, so its daily allowance can be counted. Not linked to anything else. */
+    private trialId(): string {
+        let id = this.context.globalState.get<string>('freeagentcoder.trialId');
+        if (!id) {
+            id = crypto.randomUUID();
+            void this.context.globalState.update('freeagentcoder.trialId', id);
+        }
+        return id;
     }
 
     /** Keys the Agentic CLI would use: environment variables and ~/.agentic/config.json. */
