@@ -18,7 +18,7 @@ function InstallCommand() {
         });
     };
     return (
-        <div className="mt-7 inline-flex max-w-full items-center gap-3 rounded-[12px] border border-white/10 bg-black/40 py-1.5 pl-3 pr-1.5 backdrop-blur">
+        <div className="mt-7 hidden max-w-full items-center gap-3 rounded-[12px] border border-white/10 bg-black/40 py-1.5 pl-3 pr-1.5 backdrop-blur sm:inline-flex">
             <span className="shrink-0 rounded-md bg-white/10 px-1.5 py-0.5 font-mono text-[10.5px] text-white/60">Ctrl P</span>
             <code className="truncate font-mono text-[12.5px] text-white/85">
                 <span className="text-white/40">&gt; </span>
@@ -32,7 +32,6 @@ function InstallCommand() {
             >
                 {copied ? 'Copied' : 'Copy'}
             </button>
-            <InstallLink className="shrink-0 rounded-[8px] bg-white px-3 py-1 text-[12px] font-semibold text-zinc-950 transition-transform hover:scale-[1.04]">Install</InstallLink>
         </div>
     );
 }
@@ -41,6 +40,14 @@ export function Star({ size = 14, className }: { size?: number; className?: stri
     return (
         <svg viewBox="0 0 24 24" width={size} height={size} className={className} fill="currentColor" aria-hidden>
             <path d="M12 0c.9 6.6 4.8 10.9 12 12-7.2 1.1-11.1 5.4-12 12-.9-6.6-4.8-10.9-12-12C7.2 10.9 11.1 6.6 12 0z" />
+        </svg>
+    );
+}
+
+function DownloadIcon() {
+    return (
+        <svg viewBox="0 0 16 16" width={16} height={16} fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+            <path d="M8 2.5v8M4.5 7 8 10.5 11.5 7M3 13.5h10" />
         </svg>
     );
 }
@@ -84,7 +91,7 @@ export function Hero() {
 
                         {/* On a phone the card sits in the space between the headline and the copy. */}
                         <div className="flex flex-1 items-center justify-center py-4 md:hidden">
-                            <AgentDemo width="w-[min(250px,32vh)]" />
+                            <AgentDemo width="w-[min(220px,27vh)]" />
                         </div>
                         <div className="flex flex-col gap-8 md:mt-auto md:flex-row md:items-end md:justify-between">
                             <div className="max-w-[26rem]">
@@ -92,15 +99,25 @@ export function Hero() {
                                     A free AI coding agent that reads your code before it changes it. Understand any repository, then let it build, in your browser or in VS
                                     Code, on your own free keys.
                                 </p>
-                                <div className="mt-7 flex flex-wrap gap-3">
-                                    <a href="#brain" className="rounded-[12px] border border-white/15 bg-white/10 px-5 py-3 text-[14.5px] font-medium text-white backdrop-blur transition-colors hover:bg-white/20">
-                                        Read a repo
-                                    </a>
+                                <div className="mt-7 flex flex-wrap items-stretch gap-3">
+                                    {/* The main action: install, in two lines, like a download button. */}
+                                    <InstallLink className="group inline-flex items-center gap-3 rounded-[14px] bg-white py-2.5 pl-3.5 pr-5 text-zinc-950 shadow-[0_14px_40px_-12px_rgb(0_0_0/0.6)] transition-transform hover:scale-[1.03]">
+                                        <span className="flex size-9 shrink-0 items-center justify-center rounded-[10px] bg-zinc-950 text-white">
+                                            <DownloadIcon />
+                                        </span>
+                                        <span className="flex flex-col text-left leading-tight">
+                                            <span className="text-[15px] font-semibold">Install extension</span>
+                                            <span className="text-[11.5px] font-medium text-zinc-500">for VS Code · free</span>
+                                        </span>
+                                    </InstallLink>
                                     <a
                                         href="/playground"
-                                        className="group inline-flex items-center gap-2 rounded-[12px] bg-white px-5 py-3 text-[14.5px] font-medium text-zinc-950 shadow-[0_10px_30px_-10px_rgb(0_0_0/0.5)] transition-transform hover:scale-[1.03]"
+                                        className="group inline-flex items-center gap-2 rounded-[14px] border border-white/15 bg-white/10 px-5 text-[14.5px] font-medium text-white backdrop-blur transition-colors hover:bg-white/20"
                                     >
-                                        Start building <span className="transition-transform group-hover:translate-x-0.5"><Arrow size={14} /></span>
+                                        <span>
+                                            Try <span className="hidden sm:inline">it </span>in <span className="hidden sm:inline">the </span>browser
+                                        </span>{' '}
+                                        <span className="transition-transform group-hover:translate-x-0.5"><Arrow size={14} /></span>
                                     </a>
                                 </div>
                                 <InstallCommand />
