@@ -125,6 +125,7 @@ function renderWelcome(): void {
             'div',
             { class: 'suggestions' },
             hasWorkspace && !needsKey ? testSuggestion() : null,
+            hasWorkspace && settings?.fyx !== false ? fyxSuggestion() : null,
             ...SUGGESTIONS.map((text) => {
                 const suggestion = h('button', { class: 'suggestion', attrs: { type: 'button' } }, icon('spark'), h('span', { text }));
                 suggestion.addEventListener('click', () => {
@@ -145,6 +146,24 @@ function renderWelcome(): void {
               )
             : null,
     );
+}
+
+/** Shows Fyx with a chore it does straight away: no model, no tokens. */
+function fyxSuggestion(): HTMLElement {
+    const text = 'Run the website locally';
+    const el = h(
+        'button',
+        { class: 'suggestion fyx', attrs: { type: 'button' }, title: 'Fyx does chores like this on your machine with no AI model: zip, git, install, run the project. 0 tokens.' },
+        icon('bolt'),
+        h('span', { text: `${text} · Fyx, 0 tokens` }),
+    );
+    el.addEventListener('click', () => {
+        input.value = text;
+        autosize();
+        renderComposer();
+        input.focus();
+    });
+    return el;
 }
 
 /** Runs the project's own checks and explains any failure, without the user having to know the commands. */
@@ -297,6 +316,23 @@ modelButton.addEventListener('click', () => {
     };
     const items: MenuItem[] = [
         { kind: 'item', label: 'Auto', description: 'Fast models for quick tasks, strongest for builds', icon: 'spark', selected: current === 'auto', run: () => setModel('auto') },
+        {
+            kind: 'item',
+            label: settings?.fyx === false ? 'Fyx · off' : 'Fyx · 0 tokens',
+            description:
+                settings?.fyx === false
+                    ? 'Click to turn on: zip, git, install, run the project and other chores, done on your machine with no AI model'
+                    : 'Built in and on, whatever model you pick: zip, git, install, run the project and other chores, with no AI model. Click to turn off',
+            icon: 'bolt',
+            selected: settings?.fyx !== false,
+            run: () => {
+                const enabled = settings?.fyx === false;
+                if (settings) {
+                    settings.fyx = enabled;
+                }
+                send({ type: 'setFyx', enabled });
+            },
+        },
     ];
     const withKeys = new Set((settings?.keys ?? []).filter((k) => k.enabled && k.status !== 'invalid').map((k) => k.provider));
     for (const provider of settings?.providers ?? []) {

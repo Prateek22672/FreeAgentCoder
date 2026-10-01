@@ -341,6 +341,11 @@ export class Controller implements vscode.Disposable {
                 await this.context.globalState.update(MODE_KEY, message.mode);
                 this.scheduleSettings(true);
                 return;
+            case 'setFyx':
+                await vscode.workspace.getConfiguration('freeagentcoder').update('fyx', message.enabled, vscode.ConfigurationTarget.Global);
+                this.toast(message.enabled ? 'Fyx is on: everyday chores run on your machine with no tokens.' : 'Fyx is off: every request goes to the AI model.', 'info');
+                this.scheduleSettings(true);
+                return;
             case 'setModel':
                 if (!isValidModelChoice(message.model)) {
                     return;
@@ -472,7 +477,7 @@ export class Controller implements vscode.Disposable {
         }
 
         this.turnWatch = { prompt, runs: [], edits: 0 };
-        if (!test && !explicitCorrection && !attachments.length && this.model === AUTO_MODEL && this.fyxEnabled()) {
+        if (!test && !explicitCorrection && !attachments.length && this.fyxEnabled()) {
             const plan = await this.fyxPlan(cwd, prompt);
             if (plan) {
                 await this.runFyx(cwd, prompt, plan);
@@ -1416,6 +1421,7 @@ export class Controller implements vscode.Disposable {
         const settings: SettingsView = {
             mode: this.mode,
             model: this.model,
+            fyx: this.fyxEnabled(),
             providers: providerViews(String(this.context.extension.packageJSON.version ?? '0.0.0')),
             keys: views,
             usage: { window: this.usage.window(), today: this.usage.today(), month: this.usage.month(), days: this.usage.days(7) },

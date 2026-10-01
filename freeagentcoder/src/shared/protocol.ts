@@ -92,6 +92,8 @@ export interface UsageView {
 export interface SettingsView {
     mode: PermissionMode;
     model: string;
+    /** Fyx, the built-in chore engine, is on. */
+    fyx: boolean;
     providers: ProviderView[];
     keys: KeyView[];
     usage: UsageView;
@@ -431,6 +433,7 @@ export type FromWebview =
     | { type: 'approve'; id: string; allow: boolean; remember?: boolean; feedback?: string }
     | { type: 'setMode'; mode: PermissionMode }
     | { type: 'setModel'; model: string }
+    | { type: 'setFyx'; enabled: boolean }
     | { type: 'addKey'; requestId: string; provider: string; label: string; secret: string }
     | { type: 'renameKey'; id: string; label: string }
     | { type: 'toggleKey'; id: string; enabled: boolean }

@@ -853,6 +853,8 @@ select.input { background: var(--vscode-dropdown-background, var(--vscode-input-
 .welcome .card.setup-guide { width: 100%; max-width: 440px; }
 .suggestion.test { border-color: color-mix(in srgb, var(--ok) 40%, transparent); }
 .suggestion.test .icon { color: var(--ok); }
+.suggestion.fyx { border-color: color-mix(in srgb, var(--accent, #d97757) 45%, transparent); }
+.suggestion.fyx .icon { color: var(--accent, #d97757); }
 
 /* Savings */
 .savings-card { display: flex; flex-direction: column; gap: 6px; padding: 12px; border: 1px solid color-mix(in srgb, var(--ok) 40%, transparent); border-radius: var(--radius); background: color-mix(in srgb, var(--ok) 7%, var(--surface-2)); }
