@@ -1,5 +1,5 @@
 import { Logo } from '@/components/Logo';
-import { Icon, type IconName } from '@/components/icons';
+import type { IconName } from '@/components/icons';
 import { Beyond } from '@/components/landing/cinema/Beyond';
 import { Carousel } from '@/components/landing/cinema/Carousel';
 import { ChromeStar } from '@/components/landing/cinema/ChromeStar';
@@ -106,21 +106,30 @@ export default async function Home() {
                         <p className="cine-display mt-5 max-w-3xl text-[clamp(2.2rem,5vw,3.8rem)] font-medium leading-[1.02] tracking-[-0.035em] text-white">
                             See how any repository is built <span className="text-white/40">before you change it.</span>
                         </p>
-                        <div className="mt-10 max-w-3xl rounded-[20px] border border-white/10 bg-white/[0.04] p-3 backdrop-blur sm:p-5">
-                            <RepoForm examples={EXAMPLES} />
+                        <div className="silver-card mt-10 grid gap-8 rounded-[28px] p-3 sm:p-5 lg:grid-cols-[1.35fr_1fr] lg:items-center lg:gap-10 lg:p-6">
+                            {/* The panel, shaped like the extension's. */}
+                            <div className="rounded-[18px] border border-black/40 bg-[#181818] shadow-[0_40px_80px_-30px_rgb(0_0_0/0.6)]">
+                                <div className="flex items-center gap-2 border-b border-white/[0.06] px-4 py-3">
+                                    <Logo size={15} className="text-[#d97757]" />
+                                    <span className="flex-1 text-[14px] font-semibold text-white">Project Brain</span>
+                                    <span className="rounded-full border border-white/10 px-2 py-0.5 text-[11px] text-white/55">reads, never runs</span>
+                                </div>
+                                <div className="p-3 sm:p-4">
+                                    <RepoForm examples={EXAMPLES} />
+                                </div>
+                            </div>
+                            <ol className="grid gap-5 px-2 pb-2 sm:grid-cols-2 lg:grid-cols-1 lg:px-0 lg:pb-0">
+                                {STEPS.map((step, i) => (
+                                    <li key={step.title} className="flex gap-3.5">
+                                        <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-zinc-900 font-mono text-[12px] text-white">{i + 1}</span>
+                                        <span>
+                                            <span className="block text-[15px] font-semibold text-zinc-900">{step.title}</span>
+                                            <span className="mt-0.5 block text-[13.5px] leading-relaxed text-zinc-600">{step.body}</span>
+                                        </span>
+                                    </li>
+                                ))}
+                            </ol>
                         </div>
-                        <ol className="mt-16 grid gap-10 sm:grid-cols-2 lg:grid-cols-4">
-                            {STEPS.map((step, i) => (
-                                <li key={step.title}>
-                                    <span className="flex items-center gap-3 text-white/50">
-                                        <span className="rounded-full border border-white/15 px-2 py-0.5 font-mono text-[11px]">0{i + 1}</span>
-                                        <Icon name={step.icon} size={16} />
-                                    </span>
-                                    <h3 className="mt-4 text-[16px] font-semibold text-white">{step.title}</h3>
-                                    <p className="mt-1.5 text-[14px] leading-relaxed text-white/55">{step.body}</p>
-                                </li>
-                            ))}
-                        </ol>
                     </section>
 
                     <section id="faq" className="mx-auto max-w-4xl scroll-mt-24 px-5 py-24 sm:px-8">
