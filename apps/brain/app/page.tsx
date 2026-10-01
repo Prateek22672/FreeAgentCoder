@@ -6,9 +6,7 @@ import { ChromeStar } from '@/components/landing/cinema/ChromeStar';
 import { Arrow, Hero, Star } from '@/components/landing/cinema/Hero';
 import { Chores } from '@/components/landing/cinema/Chores';
 import { marketplaceStats } from '@/lib/marketplace';
-import { Library } from '@/components/landing/cinema/Library';
 import { PillNav } from '@/components/landing/cinema/PillNav';
-import { WorkRail, type WorkCard } from '@/components/landing/cinema/WorkRail';
 import { RepoForm } from '@/components/RepoForm';
 import { StructuredData, brainApp, extensionApp, faqPage, graph, organization, website } from '@/components/StructuredData';
 import { ARTICLES } from '@/lib/articles';
@@ -59,24 +57,6 @@ const STEPS: { icon: IconName; title: string; body: string }[] = [
     { icon: 'code', title: 'Build it in VS Code', body: 'One click sends the plan to the agent, which edits, runs your checks and shows every change.' },
 ];
 
-const orb = (color: string, at = '50% 45%') => `radial-gradient(52% 40% at ${at}, ${color}, transparent 72%)`;
-
-const WORK: WorkCard[] = [
-    { href: '/playground', slug: 'playground', title: 'Playground', tags: 'Browser · Live preview', tag: 'New', art: orb('rgba(220, 220, 228, 0.55)', '55% 40%'), accent: '#e4e4e7', wide: true },
-    {
-        href: '#brain',
-        slug: 'project brain',
-        title: 'Read a repo',
-        tags: 'Architecture · Impact',
-        tag: 'Free',
-        art: `radial-gradient(14% 18% at 50% 42%, rgba(255,255,255,0.9), transparent 70%), repeating-radial-gradient(circle at 50% 42%, rgba(220,220,230,0.14) 0 1px, transparent 1px 9px), radial-gradient(40% 40% at 50% 42%, rgba(120,120,130,0.45), transparent 75%)`,
-        accent: '#e4e4e7',
-    },
-    { href: '/free-ai-coding-agent-vscode', slug: 'agent', title: 'VS Code agent', tags: 'Edits · Tests · Diffs', tag: 'MIT', art: orb('rgba(150, 150, 160, 0.55)', '40% 45%'), accent: '#d4d4d8' },
-    { href: '/free-ai-coding-agent-vscode', slug: 'specialists', title: 'Specialists', tags: 'Debug · Refactor · Design', tag: 'Built in', art: orb('rgba(230, 140, 60, 0.7)', '60% 50%'), accent: '#ffc38a' },
-    { href: '/free-ai-api-limits', slug: 'free keys', title: 'Free keys', tags: 'Gemini · Groq · Mistral', tag: 'No card', art: orb('rgba(40, 190, 150, 0.6)', '50% 40%'), accent: '#7ff0cb', wide: true },
-    { href: '/move-off-lovable-keep-building-free', slug: 'leave the credits', title: 'Off the meter', tags: 'Lovable · Bolt', tag: 'Guide', art: orb('rgba(235, 80, 140, 0.6)', '45% 50%'), accent: '#ffa3c6' },
-];
 
 const FOOTER: { title: string; links: { label: string; href: string; external?: boolean }[] }[] = [
     {
@@ -118,8 +98,6 @@ export default async function Home() {
                 <Carousel />
                 <Chores />
                 <Beyond />
-                <WorkRail cards={WORK} archive={{ href: '#guides', title: 'Read every guide', action: 'Open guides' }} />
-                <Library />
 
                 {/* The working parts: read a repository, the questions, the guides. */}
                 <div className="force-dark overflow-hidden rounded-b-[28px] bg-[#070708]">
@@ -163,20 +141,17 @@ export default async function Home() {
                         </div>
                     </section>
 
-                    <section id="guides" className="mx-auto max-w-4xl scroll-mt-24 px-5 pb-28 pt-24 sm:px-8">
+                    <section id="guides" className="mx-auto max-w-4xl scroll-mt-24 px-5 pb-28 pt-6 sm:px-8">
                         <h2 className="font-mono text-[11px] uppercase tracking-[0.22em] text-white/50">Guides</h2>
-                        <p className="cine-display mt-5 text-[clamp(2rem,4.5vw,3.2rem)] font-medium tracking-[-0.035em] text-white">Read before you switch.</p>
-                        <ul className="guide-stack mt-10">
-                            {ARTICLES.map((article, i) => (
-                                <li key={article.slug} className="guide-card" style={{ top: `${88 + i * 18}px`, zIndex: i + 1 }}>
-                                    {/* A plain link on purpose: a real page load, so each guide stays its own
-                                        indexable page, and the browser can zoom the card into it. */}
-                                    <a href={`/${article.slug}`} className="guide-link" style={{ viewTransitionName: `guide-${article.slug}` }}>
-                                        <span className="font-mono text-[12px] text-faint">{String(i + 1).padStart(2, '0')}</span>
-                                        <span className="cine-display mt-3 block text-2xl font-medium tracking-[-0.02em] text-fg sm:text-3xl">{article.h1}</span>
-                                        <span className="mt-3 block max-w-2xl text-[15px] leading-relaxed text-muted">{article.description}</span>
-                                        <span className="mt-6 inline-flex items-center gap-1.5 text-[14px] font-medium text-white">
-                                            Read the guide <Arrow size={14} />
+                        <p className="mt-3 text-[15px] text-white/60">Honest answers before you switch, one page each.</p>
+                        {/* Plain links on purpose: real page loads, so each guide stays its own indexable page. */}
+                        <ul className="mt-6 grid gap-x-8 sm:grid-cols-2">
+                            {ARTICLES.map((article) => (
+                                <li key={article.slug} className="border-t border-white/10">
+                                    <a href={`/${article.slug}`} className="group flex items-center justify-between gap-4 py-3.5 text-[15px] text-white/85 transition-colors hover:text-white">
+                                        <span>{article.h1}</span>
+                                        <span className="shrink-0 text-white/40 transition-transform group-hover:translate-x-0.5 group-hover:text-white">
+                                            <Arrow size={14} />
                                         </span>
                                     </a>
                                 </li>

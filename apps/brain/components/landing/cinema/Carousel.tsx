@@ -65,7 +65,7 @@ export function Carousel() {
     });
 
     return (
-        <section ref={host} data-nav="light" className="cine-carousel relative h-[320vh] bg-[#070708]" aria-label="What it does">
+        <section ref={host} id="work" data-nav="light" className="cine-carousel relative h-[320vh] bg-[#070708]" aria-label="What it does">
             <div className="sticky top-0 h-dvh overflow-hidden rounded-b-[28px] bg-[#efeff2]">
                 <div
                     ref={words}
