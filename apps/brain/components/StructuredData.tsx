@@ -12,7 +12,7 @@ export function StructuredData({ data }: { data: object | object[] }) {
 export const organization = {
     '@type': 'Organization',
     '@id': `${SITE_URL}/#organization`,
-    name: 'Kodenza',
+    name: 'Codeloft',
     url: SITE_URL,
     sameAs: [GITHUB],
 };

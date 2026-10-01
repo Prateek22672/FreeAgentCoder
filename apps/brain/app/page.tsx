@@ -242,7 +242,7 @@ export default function Home() {
                 </div>
                 <div className="mt-20 flex flex-col gap-3 border-t border-zinc-300 pt-6 text-[13px] text-zinc-500 sm:flex-row sm:items-center sm:justify-between">
                     <span className="flex items-center gap-2">
-                        <Logo size={13} className="text-zinc-700" /> © 2026 FreeAgentCoder · A Kodenza product
+                        <Logo size={13} className="text-zinc-700" /> © 2026 FreeAgentCoder · A Codeloft product
                     </span>
                     <span>Free and open source · Works with Claude, GPT, Gemini and more, on your own keys.</span>
                 </div>

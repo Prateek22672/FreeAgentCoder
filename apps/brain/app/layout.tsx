@@ -30,8 +30,8 @@ export const metadata: Metadata = {
         'free gemini api key',
         'byok ai coding',
     ],
-    authors: [{ name: 'Kodenza' }],
-    creator: 'Kodenza',
+    authors: [{ name: 'Codeloft' }],
+    creator: 'Codeloft',
     category: 'technology',
     alternates: { canonical: '/' },
     openGraph: {
