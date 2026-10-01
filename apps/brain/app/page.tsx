@@ -115,8 +115,8 @@ export default async function Home() {
             <PillNav />
             <main>
                 <Hero trust={market ? { installs: market.installs, rating: market.rating, ratings: market.ratings } : undefined} />
-                <Chores />
                 <Carousel />
+                <Chores />
                 <Beyond />
                 <WorkRail cards={WORK} archive={{ href: '#guides', title: 'Read every guide', action: 'Open guides' }} />
                 <Library />
