@@ -56,6 +56,12 @@ export interface AgentOptions {
    * let it finish. Asked at most twice per turn.
    */
   reviewCompletion?: (message: AssistantMessage) => string | undefined | Promise<string | undefined>;
+  /**
+   * Asked after a tool changes files, with their absolute paths. What it returns
+   * is added to the tool's result: an editor uses it to report the errors the
+   * change introduced, so the model fixes them now rather than at the end.
+   */
+  afterEdit?: (paths: string[], signal: AbortSignal) => Promise<string | undefined>;
 }
 
 export interface RunOptions {
@@ -617,7 +623,11 @@ export class Agent {
     }
     await running;
 
-    const final = failure !== undefined ? toolError(`${call.name} failed: ${errorText(failure)}`) : result!;
+    let final = failure !== undefined ? toolError(`${call.name} failed: ${errorText(failure)}`) : result!;
+    if (kind === 'write' && !final.isError && paths.length && this.opts.afterEdit) {
+      const note = await this.opts.afterEdit(paths, signal).catch(() => undefined);
+      if (note) final = { ...final, content: `${final.content}\n\n${note}` };
+    }
     yield* finish(label, final);
     if (final.display?.type === 'todos') yield { type: 'todos', todos: this.todos };
     return final;

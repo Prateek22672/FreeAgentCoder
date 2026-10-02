@@ -19,6 +19,7 @@ import { createLocalAgent, loadConfig, type AgenticConfig, type LocalAgent } fro
 import { compactNumber, errorMessage } from '../shared/format';
 import type { ApprovalView, AttachmentView, ChangedFile, PermissionMode, PreviewView, Tier, ToolDisplayView, ToWebview, TurnEndReason } from '../shared/protocol';
 import type { DiffDocuments } from './diffDocuments';
+import { editorProblemsAfterEdit, getProblemsTool } from './editorProblems';
 import { editorInstructions } from './instructions';
 import { completionReview, gateResults } from './gates';
 import type { Playbook } from './playbooks';
@@ -872,7 +873,8 @@ export class AgentSession implements vscode.Disposable {
                     return [editorInstructions({ python: /\bPython\b|Jupyter/.test(snapshot) }), snapshot].filter(Boolean).join('\n\n');
                 })(),
                 maxSteps: MAX_STEPS,
-                extraTools: [checkPageTool(this.options.previews)],
+                extraTools: [checkPageTool(this.options.previews), getProblemsTool()],
+                afterEdit: editorProblemsAfterEdit(cwd),
             });
             this.local = local;
             this.localRoot = cwd;

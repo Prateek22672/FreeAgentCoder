@@ -13,6 +13,7 @@ const CORE = `# Speed
 # Larger tasks
 - Inspect, plan, implement, verify. For 3+ steps keep a todo_write plan (3-8 items) and finish every item.
 - Verify for real: run the build, type-check, tests or linter, and fix failures. Never claim something works without running it.
+- Edits come back with the errors the editor finds in the changed file: fix them at once. get_problems lists the editor's errors anywhere, without a build.
 - Install with the project's own tool; scaffold with official generators and non-interactive flags. Deploy or publish only when asked.
 
 # The user's material

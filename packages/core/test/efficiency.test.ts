@@ -200,3 +200,31 @@ describe('edits that are nearly right', () => {
     expect(twice.file).toBe('a = 1  \nb\na = 1 \n');
   });
 });
+
+describe('after an edit', () => {
+  it("adds the host's note to a successful edit, and not to a failed one", async () => {
+    const provider = new ScriptedProvider([
+      call('read_file', { path: 'a.ts' }),
+      call('edit_file', { path: 'a.ts', old_string: 'missing', new_string: 'x' }),
+      call('edit_file', { path: 'a.ts', old_string: 'one', new_string: 'two' }),
+      say('Done.'),
+    ]);
+    const asked: string[][] = [];
+    const agent = new Agent({
+      router: new ModelRouter([{ provider, model: 'fake', contextWindow: 200_000 }]),
+      workspace: new MemoryWorkspace({ '/a.ts': 'const one = 1;\n' }),
+      tools: fileTools(),
+      systemPrompt: 'test',
+      permissions: new PermissionPolicy('auto'),
+      afterEdit: async (paths) => {
+        asked.push(paths);
+        return 'The editor reports 1 new error.';
+      },
+    });
+    await collect(agent.run('rename'));
+    const results = agent.messages.filter((m) => m.role === 'tool').map((m) => m.content);
+    expect(results[1]).not.toContain('The editor reports');
+    expect(results[2]).toContain('The editor reports 1 new error.');
+    expect(asked).toEqual([['/a.ts']]);
+  });
+});

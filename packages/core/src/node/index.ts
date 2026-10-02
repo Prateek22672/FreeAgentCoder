@@ -52,6 +52,8 @@ export interface LocalAgentOptions {
   reviewCompletion?: AgentOptions['reviewCompletion'];
   /** Tools the host app adds to the built-in ones. */
   extraTools?: Tool[];
+  /** See AgentOptions.afterEdit. */
+  afterEdit?: AgentOptions['afterEdit'];
 }
 
 export interface LocalAgent {
@@ -105,6 +107,7 @@ export async function createLocalAgent(opts: LocalAgentOptions): Promise<LocalAg
     messages: opts.messages,
     todos: opts.todos,
     reviewCompletion: opts.reviewCompletion,
+    afterEdit: opts.afterEdit,
   });
   return { agent, workspace, shell, processes, codeIndex, instructionsFile: instructions?.file, warnings };
 }
