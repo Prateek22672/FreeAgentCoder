@@ -15,35 +15,41 @@ interface Slide {
     /** What it ran (Fyx) or wrote (Fyxable). */
     work: string[];
     result: string;
+    /** A Fyx chore done in Fyxable rather than in VS Code. */
+    onWeb?: boolean;
 }
 
 /** Real requests. Fyx's commands are the ones it really produces. */
 const SLIDES: Slide[] = [
-    { mode: 'fyx', word: 'run your project', ask: 'run the website locally', work: ['$ npm --prefix homes run dev'], result: 'Running at http://localhost:5173' },
-    { mode: 'fyx', word: 'zip a folder', ask: 'zip the homes folder', work: ['$ tar -a -c -f homes.zip homes'], result: 'homes.zip · node_modules left out' },
-    { mode: 'fyx', word: 'push to git', ask: 'commit with message "fix navbar" and push', work: ['$ git commit -m "fix navbar" && git push'], result: 'Committed and pushed' },
     { mode: 'fyxable', word: 'build an app', ask: 'a todo app with a dark theme', work: ['+ src/App.jsx', '+ src/styles.css', '~ package.json'], result: 'Running live in this tab' },
     { mode: 'fyxable', word: 'import a Lovable project', ask: 'import my-shop from GitHub', work: ['Read 42 files', 'React · Supabase · Tailwind'], result: 'Mapped, ready to keep building' },
     { mode: 'fyxable', word: 'keep building, free', ask: 'add a login page', work: ['+ src/Login.jsx', '~ src/App.jsx'], result: 'Done on your own free keys' },
+    { mode: 'fyx', word: 'run your project', ask: 'run the website locally', work: ['$ npm --prefix homes run dev'], result: 'Running at http://localhost:5173' },
+    { mode: 'fyx', onWeb: true, word: 'add a package', ask: 'install zustand', work: ['~ package.json', '+ "zustand": "latest"'], result: 'Added, no model used' },
+    { mode: 'fyx', word: 'zip a folder', ask: 'zip the homes folder', work: ['$ tar -a -c -f homes.zip homes'], result: 'homes.zip · node_modules left out' },
+    { mode: 'fyx', word: 'push to git', ask: 'commit with message "fix navbar" and push', work: ['$ git commit -m "fix navbar" && git push'], result: 'Committed and pushed' },
 ];
 
-const COPY: Record<Mode, { badge: string; lead: string; tail: string; body: string; stats: { value: string; label: string }[] }> = {
+const COPY: Record<
+    Mode,
+    { badge: string; lead: string; tail: string; body: string; can?: string[]; places?: { label: string; items: string }[]; stats?: { value: string; label: string }[] }
+> = {
     fyx: {
-        badge: 'Fyx · in VS Code',
+        badge: 'Fyx model · 0 tokens',
         lead: 'Fyx can',
-        tail: 'with zero tokens.',
-        body: 'Our own task engine for everyday chores. No AI model, so it is instant and your free keys stay for real work. Anything complex goes to the agent.',
-        stats: [
-            { value: '0', label: 'tokens' },
-            { value: '0.2 s', label: 'vs 4 min 36 s' },
-            { value: '1', label: 'command, you approve' },
+        tail: 'free, with zero tokens.',
+        body: 'Our own model for everyday chores, in VS Code and in Fyxable. It runs no AI, so it is instant, free forever, and your keys stay for real work. Anything complex is handed to the agent.',
+        places: [
+            { label: 'In VS Code', items: 'Run your project · zip folders · commit and push · install packages · make branches' },
+            { label: 'In Fyxable', items: 'Run and stop · add packages · download a zip · export to GitHub · delete files' },
         ],
     },
     fyxable: {
-        badge: 'Fyxable · on the web',
+        badge: 'Introducing Fyxable',
         lead: 'Fyxable can',
         tail: 'in your browser.',
-        body: 'Describe an app, or bring one from GitHub, and watch it build and run in this tab. On your own free keys: no credits, no install, export any time.',
+        body: 'Our free app builder on the web, a Lovable and Bolt alternative with no credits. Describe an app and watch it build and run in this tab.',
+        can: ['Build from a prompt', 'Import from Lovable, Bolt or GitHub', 'Run it live in the tab', 'Export to GitHub'],
         stats: [
             { value: '0', label: 'credits to buy' },
             { value: 'No', label: 'install or sign-up' },
@@ -73,6 +79,8 @@ export function Chores() {
     const mode = slide.mode;
     const copy = COPY[mode];
     const web = mode === 'fyxable';
+    /** The panel looks like Fyxable for Fyxable, and for Fyx's chores on the web. */
+    const browser = web || Boolean(slide.onWeb);
 
     return (
         <section className="bg-[#070708] px-2 pb-2 pt-4 sm:px-3 sm:pb-3 sm:pt-6" aria-labelledby="fyx-title">
@@ -81,7 +89,7 @@ export function Chores() {
                     <div>
                         {/* Two tabs: which product the card is showing, and a way to jump to the other. */}
                         <div className="inline-flex rounded-full border border-white/15 bg-black/25 p-1 text-[12.5px] font-medium backdrop-blur" role="tablist">
-                            {(['fyx', 'fyxable'] as const).map((m) => (
+                            {(['fyxable', 'fyx'] as const).map((m) => (
                                 <button
                                     key={m}
                                     type="button"
@@ -105,6 +113,26 @@ export function Chores() {
                         <p key={`b-${mode}`} className={`mt-5 max-w-md text-[15px] leading-relaxed text-white/70 ${still ? '' : 'fyx-panel-in'}`}>
                             {copy.body}
                         </p>
+                        {copy.can && (
+                            <ul key={`c-${mode}`} className={`mt-4 flex max-w-md flex-wrap gap-2 ${still ? '' : 'fyx-panel-in'}`}>
+                                {copy.can.map((c) => (
+                                    <li key={c} className="flex items-center gap-1.5 rounded-full border border-white/15 bg-white/[0.06] px-2.5 py-1 text-[12px] text-white/80">
+                                        <span className="text-[#4ade80]">✓</span> {c}
+                                    </li>
+                                ))}
+                            </ul>
+                        )}
+                        {copy.places && (
+                            <div key={`p-${mode}`} className={`mt-6 grid max-w-md gap-3 sm:grid-cols-2 ${still ? '' : 'fyx-panel-in'}`}>
+                                {copy.places.map((p) => (
+                                    <div key={p.label} className="rounded-[14px] border border-white/15 bg-white/[0.08] px-3.5 py-3 backdrop-blur">
+                                        <p className="text-[12px] font-semibold text-[#ffd2bf]">{p.label}</p>
+                                        <p className="mt-1 text-[12.5px] leading-relaxed text-white/70">{p.items}</p>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                        {copy.stats && (
                         <dl key={`s-${mode}`} className={`mt-8 grid max-w-md grid-cols-3 gap-3 ${still ? '' : 'fyx-panel-in'}`}>
                             {copy.stats.map((s) => (
                                 <div key={s.label} className="rounded-[14px] border border-white/15 bg-white/[0.08] px-3 py-3 backdrop-blur">
@@ -113,6 +141,7 @@ export function Chores() {
                                 </div>
                             ))}
                         </dl>
+                        )}
                         <div className="mt-8 flex flex-wrap items-center gap-3">
                             {web ? (
                                 <a
@@ -126,7 +155,13 @@ export function Chores() {
                                     Get Fyx in VS Code, free <span className="transition-transform group-hover:translate-x-0.5"><Arrow size={14} /></span>
                                 </InstallLink>
                             )}
-                            <span className="text-[13px] text-white/50">{web ? 'Free, in your browser' : 'Free, in the VS Code extension'}</span>
+                            {web ? (
+                                <span className="text-[13px] text-white/50">Free, in your browser</span>
+                            ) : (
+                                <a href="/fyxable" className="text-[13px] text-white/60 underline-offset-4 hover:text-white hover:underline">
+                                    or use it in Fyxable
+                                </a>
+                            )}
                         </div>
                     </div>
 
@@ -134,7 +169,7 @@ export function Chores() {
                     <div className="mx-auto w-full max-w-[400px] rounded-[18px] border border-white/10 bg-[#181818] text-[#cccccc] shadow-[0_40px_90px_-30px_rgb(0_0_0/0.9)]" aria-hidden>
                         <div className="flex items-center gap-2 border-b border-white/[0.06] px-4 py-3">
                             <Logo size={15} className="text-[#d97757]" />
-                            <span className="flex-1 text-[14px] font-semibold text-white">{web ? 'Fyxable' : 'FreeAgentCoder'}</span>
+                            <span className="flex-1 text-[14px] font-semibold text-white">{browser ? 'Fyxable' : 'FreeAgentCoder'}</span>
                             <span className="flex items-center gap-1 rounded-full border border-[#d97757]/40 bg-[#d97757]/10 px-2 py-0.5 text-[11px] font-medium text-[#ffb59a]">
                                 {web ? (
                                     <>
@@ -152,12 +187,12 @@ export function Chores() {
                             <div className="flex items-center gap-1.5 text-[12.5px]">
                                 <Logo size={12} className="text-[#d97757]" />
                                 <span className="font-semibold text-white">{web ? 'FreeAgentCoder' : 'Fyx'}</span>
-                                <span className="text-white/40">{web ? '· on your free Gemini key' : '· on your machine, no AI model'}</span>
+                                <span className="text-white/40">{web ? '· on your free Gemini key' : browser ? '· in your browser, no AI model' : '· on your machine, no AI model'}</span>
                             </div>
                             <div className="overflow-hidden rounded-[10px] border border-white/10 bg-[#0f0f0f]">
                                 <div className="flex items-center justify-between border-b border-white/[0.06] px-3 py-1.5 text-[11px] text-white/45">
-                                    <span>{web ? 'Changes' : 'Command'}</span>
-                                    <span className="text-[#4ade80]">{web ? 'applied' : 'approved'}</span>
+                                    <span>{browser ? 'Changes' : 'Command'}</span>
+                                    <span className="text-[#4ade80]">{browser ? 'applied' : 'approved'}</span>
                                 </div>
                                 <div className="px-3 pt-2">
                                     {slide.work.map((line) => (
@@ -171,13 +206,13 @@ export function Chores() {
                             <div className="flex items-center gap-2 border-t border-dashed border-white/10 pt-2.5 text-[12px]">
                                 <span className="text-[#4ade80]">✓</span>
                                 <span className="font-semibold text-white">Done</span>
-                                <span className="text-white/45">{web ? 'no credits used' : '1 step · 0.2 s · 0 tokens'}</span>
+                                <span className="text-white/45">{web ? 'no credits used' : browser ? 'instant · 0 tokens' : '1 step · 0.2 s · 0 tokens'}</span>
                             </div>
                         </div>
                         <div className="px-3 pb-3">
                             <div className="flex items-center gap-2 rounded-[10px] border border-white/10 bg-[#1f1f1f] px-3 py-2 text-[12px] text-white/40">
-                                <span className="flex-1">{web ? 'Describe what to build or change…' : 'Ask FreeAgentCoder to build, fix or explain…'}</span>
-                                <span className="flex items-center gap-1 text-[#ffb59a]">{web ? <Globe /> : <Bolt />}</span>
+                                <span className="flex-1">{browser ? 'Describe what to build or change…' : 'Ask FreeAgentCoder to build, fix or explain…'}</span>
+                                <span className="flex items-center gap-1 text-[#ffb59a]">{browser ? <Globe /> : <Bolt />}</span>
                             </div>
                         </div>
                     </div>

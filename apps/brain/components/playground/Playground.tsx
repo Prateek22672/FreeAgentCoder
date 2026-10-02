@@ -10,6 +10,7 @@ import { RunPanel, startScript, toTree } from '@/components/workbench/RunPanel';
 import { ownKeyHeaders, useOwnKey } from '@/lib/keys';
 import { GithubExport } from './GithubExport';
 import { STARTERS, starterById } from '@/lib/starters';
+import { planWebFyx, withPackages } from '@/lib/webFyx';
 
 /**
  * A project that starts from nothing — no GitHub, no sign-in. Pick a starter or
@@ -372,6 +373,41 @@ export function Playground() {
         if (!path || path in files || !/^(?![/\\])(?!.*\.\.)[\w@.\-/ ]{1,200}$/.test(path)) return;
         setProject({ ...project, files: { ...files, [path]: '' }, active: path });
     };
+    /** Fyx: a plain chore is done here, with no model and no tokens. False when it is a job for the agent. */
+    const fyx = (text: string): boolean => {
+        const plan = planWebFyx(text, files);
+        if (!plan) return false;
+        let reply: string;
+        let changed: string[] | undefined;
+        if (plan.kind === 'run') {
+            if (!startScript(files['package.json'])) return false;
+            setRunOpen(true);
+            reply = 'Running it here. The preview opens in the Run panel.';
+        } else if (plan.kind === 'stop') {
+            setRunOpen(false);
+            reply = 'Stopped.';
+        } else if (plan.kind === 'zip') {
+            download();
+            reply = 'Downloaded the project as a zip.';
+        } else if (plan.kind === 'github') {
+            setExporting(true);
+            reply = 'Opened the GitHub export.';
+        } else if (plan.kind === 'add') {
+            const next = withPackages(files['package.json']!, plan.packages, plan.dev);
+            if (!next) return false;
+            setProject({ ...project, files: { ...files, 'package.json': next }, active: 'package.json' });
+            changed = ['package.json'];
+            reply = `Added ${plan.packages.join(', ')} to ${plan.dev ? 'devDependencies' : 'dependencies'}.${runOpen ? ' Stop and run again to install.' : ' They install when you press Run.'}`;
+        } else {
+            const next = { ...files };
+            delete next[plan.path];
+            setProject({ ...project, files: next });
+            changed = [plan.path];
+            reply = `Deleted ${plan.path}.`;
+        }
+        setTurns((t) => [...t, { role: 'user', content: text }, { role: 'assistant', content: reply, changed, model: 'Fyx · 0 tokens' }]);
+        return true;
+    };
     const removeFile = (path: string) => {
         if (!window.confirm(`Delete ${path}?`)) return;
         const next = { ...files };
@@ -603,7 +639,7 @@ export function Playground() {
                             const text = prompt.trim();
                             if (!text || busy) return;
                             setPrompt('');
-                            void send(text, project);
+                            if (!fyx(text)) void send(text, project);
                         }}
                         className="shrink-0 border-t border-line px-2.5 py-2"
                     >
