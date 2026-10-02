@@ -10,11 +10,11 @@ export const reducedMotion = () => typeof window !== 'undefined' && window.match
 
 /**
  * Drives a pinned section from the scroll position. `p` runs 0 → 1 while the
- * section's sticky frame is on screen, and is smoothed so the motion glides
+ * section's sticky frame is on screen (from below 0 with `early`), and is smoothed so the motion glides
  * rather than stepping with the wheel. Only runs while the section is near the
  * viewport. With reduced motion it draws once, at `still`, and stops.
  */
-export function useScrollProgress(ref: RefObject<HTMLElement | null>, draw: (p: number) => void, still = 0.5) {
+export function useScrollProgress(ref: RefObject<HTMLElement | null>, draw: (p: number) => void, still = 0.5, options: { early?: boolean } = {}) {
     useEffect(() => {
         const host = ref.current;
         if (!host) return;
@@ -24,17 +24,18 @@ export function useScrollProgress(ref: RefObject<HTMLElement | null>, draw: (p: 
             return;
         }
         let frame = 0;
-        let current = -1;
+        let current = Number.NaN;
         let visible = false;
 
         const target = () => {
             const rect = host.getBoundingClientRect();
             const room = Math.max(1, rect.height - window.innerHeight);
-            return clamp(-rect.top / room);
+            // With `early`, p goes below 0 while the section is still rising into view (-1 screen = -innerHeight / room), so it can start arriving before it pins.
+            return clamp(-rect.top / room, options.early ? -window.innerHeight / room : 0);
         };
         const tick = () => {
             const goal = target();
-            current = current < 0 ? goal : current + (goal - current) * 0.14;
+            current = Number.isNaN(current) ? goal : current + (goal - current) * 0.14;
             if (Math.abs(goal - current) < 0.0004) current = goal;
             draw(current);
             frame = visible ? requestAnimationFrame(tick) : 0;

@@ -156,9 +156,9 @@ export function ScrollFrames() {
                 state.set(el, s);
                 const e = 1 - Math.pow(1 - s.enter, 3);
                 const l = s.leave;
-                const tilt = (1 - e) * 9 - l * 4;
+                const tilt = (1 - e) * 7 - l * 3;
                 const scale = (0.93 + 0.07 * e) * (1 - l * 0.05);
-                el.style.transform = `perspective(1600px) translate3d(0, ${(1 - e) * 70 - l * 30}px, 0) rotateX(${tilt.toFixed(2)}deg) scale(${scale.toFixed(4)})`;
+                el.style.transform = `perspective(1600px) translate3d(0, ${(1 - e) * 36 - l * 14}px, 0) rotateX(${tilt.toFixed(2)}deg) scale(${scale.toFixed(4)})`;
                 el.style.opacity = String((0.25 + 0.75 * e) * (1 - l * 0.45));
                 el.style.transformOrigin = l > 0 ? '50% 100%' : '50% 0%';
             }

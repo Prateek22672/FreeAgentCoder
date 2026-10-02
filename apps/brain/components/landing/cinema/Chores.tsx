@@ -83,85 +83,18 @@ export function Chores() {
     const browser = web || Boolean(slide.onWeb);
 
     return (
-        <section data-frame data-float-from className="bg-[#070708] px-2 pb-2 pt-4 sm:px-3 sm:pb-3 sm:pt-6" aria-labelledby="fyx-title">
-            <div className="fyx-card relative overflow-hidden rounded-[22px] px-6 py-14 text-white sm:rounded-[28px] sm:px-12 sm:py-16">
+        <section data-float-from className="bg-[#070708] px-2 pb-2 pt-4 sm:px-3 sm:pb-3 sm:pt-6" aria-labelledby="fyx-title">
+            <div data-frame className="fyx-card relative overflow-hidden rounded-[22px] px-6 py-14 text-white sm:rounded-[28px] sm:px-12 sm:py-16">
                 <div className="relative grid items-center gap-12 lg:grid-cols-[1.15fr_1fr]">
-                    <div>
-                        {/* Two tabs: which product the card is showing, and a way to jump to the other. */}
-                        <div className="inline-flex rounded-full border border-white/15 bg-black/25 p-1 text-[12.5px] font-medium backdrop-blur" role="tablist">
-                            {(['fyxable', 'fyx'] as const).map((m) => (
-                                <button
-                                    key={m}
-                                    type="button"
-                                    role="tab"
-                                    aria-selected={mode === m}
-                                    onClick={() => setIndex(SLIDES.findIndex((s) => s.mode === m))}
-                                    className={`flex items-center gap-1.5 rounded-full px-3 py-1 transition-colors ${mode === m ? 'bg-white text-zinc-950' : 'text-white/70 hover:text-white'}`}
-                                >
-                                    {m === 'fyx' ? <Bolt /> : <Globe />} {COPY[m].badge}
-                                </button>
-                            ))}
-                        </div>
-                        <h2 id="fyx-title" className="cine-display mt-6 text-[clamp(2.2rem,5.4vw,4.2rem)] font-medium leading-[1.02] tracking-[-0.04em]">
-                            {copy.lead}{' '}
-                            <span key={slide.word} className={`fyx-word inline-block text-[#ffd2bf] ${still ? '' : 'fyx-word-in'}`}>
-                                {slide.word}
-                            </span>
-                            <br />
-                            <span className="text-white/55">{copy.tail}</span>
-                        </h2>
-                        <p key={`b-${mode}`} className={`mt-5 max-w-md text-[15px] leading-relaxed text-white/70 ${still ? '' : 'fyx-panel-in'}`}>
-                            {copy.body}
-                        </p>
-                        {copy.can && (
-                            <ul key={`c-${mode}`} className={`mt-4 flex max-w-md flex-wrap gap-2 ${still ? '' : 'fyx-panel-in'}`}>
-                                {copy.can.map((c) => (
-                                    <li key={c} className="flex items-center gap-1.5 rounded-full border border-white/15 bg-white/[0.06] px-2.5 py-1 text-[12px] text-white/80">
-                                        <span className="text-[#4ade80]">✓</span> {c}
-                                    </li>
-                                ))}
-                            </ul>
-                        )}
-                        {copy.places && (
-                            <div key={`p-${mode}`} className={`mt-6 grid max-w-md gap-3 sm:grid-cols-2 ${still ? '' : 'fyx-panel-in'}`}>
-                                {copy.places.map((p) => (
-                                    <div key={p.label} className="rounded-[14px] border border-white/15 bg-white/[0.08] px-3.5 py-3 backdrop-blur">
-                                        <p className="text-[12px] font-semibold text-[#ffd2bf]">{p.label}</p>
-                                        <p className="mt-1 text-[12.5px] leading-relaxed text-white/70">{p.items}</p>
-                                    </div>
-                                ))}
+                    {/* Every slide's text is laid out, unseen, in the same place, so the column is always as tall as the tallest and nothing below it moves as the words change. */}
+                    <div className="grid">
+                        {SLIDES.map((s, i) => (
+                            <div key={i} className="invisible [grid-area:1/1]" aria-hidden inert>
+                                <ChoresCopy slide={s} still />
                             </div>
-                        )}
-                        {copy.stats && (
-                        <dl key={`s-${mode}`} className={`mt-8 grid max-w-md grid-cols-3 gap-3 ${still ? '' : 'fyx-panel-in'}`}>
-                            {copy.stats.map((s) => (
-                                <div key={s.label} className="rounded-[14px] border border-white/15 bg-white/[0.08] px-3 py-3 backdrop-blur">
-                                    <dd className="cine-display text-[1.6rem] font-medium leading-none">{s.value}</dd>
-                                    <dt className="mt-1.5 text-[11.5px] text-white/60">{s.label}</dt>
-                                </div>
-                            ))}
-                        </dl>
-                        )}
-                        <div className="mt-8 flex flex-wrap items-center gap-3">
-                            {web ? (
-                                <a
-                                    href="/fyxable"
-                                    className="group inline-flex items-center gap-2 rounded-[12px] bg-white px-5 py-3 text-[14.5px] font-medium text-zinc-950 shadow-[0_14px_40px_-12px_rgb(0_0_0/0.5)] transition-transform hover:scale-[1.03]"
-                                >
-                                    Start building in Fyxable <span className="transition-transform group-hover:translate-x-0.5"><Arrow size={14} /></span>
-                                </a>
-                            ) : (
-                                <InstallLink className="group inline-flex items-center gap-2 rounded-[12px] bg-white px-5 py-3 text-[14.5px] font-medium text-zinc-950 shadow-[0_14px_40px_-12px_rgb(0_0_0/0.5)] transition-transform hover:scale-[1.03]">
-                                    Get Fyx in VS Code, free <span className="transition-transform group-hover:translate-x-0.5"><Arrow size={14} /></span>
-                                </InstallLink>
-                            )}
-                            {web ? (
-                                <span className="text-[13px] text-white/50">Free, in your browser</span>
-                            ) : (
-                                <a href="/fyxable" className="text-[13px] text-white/60 underline-offset-4 hover:text-white hover:underline">
-                                    or use it in Fyxable
-                                </a>
-                            )}
+                        ))}
+                        <div className="[grid-area:1/1]">
+                            <ChoresCopy slide={slide} still={still} onPick={(m) => setIndex(SLIDES.findIndex((s) => s.mode === m))} live />
                         </div>
                     </div>
 
@@ -219,6 +152,94 @@ export function Chores() {
                 </div>
             </div>
         </section>
+    );
+}
+
+
+/** The left column for one slide. `live` is the one people see; the others only hold its height. */
+function ChoresCopy({ slide, still, onPick, live = false }: { slide: Slide; still: boolean; onPick?: (mode: Mode) => void; live?: boolean }) {
+    const mode = slide.mode;
+    const copy = COPY[mode];
+    const web = mode === 'fyxable';
+    return (
+        <>
+                {/* Two tabs: which product the card is showing, and a way to jump to the other. */}
+                <div className="inline-flex rounded-full border border-white/15 bg-black/25 p-1 text-[12.5px] font-medium backdrop-blur" role="tablist">
+                    {(['fyxable', 'fyx'] as const).map((m) => (
+                        <button
+                            key={m}
+                            type="button"
+                            role="tab"
+                            aria-selected={mode === m}
+                            onClick={() => onPick?.(m)}
+                            className={`flex items-center gap-1.5 rounded-full px-3 py-1 transition-colors ${mode === m ? 'bg-white text-zinc-950' : 'text-white/70 hover:text-white'}`}
+                        >
+                            {m === 'fyx' ? <Bolt /> : <Globe />} {COPY[m].badge}
+                        </button>
+                    ))}
+                </div>
+                <h2 id={live ? 'fyx-title' : undefined} className="cine-display mt-6 text-[clamp(2.2rem,5.4vw,4.2rem)] font-medium leading-[1.02] tracking-[-0.04em]">
+                    {copy.lead}{' '}
+                    <span key={slide.word} className={`fyx-word inline-block text-[#ffd2bf] ${still ? '' : 'fyx-word-in'}`}>
+                        {slide.word}
+                    </span>
+                    <br />
+                    <span className="text-white/55">{copy.tail}</span>
+                </h2>
+                <p key={`b-${mode}`} className={`mt-5 max-w-md text-[15px] leading-relaxed text-white/70 ${still ? '' : 'fyx-panel-in'}`}>
+                    {copy.body}
+                </p>
+                {copy.can && (
+                    <ul key={`c-${mode}`} className={`mt-4 flex max-w-md flex-wrap gap-2 ${still ? '' : 'fyx-panel-in'}`}>
+                        {copy.can.map((c) => (
+                            <li key={c} className="flex items-center gap-1.5 rounded-full border border-white/15 bg-white/[0.06] px-2.5 py-1 text-[12px] text-white/80">
+                                <span className="text-[#4ade80]">✓</span> {c}
+                            </li>
+                        ))}
+                    </ul>
+                )}
+                {copy.places && (
+                    <div key={`p-${mode}`} className={`mt-6 grid max-w-md gap-3 sm:grid-cols-2 ${still ? '' : 'fyx-panel-in'}`}>
+                        {copy.places.map((p) => (
+                            <div key={p.label} className="rounded-[14px] border border-white/15 bg-white/[0.08] px-3.5 py-3 backdrop-blur">
+                                <p className="text-[12px] font-semibold text-[#ffd2bf]">{p.label}</p>
+                                <p className="mt-1 text-[12.5px] leading-relaxed text-white/70">{p.items}</p>
+                            </div>
+                        ))}
+                    </div>
+                )}
+                {copy.stats && (
+                <dl key={`s-${mode}`} className={`mt-8 grid max-w-md grid-cols-3 gap-3 ${still ? '' : 'fyx-panel-in'}`}>
+                    {copy.stats.map((s) => (
+                        <div key={s.label} className="rounded-[14px] border border-white/15 bg-white/[0.08] px-3 py-3 backdrop-blur">
+                            <dd className="cine-display text-[1.6rem] font-medium leading-none">{s.value}</dd>
+                            <dt className="mt-1.5 text-[11.5px] text-white/60">{s.label}</dt>
+                        </div>
+                    ))}
+                </dl>
+                )}
+                <div className="mt-8 flex flex-wrap items-center gap-3">
+                    {web ? (
+                        <a
+                            href="/fyxable"
+                            className="group inline-flex items-center gap-2 rounded-[12px] bg-white px-5 py-3 text-[14.5px] font-medium text-zinc-950 shadow-[0_14px_40px_-12px_rgb(0_0_0/0.5)] transition-transform hover:scale-[1.03]"
+                        >
+                            Start building in Fyxable <span className="transition-transform group-hover:translate-x-0.5"><Arrow size={14} /></span>
+                        </a>
+                    ) : (
+                        <InstallLink className="group inline-flex items-center gap-2 rounded-[12px] bg-white px-5 py-3 text-[14.5px] font-medium text-zinc-950 shadow-[0_14px_40px_-12px_rgb(0_0_0/0.5)] transition-transform hover:scale-[1.03]">
+                            Get Fyx in VS Code, free <span className="transition-transform group-hover:translate-x-0.5"><Arrow size={14} /></span>
+                        </InstallLink>
+                    )}
+                    {web ? (
+                        <span className="text-[13px] text-white/50">Free, in your browser</span>
+                    ) : (
+                        <a href="/fyxable" className="text-[13px] text-white/60 underline-offset-4 hover:text-white hover:underline">
+                            or use it in Fyxable
+                        </a>
+                    )}
+                </div>
+        </>
     );
 }
 

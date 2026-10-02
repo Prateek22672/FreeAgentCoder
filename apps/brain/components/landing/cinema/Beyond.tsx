@@ -25,7 +25,8 @@ export function Beyond() {
     useScrollProgress(
         host,
         (p) => {
-            const arrive = ease(span(p, 0, 0.32));
+            // The words slide in while the section rises into view, so it never opens on an empty screen.
+            const arrive = ease(span(p, -0.5, 0.12));
             const recede = span(p, 0.42, 0.66);
             const detail = ease(span(p, 0.5, 0.78));
             if (top.current) {
@@ -37,7 +38,7 @@ export function Beyond() {
                 bottom.current.style.opacity = String(arrive * (1 - recede * 0.72));
             }
             if (star.current) {
-                const grow = ease(span(p, 0.08, 0.55));
+                const grow = ease(span(p, -0.35, 0.45));
                 star.current.style.transform = `translate(-50%, -50%) scale(${0.25 + grow * 0.75}) rotate(${(1 - grow) * -45}deg)`;
                 star.current.style.opacity = String(Math.min(1, grow * 1.5));
             }
@@ -52,6 +53,7 @@ export function Beyond() {
             }
         },
         1,
+        { early: true },
     );
 
     return (
