@@ -76,6 +76,8 @@ export interface RunOptions {
    * blanked first (requests and replies stay), so it is not resent each step.
    */
   fresh?: boolean;
+  /** Files whose current contents this message includes (ones the user mentioned): they count as read, so they can be edited without reading them again. */
+  knownFiles?: string[];
   /** Only these tools are offered this turn (a quick task needs few). Default: all. */
   tools?: string[];
   /** How hard reasoning models think this turn. */
@@ -245,6 +247,7 @@ export class Agent {
           }
         }
       }
+      if (options.knownFiles?.length) await this.trustFiles(options.knownFiles);
       yield* this.loop(input, options.signal ?? new AbortController().signal, options.images);
     } finally {
       this.running = false;

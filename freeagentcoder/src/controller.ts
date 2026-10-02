@@ -11,6 +11,7 @@ import { classifyTask, FYX_CHOICE, isFollowUp, isValidModelChoice, KEY_PROVIDERS
 import { ChainBuilder, isAuthFailure, verifyKey, type CallResult, type RoutableKey } from './agent/chain';
 import { correctionBrief, isCorrection, learnPrompt, LEARN_SYSTEM, parseLessons, rememberCommand } from './agent/correction';
 import { DIFF_SCHEME, DiffDocuments } from './agent/diffDocuments';
+import { mentionBlock, mentionedPaths, rankFiles } from './agent/mentions';
 import { buildBrief, choosePlaybooks, releaseIntent } from './agent/playbooks';
 import { detectChecks, structureMap, type ProjectCheck } from './agent/projectChecks';
 import { detectStack } from './agent/projectSnapshot';
@@ -318,6 +319,8 @@ export class Controller implements vscode.Disposable {
                 return this.send('Continue where you left off.', [], false);
             case 'testProject':
                 return this.send(TEST_PROMPT, [], false, { test: true });
+            case 'findFiles':
+                return this.findFiles(message.id, String(message.query ?? ''));
             case 'openPlans':
                 return this.sendPlans();
             case 'stop':
@@ -632,6 +635,13 @@ export class Controller implements vscode.Disposable {
             }
         }
 
+        // Files the user @-mentioned go along with the request, so the agent need not spend a step reading them.
+        const mentioned = test ? { text: '', included: [] as string[], names: [] as string[] } : await this.mentionedFiles(cwd, prompt);
+        if (mentioned.text) {
+            agentPrompt += mentioned.text;
+            notes.push(`Included the file${mentioned.names.length === 1 ? '' : 's'} you mentioned: ${mentioned.names.join(', ')}`);
+        }
+
         this.learning = correction && this.features.learning ? { prompt, evidence: '' } : undefined;
 
         let prepare: TurnPlan['prepare'];
@@ -686,7 +696,13 @@ export class Controller implements vscode.Disposable {
             test,
             checks,
             fresh: !followUp && !correction,
+            knownFiles: mentioned.included,
         });
+    }
+
+    /** Whether a task is running, so a command can wait in the input instead of interrupting it. */
+    get busy(): boolean {
+        return this.session.running;
     }
 
     /**
@@ -694,11 +710,6 @@ export class Controller implements vscode.Disposable {
      * files into the open folder, sends its prompts one after another, and
      * posts the numbers and the conversation back to the admin page.
      */
-    /** Whether a task is running, so a command can wait in the input instead of interrupting it. */
-    get busy(): boolean {
-        return this.session.running;
-    }
-
     async runLabTask(): Promise<void> {
         const token = vscode.workspace.getConfiguration('freeagentcoder').get<string>('labToken', '').trim();
         if (!token) {
@@ -1053,6 +1064,36 @@ export class Controller implements vscode.Disposable {
         } catch (error) {
             this.errorLog.add({ kind: 'agent', source: 'Learning', message: errorMessage(error), recovered: true, action: 'Skipped saving a lesson from this correction' });
         }
+    }
+
+    private async mentionedFiles(cwd: string, prompt: string): Promise<{ text: string; included: string[]; names: string[] }> {
+        const files: { path: string; content: string }[] = [];
+        for (const mention of mentionedPaths(prompt)) {
+            const abs = path.resolve(cwd, mention);
+            if (path.relative(cwd, abs).startsWith('..')) {
+                continue;
+            }
+            const content = await readFile(abs, 'utf8').catch(() => undefined);
+            // Binary files and folders are left to the agent.
+            if (content !== undefined && !content.includes(String.fromCharCode(0))) {
+                files.push({ path: path.relative(cwd, abs).split(path.sep).join('/'), content });
+            }
+        }
+        const block = mentionBlock(files);
+        return { ...block, names: files.map((f) => f.path) };
+    }
+
+    /** Project files for the @-mention list: found once, then kept for half a minute while the user types. */
+    private fileList?: { at: number; files: Promise<string[]> };
+    private async findFiles(id: number, query: string): Promise<void> {
+        if (!this.fileList || Date.now() - this.fileList.at > 30_000) {
+            const files = vscode.workspace
+                .findFiles('**/*', '{**/node_modules/**,**/.git/**,**/dist/**,**/out/**,**/.next/**,**/build/**,**/.venv/**,**/__pycache__/**}', 5_000)
+                .then((uris) => uris.map((uri) => vscode.workspace.asRelativePath(uri, false)));
+            this.fileList = { at: Date.now(), files: Promise.resolve(files) };
+        }
+        const files = await this.fileList.files.catch(() => [] as string[]);
+        this.post({ type: 'fileMatches', id, files: rankFiles(files, query) });
     }
 
     private async relevantFiles(cwd: string, prompt: string): Promise<SearchHit[]> {

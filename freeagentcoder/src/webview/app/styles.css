@@ -515,7 +515,7 @@ select.input { background: var(--vscode-dropdown-background, var(--vscode-input-
 .menu-header { padding: 6px 8px 2px; color: var(--muted); font-size: 10.5px; font-weight: 600; letter-spacing: 0.4px; text-transform: uppercase; }
 .menu-header:empty { height: 1px; margin: 4px 0; padding: 0; background: var(--border-soft); }
 .menu-item { display: flex; align-items: center; gap: 8px; width: 100%; padding: 5px 8px; border: 0; border-radius: 5px; background: transparent; text-align: left; cursor: pointer; }
-.menu-item:hover { background: var(--vscode-menu-selectionBackground, var(--vscode-list-hoverBackground)); color: var(--vscode-menu-selectionForeground, inherit); }
+.menu-item:hover, .menu-item.active { background: var(--vscode-menu-selectionBackground, var(--vscode-list-hoverBackground)); color: var(--vscode-menu-selectionForeground, inherit); }
 .menu-text { display: flex; flex: 1; flex-direction: column; min-width: 0; }
 .menu-label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .menu-desc { font-size: 11px; opacity: 0.7; }

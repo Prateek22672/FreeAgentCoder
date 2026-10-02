@@ -72,6 +72,8 @@ export interface TurnPlan {
     checks?: ProjectCheck[];
     /** A new request unrelated to the conversation so far: earlier tool output is not resent. */
     fresh?: boolean;
+    /** Files whose contents the prompt already includes (ones the user mentioned), so they count as read. */
+    knownFiles?: string[];
 }
 
 export interface SessionLogEntry {
@@ -358,6 +360,7 @@ export class AgentSession implements vscode.Disposable {
             for (let attempt = 0, first = true; ; first = false) {
                 const outcome = await this.runAgent(agent, input, turn.id, first ? images : undefined, {
                     fresh: first && plan.fresh,
+                    knownFiles: first ? plan.knownFiles : undefined,
                     tools: plan.tier === 'fast' ? QUICK_TOOLS : undefined,
                     // Quick tasks need little thinking; deep tasks keep each provider's own default.
                     effort: plan.tier === 'fast' ? 'low' : undefined,
@@ -444,7 +447,7 @@ export class AgentSession implements vscode.Disposable {
         input: string,
         turnId: string,
         images?: ImagePart[],
-        turnOptions: { fresh?: boolean; tools?: string[]; effort?: 'low' | 'medium' | 'high' } = {},
+        turnOptions: { fresh?: boolean; knownFiles?: string[]; tools?: string[]; effort?: 'low' | 'medium' | 'high' } = {},
     ): Promise<{ reason: TurnEndReason; steps: number; error?: string }> {
         let reason: TurnEndReason = 'error';
         let steps = 0;

@@ -228,3 +228,11 @@ describe('after an edit', () => {
     expect(asked).toEqual([['/a.ts']]);
   });
 });
+
+describe('files the user mentioned', () => {
+  it('can be edited without reading them first', async () => {
+    const { agent } = setup([call('edit_file', { path: 'src/app.ts', old_string: 'a = 1', new_string: 'a = 2' }), say('Done.')]);
+    await collect(agent.run('change a in @src/app.ts', { knownFiles: ['src/app.ts'] }));
+    expect(agent.messages.find((m) => m.role === 'tool')!.content).toContain('Edited');
+  });
+});

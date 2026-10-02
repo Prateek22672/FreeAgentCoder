@@ -1,4 +1,5 @@
 import './styles.css';
+import { mentionAtCaret } from '../../agent/mentions';
 import { compactNumber } from '../../shared/format';
 import type { AttachmentInput, PermissionMode, SettingsSection, SettingsView, ToWebview } from '../../shared/protocol';
 import { button, fill, h, iconButton, send } from './dom';
@@ -36,7 +37,7 @@ const MAX_ATTACHMENTS = 10;
 const MAX_FILE_BYTES = 25 * 1024 * 1024;
 const LONG_PASTE_CHARS = 4_000;
 const LONG_PASTE_LINES = 80;
-const PLACEHOLDER = 'Ask FreeAgentCoder to build, fix or explain…';
+const PLACEHOLDER = 'Ask FreeAgentCoder to build, fix or explain… (@ to mention a file)';
 
 const app = document.getElementById('app') as HTMLElement;
 
@@ -286,6 +287,104 @@ function openMenu(anchor: HTMLElement, items: MenuItem[]): void {
 function closeMenu(): void {
     menu.hidden = true;
     menuAnchor = undefined;
+    mention = undefined;
+}
+
+// @-mentions: typing @ suggests project files; the chosen one is written in as @path.
+let mention: { start: number; files: string[]; index: number } | undefined;
+let mentionSeq = 0;
+let mentionTimer = 0;
+let mentionStart = -1;
+
+function checkMention(): void {
+    const found = mentionAtCaret(input.value, input.selectionStart ?? input.value.length);
+    clearTimeout(mentionTimer);
+    if (!found) {
+        if (mention) {
+            closeMenu();
+        }
+        return;
+    }
+    mentionStart = found.start;
+    const id = ++mentionSeq;
+    mentionTimer = window.setTimeout(() => send({ type: 'findFiles', id, query: found.query }), 60);
+}
+
+function showMention(id: number, files: string[]): void {
+    if (id !== mentionSeq || mentionStart < 0) {
+        return;
+    }
+    if (!files.length) {
+        if (mention) {
+            closeMenu();
+        }
+        return;
+    }
+    mention = { start: mentionStart, files, index: 0 };
+    renderMention();
+    menuAnchor = input;
+    menu.hidden = false;
+}
+
+function renderMention(): void {
+    if (!mention) {
+        return;
+    }
+    const current = mention;
+    menu.replaceChildren(
+        h('div', { class: 'menu-header', text: 'Files' }),
+        ...current.files.map((file, index) => {
+            const slash = file.lastIndexOf('/');
+            const row = h(
+                'button',
+                { class: `menu-item${index === current.index ? ' active' : ''}`, attrs: { type: 'button' } },
+                icon('file'),
+                h('span', { class: 'menu-text' }, h('span', { class: 'menu-label', text: file.slice(slash + 1) }), slash > 0 ? h('span', { class: 'menu-desc', text: file.slice(0, slash) }) : null),
+            );
+            // mousedown, so the input keeps focus and its caret.
+            row.addEventListener('mousedown', (event) => {
+                event.preventDefault();
+                pickMention(index);
+            });
+            return row;
+        }),
+    );
+}
+
+function pickMention(index: number): void {
+    const file = mention?.files[index];
+    if (!mention || !file) {
+        return;
+    }
+    const caret = input.selectionStart ?? input.value.length;
+    const text = `@${file} `;
+    input.value = input.value.slice(0, mention.start) + text + input.value.slice(caret);
+    const at = mention.start + text.length;
+    closeMenu();
+    input.focus();
+    input.setSelectionRange(at, at);
+    autosize();
+    renderComposer();
+}
+
+/** Arrow keys, Enter and Tab work the file list while it is open; true when the key was used. */
+function mentionKey(event: KeyboardEvent): boolean {
+    if (!mention || menu.hidden) {
+        return false;
+    }
+    const count = mention.files.length;
+    if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+        mention.index = (mention.index + (event.key === 'ArrowDown' ? 1 : count - 1)) % count;
+        renderMention();
+    } else if ((event.key === 'Enter' && !event.shiftKey) || event.key === 'Tab') {
+        pickMention(mention.index);
+    } else if (event.key === 'Escape') {
+        closeMenu();
+    } else {
+        return false;
+    }
+    event.preventDefault();
+    return true;
 }
 
 modeButton.addEventListener('click', () => {
@@ -532,10 +631,14 @@ function submit(): void {
 
 input.addEventListener('input', () => {
     autosize();
+    checkMention();
     sendButton.disabled = !running && !input.value.trim() && !attachments.length;
 });
 
 input.addEventListener('keydown', (event) => {
+    if (mentionKey(event)) {
+        return;
+    }
     if (event.key === 'Enter' && !event.shiftKey && !event.isComposing) {
         event.preventDefault();
         if (!running) {
@@ -670,6 +773,9 @@ window.addEventListener('message', (event: MessageEvent<ToWebview>) => {
         case 'showSettings':
             openSettings(message.section);
             break;
+        case 'fileMatches':
+            showMention(message.id, message.files);
+            break;
         case 'focusInput':
             closeSettings();
             if (message.prefill) {
@@ -678,8 +784,12 @@ window.addEventListener('message', (event: MessageEvent<ToWebview>) => {
                 autosize();
                 renderComposer();
                 input.focus();
-                input.setSelectionRange(0, 0);
-                input.scrollTop = 0;
+                // A reference to fill in ("`src/app.ts:12` ") puts the caret after it; a full request starts at the top for reading.
+                const at = message.prefill.endsWith(' ') ? message.prefill.length : 0;
+                input.setSelectionRange(at, at);
+                if (!at) {
+                    input.scrollTop = 0;
+                }
             }
             if (message.note) {
                 showToast(message.note, 'info');

@@ -431,12 +431,15 @@ export type ToWebview =
     | { type: 'showSettings'; section?: SettingsSection }
     | { type: 'plans'; plans?: PlansView; error?: string }
     /** Focus the chat input; `prefill` writes text into it (never sends it), `note` explains where it came from. */
-    | { type: 'focusInput'; prefill?: string; note?: string };
+    | { type: 'focusInput'; prefill?: string; note?: string }
+    /** Files for the @-mention list, answering findFiles with the same id. */
+    | { type: 'fileMatches'; id: number; files: string[] };
 
 export type FromWebview =
     | { type: 'ready' }
     | { type: 'openPlans' }
     | { type: 'send'; text: string; attachments?: AttachmentInput[]; correction?: boolean }
+    | { type: 'findFiles'; id: number; query: string }
     | { type: 'testProject' }
     | { type: 'stop' }
     | { type: 'continue' }
