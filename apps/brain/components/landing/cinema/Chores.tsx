@@ -83,7 +83,7 @@ export function Chores() {
     const browser = web || Boolean(slide.onWeb);
 
     return (
-        <section className="bg-[#070708] px-2 pb-2 pt-4 sm:px-3 sm:pb-3 sm:pt-6" aria-labelledby="fyx-title">
+        <section data-frame className="bg-[#070708] px-2 pb-2 pt-4 sm:px-3 sm:pb-3 sm:pt-6" aria-labelledby="fyx-title">
             <div className="fyx-card relative overflow-hidden rounded-[22px] px-6 py-14 text-white sm:rounded-[28px] sm:px-12 sm:py-16">
                 <div className="relative grid items-center gap-12 lg:grid-cols-[1.15fr_1fr]">
                     <div>

@@ -266,3 +266,46 @@
 .fx-arrive [data-panel] { animation: fx-in .6s cubic-bezier(.16, 1, .3, 1) both; }
 .fx-arrive [data-panel='code'] { animation-delay: 120ms; } .fx-arrive [data-panel='preview'] { animation-delay: 220ms; } .fx-arrive [data-panel='chat'] { animation-delay: 320ms; }
 @media (prefers-reduced-motion: reduce) { .fx-step, .fx-step > *, .fx-leave, .fx-arrive, .fx-arrive [data-panel] { animation: none; } }
+
+/* The typed hero headline's caret: a thin bar the height of the letters, blinking. */
+.typed-caret { display: inline-block; width: .06em; height: .78em; margin-bottom: -.04em; background: #d97757; border-radius: 1px; vertical-align: baseline; animation: typed-blink 1s steps(1) infinite; }
+@keyframes typed-blink { 50% { opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .typed-caret { display: none; } }
+
+/* Splash: code is written, folds into the mark, the mark locks, the page opens. */
+.splash { position: fixed; inset: 0; z-index: 200; display: grid; place-items: center; background: #070708; color: #f4f4f5; transition: opacity .6s cubic-bezier(.7, 0, .84, 0), transform .65s cubic-bezier(.7, 0, .84, 0), filter .6s; }
+.splash-stage { position: relative; display: grid; place-items: center; width: min(560px, 86vw); height: 260px; }
+.splash-code { position: absolute; margin: 0; font: 500 clamp(13px, 1.6vw, 17px)/1.9 ui-monospace, 'SF Mono', Menlo, Consolas, monospace; color: #d4d4d8; transition: transform .5s cubic-bezier(.7, 0, .3, 1), opacity .45s, filter .45s; }
+.splash-line { display: block; white-space: pre; }
+.splash-ln { display: inline-block; width: 2.2em; color: #52525b; }
+.splash-caret { display: inline-block; width: .55em; height: 1.05em; margin-bottom: -.2em; margin-left: .05em; background: #d97757; }
+.splash-mark { position: absolute; color: #d97757; opacity: 0; fill: currentColor; }
+.splash-a, .splash-b, .splash-c { transform-box: fill-box; transform-origin: center; transition: transform .55s cubic-bezier(.16, 1, .3, 1), opacity .4s; }
+.splash-a { transform: translate(-60%, -40%) rotate(-12deg) scale(.6); opacity: 0; }
+.splash-b { transform: translate(60%, 40%) rotate(12deg) scale(.6); opacity: 0; }
+.splash-c { transform: scale(0); opacity: 0; transition-delay: .18s; }
+.splash-word { position: absolute; bottom: 8px; margin: 0; font-weight: 600; letter-spacing: -.01em; opacity: 0; transform: translateY(8px); transition: opacity .5s .15s, transform .5s .15s cubic-bezier(.16, 1, .3, 1); }
+.splash-fold .splash-code, .splash-lock .splash-code, .splash-open .splash-code { transform: scale(.25); opacity: 0; filter: blur(6px); }
+.splash-fold .splash-mark, .splash-lock .splash-mark, .splash-open .splash-mark { opacity: 1; }
+.splash-fold .splash-a, .splash-fold .splash-b { opacity: 1; }
+.splash-lock .splash-a, .splash-lock .splash-b, .splash-open .splash-a, .splash-open .splash-b { transform: none; opacity: 1; }
+.splash-lock .splash-c, .splash-open .splash-c { transform: none; opacity: 1; }
+.splash-lock .splash-word, .splash-open .splash-word { opacity: 1; transform: none; }
+.splash-open { opacity: 0; transform: scale(1.12); filter: blur(10px); pointer-events: none; }
+html[data-splash='on'] body { overflow: hidden; }
+
+/* Floating "Get started": zooms up from the bottom once the hero has gone by, and follows. */
+.float-start { position: fixed; left: 50%; bottom: max(18px, env(safe-area-inset-bottom)); z-index: 60; transform: translate(-50%, 140%) scale(.6); opacity: 0; filter: blur(6px); pointer-events: none; transition: transform .55s cubic-bezier(.16, 1, .3, 1), opacity .4s, filter .4s; }
+.float-start.is-shown { transform: translate(-50%, 0) scale(1); opacity: 1; filter: none; pointer-events: auto; }
+.float-start-card { display: flex; flex-direction: column; align-items: center; gap: 8px; }
+.float-start-pill { display: inline-flex; align-items: center; gap: 10px; padding: 7px 7px 7px 16px; border: 1px solid rgb(255 255 255 / .14); border-radius: 999px; background: rgb(12 12 14 / .78); color: #fff; font: 500 14.5px/1 inherit; cursor: pointer; -webkit-backdrop-filter: blur(18px); backdrop-filter: blur(18px); box-shadow: 0 18px 50px -14px rgb(0 0 0 / .6); transition: transform .2s; }
+.float-start-pill:hover { transform: scale(1.04); }
+.float-start-pill > svg { color: #d97757; }
+.float-start-arrow { display: grid; place-items: center; width: 30px; height: 30px; border-radius: 50%; background: #fff; color: #09090b; font-size: 15px; }
+.float-start-menu { display: grid; gap: 4px; width: min(320px, 88vw); padding: 6px; border: 1px solid rgb(255 255 255 / .12); border-radius: 18px; background: rgb(12 12 14 / .86); -webkit-backdrop-filter: blur(18px); backdrop-filter: blur(18px); box-shadow: 0 24px 60px -18px rgb(0 0 0 / .7); animation: float-menu .4s cubic-bezier(.16, 1, .3, 1) both; transform-origin: 50% 100%; }
+@keyframes float-menu { from { opacity: 0; transform: translateY(10px) scale(.92); filter: blur(4px); } }
+.float-start-item { display: grid; gap: 2px; padding: 11px 14px; border-radius: 12px; color: #fff; text-decoration: none; transition: background .2s; }
+.float-start-item:hover { background: rgb(255 255 255 / .08); }
+.float-start-item strong { font-size: 14px; font-weight: 600; }
+.float-start-item span { font-size: 12.5px; color: rgb(255 255 255 / .55); }
+@media (prefers-reduced-motion: reduce) { .float-start, .float-start-menu { transition: opacity .2s; animation: none; filter: none; } }

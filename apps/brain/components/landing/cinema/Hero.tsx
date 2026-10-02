@@ -3,6 +3,9 @@
 import { useRef } from 'react';
 import { InstallLink } from '@/components/InstallLink';
 import { AgentDemo } from './AgentDemo';
+import { TypedHeadline } from './TypedHeadline';
+
+const HEADLINE = ['Your codebase', 'has a brain.'];
 import { ease, span, useScrollProgress } from './progress';
 
 export function Star({ size = 14, className }: { size?: number; className?: string }) {
@@ -64,10 +67,11 @@ export function Hero({ trust }: { trust?: Trust }) {
             <div className="sticky top-0 h-dvh p-2 sm:p-3">
                 <div className="cine-graphite relative h-full overflow-hidden rounded-[22px] sm:rounded-[28px]">
                     <div ref={content} className="relative flex h-full origin-center flex-col px-6 pb-8 pt-24 will-change-transform sm:px-12 sm:pb-10 sm:pt-[4.5rem]">
-                        <h1 className="cine-display text-[clamp(2.9rem,9.2vw,7.4rem)] font-semibold leading-[0.95] tracking-[-0.035em]">
-                            <span className="block text-white">Your codebase</span>
-                            <span className="block text-white/45">has a brain.</span>
-                        </h1>
+                        <TypedHeadline
+                            className="cine-display text-[clamp(2.9rem,9.2vw,7.4rem)] font-semibold leading-[0.95] tracking-[-0.035em]"
+                            lines={HEADLINE}
+                            lineClassNames={['text-white', 'text-white/45']}
+                        />
 
                         {/* On a phone the card sits in the space between the headline and the copy. */}
                         <div className="flex flex-1 items-center justify-center py-4 md:hidden">

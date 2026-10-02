@@ -8,6 +8,7 @@ import { Chores } from '@/components/landing/cinema/Chores';
 import { marketplaceStats } from '@/lib/marketplace';
 import { PillNav } from '@/components/landing/cinema/PillNav';
 import { PanelFlight } from '@/components/landing/cinema/PanelFlight';
+import { FloatingStart, ScrollFrames, Splash } from '@/components/landing/cinema/Frames';
 import { RepoForm } from '@/components/RepoForm';
 import { RepoPreview } from '@/components/landing/cinema/RepoPreview';
 import { StructuredData, brainApp, extensionApp, faqPage, graph, organization, website } from '@/components/StructuredData';
@@ -96,6 +97,9 @@ export default async function Home() {
             <StructuredData data={graph([organization, website, extensionApp, brainApp, faqPage(FAQ)])} />
             <PillNav />
             <PanelFlight />
+            <Splash />
+            <ScrollFrames />
+            <FloatingStart />
             <main>
                 <Hero trust={market ? { installs: market.installs, rating: market.rating, ratings: market.ratings } : undefined} />
                 <Carousel />
@@ -104,7 +108,7 @@ export default async function Home() {
 
                 {/* The working parts: read a repository, the questions, the guides. */}
                 <div className="force-dark overflow-hidden rounded-b-[28px] bg-[#070708]">
-                    <section id="brain" className="mx-auto max-w-6xl scroll-mt-24 px-5 pb-24 pt-24 sm:px-8">
+                    <section id="brain" data-frame className="mx-auto max-w-6xl scroll-mt-24 px-5 pb-24 pt-24 sm:px-8">
                         <h2 className="font-mono text-[11px] uppercase tracking-[0.22em] text-white/50">Read a repo</h2>
                         <p className="cine-display mt-5 max-w-3xl text-[clamp(2.2rem,5vw,3.8rem)] font-medium leading-[1.02] tracking-[-0.035em] text-white">
                             See how any repository is built <span className="text-white/40">before you change it.</span>
@@ -128,7 +132,7 @@ export default async function Home() {
                         </div>
                     </section>
 
-                    <section id="faq" className="mx-auto max-w-4xl scroll-mt-24 px-5 py-24 sm:px-8">
+                    <section id="faq" data-frame className="mx-auto max-w-4xl scroll-mt-24 px-5 py-24 sm:px-8">
                         <h2 className="font-mono text-[11px] uppercase tracking-[0.22em] text-white/50">Questions</h2>
                         <p className="cine-display mt-5 text-[clamp(2rem,4.5vw,3.2rem)] font-medium tracking-[-0.035em] text-white">Straight answers.</p>
                         <div className="mt-10 divide-y divide-white/10 border-y border-white/10">
@@ -146,7 +150,7 @@ export default async function Home() {
                         </div>
                     </section>
 
-                    <section id="guides" className="mx-auto max-w-4xl scroll-mt-24 px-5 pb-28 pt-6 sm:px-8">
+                    <section id="guides" data-frame className="mx-auto max-w-4xl scroll-mt-24 px-5 pb-28 pt-6 sm:px-8">
                         <h2 className="font-mono text-[11px] uppercase tracking-[0.22em] text-white/50">Guides</h2>
                         <p className="mt-3 text-[15px] text-white/60">Honest answers before you switch, one page each.</p>
                         {/* Plain links on purpose: real page loads, so each guide stays its own indexable page. */}
@@ -166,7 +170,7 @@ export default async function Home() {
                 </div>
 
                 {/* The last call to action. */}
-                <section className="p-2 pt-16 sm:p-3 sm:pt-24" aria-labelledby="cta-title">
+                <section id="start" data-frame data-cta className="p-2 pt-16 sm:p-3 sm:pt-24" aria-labelledby="cta-title">
                     <div className="cine-graphite relative grid min-h-[min(100dvh,760px)] overflow-hidden rounded-[22px] sm:rounded-[28px] md:grid-cols-[minmax(0,5fr)_minmax(0,7fr)]">
                         <div className="relative z-10 flex flex-col justify-center px-6 py-20 text-white sm:px-12">
                             <h2 id="cta-title" className="cine-display text-[clamp(3rem,7vw,5.6rem)] font-semibold leading-[0.95] tracking-[-0.035em]">
@@ -199,7 +203,7 @@ export default async function Home() {
                 </section>
             </main>
 
-            <footer data-nav="light" className="px-5 pb-8 pt-20 text-zinc-900 sm:px-12">
+            <footer data-nav="light" data-frame className="px-5 pb-8 pt-20 text-zinc-900 sm:px-12">
                 <div className="flex flex-col gap-14 md:flex-row md:items-start md:justify-between">
                     <div>
                         <Star size={22} className="text-zinc-900" />
