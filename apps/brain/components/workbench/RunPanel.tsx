@@ -35,6 +35,13 @@ const STAGE_LABEL: Record<Stage, string> = {
 /** Ports dev tooling opens beside the app, which are never the thing to show. */
 const HELPER_PORTS = new Set([35729, 35730, 24678]);
 
+/**
+ * One runtime per tab: a panel that mounts while the last one is still
+ * going (React mounts twice in development; a quick stop and run) waits for
+ * that one to be torn down before it boots.
+ */
+let lastTeardown: Promise<void> = Promise.resolve();
+
 export type FileTree = Record<string, { file: { contents: string } } | { directory: FileTree }>;
 
 export interface RunSource {
@@ -87,8 +94,10 @@ interface Container {
     };
 }
 
-export function RunPanel({ load, live, onClose }: { load: () => Promise<RunSource>; live?: Record<string, string>; onClose: () => void }) {
+export function RunPanel({ load, live, onClose, expanded, onExpand }: { load: () => Promise<RunSource>; live?: Record<string, string>; onClose: () => void; expanded?: boolean; onExpand?: () => void }) {
     const [stage, setStage] = useState<Stage>('checking');
+    /** The terminal shows while it installs and starts, and when something fails. */
+    const [terminal, setTerminal] = useState(true);
     const [lines, setLines] = useState<string[]>([]);
     const [preview, setPreview] = useState<string>();
     const [problem, setProblem] = useState<string>();
@@ -107,6 +116,11 @@ export function RunPanel({ load, live, onClose }: { load: () => Promise<RunSourc
 
     useEffect(() => {
         let cancelled = false;
+        const booted = (async () => {
+            await lastTeardown;
+            const { WebContainer } = await import('@webcontainer/api');
+            return WebContainer.boot({ workdirName: 'project' });
+        })();
 
         const pipe = async (process: { output: ReadableStream<string>; exit: Promise<number> }) => {
             const reader = process.output.getReader();
@@ -151,10 +165,9 @@ export function RunPanel({ load, live, onClose }: { load: () => Promise<RunSourc
             } catch {}
             try {
                 setStage('booting');
-                const { WebContainer } = await import('@webcontainer/api');
-                const wc = await WebContainer.boot({ workdirName: 'project' });
-                containerRef.current = wc as unknown as Container;
+                const wc = await booted;
                 if (cancelled) return;
+                containerRef.current = wc as unknown as Container;
 
                 setStage('mounting');
                 const source = await loadRef.current();
@@ -203,8 +216,12 @@ export function RunPanel({ load, live, onClose }: { load: () => Promise<RunSourc
 
         return () => {
             cancelled = true;
-            containerRef.current?.teardown();
             containerRef.current = undefined;
+            // Torn down once the boot settles, so the next panel can start.
+            lastTeardown = booted.then(
+                (wc) => wc.teardown(),
+                () => undefined,
+            );
         };
         // The container boots once per panel; later changes arrive through `live`.
         // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -239,47 +256,67 @@ export function RunPanel({ load, live, onClose }: { load: () => Promise<RunSourc
 
     useEffect(() => {
         logRef.current?.scrollTo({ top: logRef.current.scrollHeight });
-    }, [lines]);
+    }, [lines, terminal]);
 
+    useEffect(() => {
+        if (stage === 'ready') setTerminal(false);
+        if (stage === 'failed' || stage === 'unsupported') setTerminal(true);
+    }, [stage]);
+
+    const working = stage !== 'ready' && stage !== 'failed' && stage !== 'unsupported';
+    const trouble = stage === 'failed' || stage === 'unsupported';
     return (
         <div className="flex h-full min-h-0 flex-col">
-            <div className="flex h-9 shrink-0 items-center justify-between border-b border-line px-3">
-                <span className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-wider text-faint">
-                    <Icon name="code" size={13} />
-                    Run
-                    <span className={stage === 'ready' ? 'normal-case tracking-normal text-ok' : stage === 'failed' || stage === 'unsupported' ? 'normal-case tracking-normal text-warn' : 'normal-case tracking-normal text-muted'}>
-                        {STAGE_LABEL[stage]}
-                    </span>
-                </span>
-                <div className="flex items-center gap-2">
-                    {preview && (
-                        <a href={preview} target="_blank" rel="noreferrer noopener" className="text-[12px] text-accent hover:underline">
-                            Open in a tab ↗
-                        </a>
-                    )}
-                    <button type="button" onClick={onClose} title="Stop and close" aria-label="Stop and close" className="text-faint hover:text-fg">
-                        <Icon name="close" size={14} />
-                    </button>
-                </div>
+            <div className="relative min-h-0 flex-1 bg-white">
+                {preview ? (
+                    <iframe src={preview} title="The running project" className="h-full w-full border-0" />
+                ) : (
+                    <div className="flex h-full flex-col items-center justify-center gap-3 bg-panel p-6 text-center">
+                        {working && <span className="inline-block size-5 animate-spin rounded-full border-2 border-line border-t-accent" />}
+                        <p className={`text-[13px] font-medium ${trouble ? 'text-warn' : 'text-fg'}`}>{STAGE_LABEL[stage]}</p>
+                        {problem && <p className="max-w-[360px] text-[12.5px] leading-relaxed text-muted">{problem}</p>}
+                        {working && <p className="text-[12px] text-faint">The first run installs packages, which takes a minute. Later runs are quick.</p>}
+                    </div>
+                )}
             </div>
-            <div className="grid min-h-0 flex-1 grid-cols-1 lg:grid-cols-2">
-                <pre ref={logRef} className="scroll-thin m-0 min-h-0 overflow-auto whitespace-pre-wrap break-words border-r border-line bg-bg p-3 font-mono text-[12px] leading-relaxed text-muted">
+            {terminal && (
+                <pre ref={logRef} className="scroll-thin m-0 h-44 shrink-0 overflow-auto whitespace-pre-wrap break-words border-t border-line bg-bg p-3 font-mono text-[12px] leading-relaxed text-muted">
                     {problem ? <span className="text-warn">{problem}{'\n'}</span> : null}
                     {lines.join('\n')}
                 </pre>
-                <div className="min-h-0 bg-white">
-                    {preview ? (
-                        <iframe src={preview} title="The running project" className="h-full w-full border-0" />
-                    ) : (
-                        <div className="flex h-full items-center justify-center bg-panel p-6 text-center text-[13px] text-faint">
-                            {stage === 'ready' ? 'Waiting for the page…' : 'The preview appears here once the dev server starts.'}
-                        </div>
-                    )}
-                </div>
+            )}
+            <div className="flex h-10 shrink-0 items-center gap-2 border-t border-line bg-panel px-2 text-[12px]">
+                <button type="button" onClick={onClose} className="flex h-7 items-center gap-1.5 rounded-md border border-line-strong px-2.5 font-medium text-fg hover:bg-panel-2">
+                    <span className={`size-1.5 rounded-full ${stage === 'ready' ? 'bg-ok' : working ? 'bg-warn' : 'bg-faint'}`} />
+                    Stop
+                </button>
+                <span className={`truncate ${stage === 'ready' ? 'text-ok' : trouble ? 'text-warn' : 'text-muted'}`}>{STAGE_LABEL[stage]}</span>
+                <span className="flex-1" />
+                {preview && (
+                    <a href={preview} target="_blank" rel="noreferrer noopener" className="hidden text-accent hover:underline sm:inline">
+                        Open in a tab ↗
+                    </a>
+                )}
+                <button
+                    type="button"
+                    onClick={() => setTerminal((v) => !v)}
+                    aria-pressed={terminal}
+                    className={`flex h-7 items-center gap-1.5 rounded-md px-2 ${terminal ? 'bg-panel-2 text-fg' : 'text-muted hover:text-fg'}`}
+                >
+                    <Icon name="code" size={13} /> Terminal
+                </button>
+                {onExpand && (
+                    <button
+                        type="button"
+                        onClick={onExpand}
+                        title={expanded ? 'Back to the editor' : 'Preview only'}
+                        aria-label={expanded ? 'Back to the editor' : 'Preview only'}
+                        className="hidden h-7 items-center rounded-md px-2 text-muted hover:text-fg lg:flex"
+                    >
+                        <Icon name={expanded ? 'close' : 'external'} size={13} />
+                    </button>
+                )}
             </div>
-            <p className="shrink-0 border-t border-line px-3 py-1.5 text-[11px] text-faint">
-                Runs entirely in your browser — nothing is executed on a server. Close this panel to stop it.
-            </p>
         </div>
     );
 }

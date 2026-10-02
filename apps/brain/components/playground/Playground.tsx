@@ -1,28 +1,33 @@
 'use client';
 
 import Link from 'next/link';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
 import { strToU8, zipSync } from 'fflate';
 import { Icon } from '@/components/icons';
 import { KeyPanel } from '@/components/KeyPanel';
 import { Logo } from '@/components/Logo';
 import { RunPanel, startScript, toTree } from '@/components/workbench/RunPanel';
 import { ownKeyHeaders, useOwnKey } from '@/lib/keys';
-import { GithubExport } from './GithubExport';
+import { type Brief, firstRequest, starterFor } from '@/lib/brief';
 import { STARTERS, starterById } from '@/lib/starters';
 import { planWebFyx, withPackages } from '@/lib/webFyx';
+import { GithubExport } from './GithubExport';
+import { Onboard, describeImport } from './Onboard';
+import { Handle, useDragWidth } from './Split';
 
 /**
- * A project that starts from nothing — no GitHub, no sign-in. Pick a starter or
- * describe what you want; the agent writes the files, the editor lets you
- * change them, and Run shows it working, all in this tab. The project lives in
- * this browser's storage and leaves only when you download it.
+ * Fyxable's workbench: the agent on the left, the files and editor in the
+ * middle, the running app on the right, each column as wide as you drag it.
+ * The project lives in this browser's storage and leaves only when you
+ * download or export it.
  */
 
 interface Project {
     name: string;
     files: Record<string, string>;
     active?: string;
+    /** What the person asked for before the workbench opened. */
+    brief?: Brief;
 }
 interface Turn {
     role: 'user' | 'assistant';
@@ -30,15 +35,17 @@ interface Turn {
     changed?: string[];
     model?: string;
 }
+/** Which column a phone shows. */
+type View = 'chat' | 'code' | 'preview';
 
 const STORAGE = 'fac.playground.v1';
+const HISTORY = 'fac.playground.chat.v1';
 const SUGGESTIONS = [
     'Turn this into a todo app that saves to local storage',
     'Add a dark mode toggle to the page',
     'Make a landing page for a coffee shop',
     'Build a calculator with keyboard support',
 ];
-const HISTORY = 'fac.playground.chat.v1';
 
 function loadSaved<T>(key: string): T | undefined {
     try {
@@ -89,121 +96,40 @@ function Editor({ value, onChange }: { value: string; onChange: (next: string) =
     );
 }
 
-interface Imported {
-    name: string;
-    files: Record<string, string>;
-    left: number;
-    map: { stack: string[]; packageManager?: string; layers: { label: string; files: number; examples: string[] }[]; important: string[]; runnable: boolean };
-}
-
-/** What Project Brain found, said as the agent's first message about an imported project. */
-function describeImport(r: Imported): string {
-    const lines = [`Imported ${r.name}: ${Object.keys(r.files).length} files${r.left ? ` (${r.left} large or generated files left out)` : ''}.`];
-    if (r.map.stack.length) lines.push(`Built with ${r.map.stack.join(', ')}${r.map.packageManager ? `, using ${r.map.packageManager}` : ''}.`);
-    if (r.map.layers.length) lines.push(`Layers: ${r.map.layers.map((l) => `${l.label} (${l.files} files)`).join(', ')}.`);
-    if (r.map.important.length) lines.push(`Start reading at ${r.map.important.slice(0, 4).join(', ')}.`);
-    lines.push(r.map.runnable ? 'Press Run to start it here, or tell me what to change.' : 'It has no package.json at the root, so it cannot run in the browser, but I can still change it.');
-    return lines.join('\n');
-}
-
-function Start({ onPick, onImport }: { onPick: (starter: string, request?: string) => void; onImport: (imported: Imported) => void }) {
-    const [idea, setIdea] = useState('');
-    const [repo, setRepo] = useState('');
-    const [importing, setImporting] = useState<{ busy?: boolean; error?: string }>({});
-    const importRepo = async () => {
-        const spec = repo.trim();
-        if (!spec) return;
-        setImporting({ busy: true });
-        try {
-            const response = await fetch('/api/import', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ repo: spec }) });
-            const data = (await response.json()) as Imported & { error?: string };
-            if (!response.ok) throw new Error(data.error ?? 'Could not import that repository.');
-            onImport(data);
-        } catch (error) {
-            setImporting({ error: (error as Error).message });
-        }
-    };
+function Play({ size = 11 }: { size?: number }) {
     return (
-        <div className="mx-auto w-full max-w-3xl px-4 py-16">
-            <p className="text-[12px] font-semibold uppercase tracking-wider text-accent">Fyxable · by Free Agent Coder</p>
-            <h1 className="mt-2 font-display text-4xl font-semibold tracking-tight text-fg">Build something from nothing.</h1>
-            <p className="mt-3 max-w-xl text-[15px] leading-relaxed text-muted">
-                Describe it, and the agent writes it, or bring a project from GitHub. See it running in this tab. No sign-up and no credits: it runs on
-                your own free keys, and the project stays in your browser until you export it.
-            </p>
-            <form
-                onSubmit={(e) => {
-                    e.preventDefault();
-                    if (idea.trim()) onPick('react', idea.trim());
-                }}
-                className="mt-8 flex gap-2 rounded-xl border border-line-strong bg-panel p-3"
-            >
-                <input
-                    value={idea}
-                    onChange={(e) => setIdea(e.target.value)}
-                    autoFocus
-                    placeholder="A pomodoro timer with a task list, dark theme"
-                    aria-label="What to build"
-                    className="h-11 min-w-0 flex-1 rounded-md bg-transparent px-2 text-[15px] text-fg outline-none placeholder:text-faint"
-                />
-                <button type="submit" className="h-11 shrink-0 rounded-md bg-accent px-5 text-[14px] font-semibold text-accent-fg hover:brightness-110">
-                    Build it
-                </button>
-            </form>
-            <form
-                onSubmit={(e) => {
-                    e.preventDefault();
-                    void importRepo();
-                }}
-                className="mt-4 rounded-xl border border-line bg-panel p-3"
-            >
-                <div className="flex gap-2">
-                    <input
-                        value={repo}
-                        onChange={(e) => setRepo(e.target.value)}
-                        placeholder="Or import from GitHub: owner/repo or a github.com link"
-                        aria-label="GitHub repository to import"
-                        className="h-11 min-w-0 flex-1 rounded-md bg-transparent px-2 font-mono text-[14px] text-fg outline-none placeholder:font-sans placeholder:text-faint"
-                    />
-                    <button
-                        type="submit"
-                        disabled={importing.busy || !repo.trim()}
-                        className="h-11 shrink-0 rounded-md border border-line-strong px-4 text-[14px] font-semibold text-fg hover:border-accent disabled:opacity-50"
-                    >
-                        {importing.busy ? 'Reading…' : 'Import'}
-                    </button>
+        <svg viewBox="0 0 12 12" width={size} height={size} fill="currentColor" aria-hidden>
+            <path d="M2.5 1.5v9l8-4.5z" />
+        </svg>
+    );
+}
+
+const WHITE_BUTTON = 'flex h-7 items-center gap-1.5 rounded-md bg-fg px-3 text-[12px] font-semibold text-bg hover:opacity-90';
+
+/** The preview column before anything runs: the Run button lives here, at the bottom, and in the middle. */
+function IdlePreview({ canRun, onRun }: { canRun: boolean; onRun: () => void }) {
+    return (
+        <div className="flex h-full flex-col">
+            <div className="flex flex-1 flex-col items-center justify-center gap-3 bg-panel p-6 text-center">
+                <div className="flex size-12 items-center justify-center rounded-full border border-line bg-bg text-accent">
+                    <Play size={16} />
                 </div>
-                <p className="mt-1.5 px-2 text-[12px] text-faint">
-                    {importing.error ? (
-                        <span className="text-bad">{importing.error}</span>
-                    ) : importing.busy ? (
-                        'Reading and mapping the repository with Project Brain, a few seconds…'
-                    ) : (
-                        'Keep building a project made in Lovable, Bolt or v0, or any public repository, for free. It is mapped first, so the agent knows how it is built.'
-                    )}
+                <p className="text-[14px] font-semibold text-fg">See it running</p>
+                <p className="max-w-[280px] text-[12.5px] leading-relaxed text-muted">
+                    {canRun ? 'Starts a Node runtime in this tab and opens your app here. Nothing runs on a server.' : 'This project has no dev or start script in package.json, so there is nothing to run yet.'}
                 </p>
-            </form>
-            <p className="mt-10 text-[12px] font-semibold uppercase tracking-wider text-faint">Or start from</p>
-            <div className="mt-3 grid gap-3 sm:grid-cols-2">
-                {STARTERS.map((s) => (
-                    <button
-                        key={s.id}
-                        type="button"
-                        onClick={() => onPick(s.id)}
-                        className="rounded-xl border border-line bg-panel p-5 text-left transition-colors hover:border-accent"
-                    >
-                        <span className="block text-[15px] font-semibold text-fg">{s.name}</span>
-                        <span className="mt-1 block text-[13.5px] text-muted">{s.about}</span>
+                {canRun && (
+                    <button type="button" onClick={onRun} className="flex h-9 items-center gap-2 rounded-md bg-accent px-4 text-[13px] font-semibold text-accent-fg hover:brightness-110">
+                        <Play /> Run
                     </button>
-                ))}
+                )}
             </div>
-            <p className="mt-10 text-[13px] text-faint">
-                Runs on desktop Chrome or Edge. JavaScript and TypeScript projects only — for anything else, the{' '}
-                <Link href="/free-ai-coding-agent-vscode" className="text-accent hover:underline">
-                    VS Code extension
-                </Link>{' '}
-                works in any language on your own machine.
-            </p>
+            <div className="flex h-10 shrink-0 items-center gap-2 border-t border-line bg-panel px-2 text-[12px]">
+                <button type="button" onClick={onRun} disabled={!canRun} className="flex h-7 items-center gap-1.5 rounded-md bg-accent px-2.5 font-semibold text-accent-fg hover:brightness-110 disabled:opacity-40">
+                    <Play size={10} /> Run
+                </button>
+                <span className="text-faint">Not running</span>
+            </div>
         </div>
     );
 }
@@ -219,9 +145,15 @@ export function Playground() {
     const [trial, setTrial] = useState<{ remaining: number; limit: number }>();
     const [elapsed, setElapsed] = useState(0);
     const [exporting, setExporting] = useState(false);
+    const [view, setView] = useState<View>('chat');
+    /** The preview alone, as wide as the window. */
+    const [wide, setWide] = useState(false);
+    const [idea, setIdea] = useState<string>();
     const { own, keys } = useOwnKey();
     const chatEnd = useRef<HTMLDivElement>(null);
     const pendingRequest = useRef<string | undefined>(undefined);
+    const chat = useDragWidth('fyxable.chat', 360, 280);
+    const preview = useDragWidth('fyxable.preview', 520, 320, true);
 
     // How many free requests this visitor has today, before they send anything.
     const [noTrial, setNoTrial] = useState(false);
@@ -241,13 +173,10 @@ export function Playground() {
     }, [busy]);
 
     useEffect(() => {
-        // A request typed on the home page (?ask=…) starts a fresh project and goes straight to the agent.
+        // A request typed on the home page (?ask=…) goes through the onboarding with the idea filled in.
         const ask = new URLSearchParams(window.location.search).get('ask')?.trim().slice(0, 400);
         if (ask) {
-            const starter = starterById('react') ?? STARTERS[0]!;
-            pendingRequest.current = ask;
-            setProject({ name: ask.slice(0, 40), files: { ...starter.files } });
-            setTurns([]);
+            setIdea(ask);
             window.history.replaceState(null, '', '/fyxable');
         } else {
             setProject(loadSaved<Project>(STORAGE));
@@ -281,7 +210,7 @@ export function Playground() {
                 const response = await fetch('/api/playground', {
                     method: 'POST',
                     headers,
-                    body: JSON.stringify({ files: current.files, request: text, history: turns.slice(-8).map(({ role, content }) => ({ role, content })) }),
+                    body: JSON.stringify({ files: current.files, request: text, brief: current.brief, history: turns.slice(-8).map(({ role, content }) => ({ role, content })) }),
                 });
                 const data = (await response.json()) as {
                     error?: string;
@@ -318,7 +247,7 @@ export function Playground() {
         [keys, turns],
     );
 
-    // A request typed on the start screen goes out once the starter is in place.
+    // The first request from the onboarding goes out once the starter is in place.
     useEffect(() => {
         const request = pendingRequest.current;
         if (request && project && !busy) {
@@ -331,30 +260,27 @@ export function Playground() {
 
     if (!project) {
         return (
-            <div className="min-h-dvh bg-bg">
-                <header className="flex h-14 items-center gap-2 border-b border-line px-4">
-                    <Link href="/" className="flex items-center gap-2 font-display text-[15px] font-semibold text-fg">
-                        <Logo /> Fyxable
-                    </Link>
-                </header>
-                <Start
-                    onPick={(id, request) => {
-                        const starter = starterById(id) ?? STARTERS[0]!;
-                        pendingRequest.current = request;
-                        setTurns([]);
-                        setProject({ name: request ? request.slice(0, 40) : starter.name, files: { ...starter.files } });
-                    }}
-                    onImport={(imported) => {
-                        const paths = Object.keys(imported.files);
-                        setTurns([{ role: 'assistant', content: describeImport(imported), model: 'Project Brain' }]);
-                        setProject({
-                            name: imported.name,
-                            files: imported.files,
-                            active: imported.map.important.find((p) => p in imported.files) ?? paths.find((p) => /README/i.test(p)) ?? paths[0],
-                        });
-                    }}
-                />
-            </div>
+            <Onboard
+                idea={idea}
+                onStart={(brief) => {
+                    const starter = starterById(starterFor(brief)) ?? STARTERS[0]!;
+                    pendingRequest.current = firstRequest(brief);
+                    setTurns([]);
+                    setView('chat');
+                    setProject({ name: brief.idea.slice(0, 40) || starter.name, files: { ...starter.files }, brief });
+                }}
+                onImport={(imported) => {
+                    const names = Object.keys(imported.files);
+                    setTurns([{ role: 'assistant', content: describeImport(imported), model: 'Project Brain' }]);
+                    setView('chat');
+                    setProject({
+                        name: imported.name,
+                        files: imported.files,
+                        brief: { goal: 'improve', idea: `${imported.name}, imported from GitHub` },
+                        active: imported.map.important.find((p) => p in imported.files) ?? names.find((p) => /README/i.test(p)) ?? names[0],
+                    });
+                }}
+            />
         );
     }
 
@@ -373,6 +299,25 @@ export function Playground() {
         if (!path || path in files || !/^(?![/\\])(?!.*\.\.)[\w@.\-/ ]{1,200}$/.test(path)) return;
         setProject({ ...project, files: { ...files, [path]: '' }, active: path });
     };
+    const removeFile = (path: string) => {
+        if (!window.confirm(`Delete ${path}?`)) return;
+        const next = { ...files };
+        delete next[path];
+        setProject({ ...project, files: next });
+    };
+    const newProject = () => {
+        if (!window.confirm('Start a new project? This one is deleted from this browser unless you download it first.')) return;
+        setRunOpen(false);
+        setWide(false);
+        setIdea(undefined);
+        setProject(undefined);
+        setTurns([]);
+        try {
+            window.localStorage.removeItem(STORAGE);
+            window.localStorage.removeItem(HISTORY);
+        } catch {}
+    };
+
     /** Fyx: a plain chore is done here, with no model and no tokens. False when it is a job for the agent. */
     const fyx = (text: string): boolean => {
         const plan = planWebFyx(text, files);
@@ -408,15 +353,12 @@ export function Playground() {
         setTurns((t) => [...t, { role: 'user', content: text }, { role: 'assistant', content: reply, changed, model: 'Fyx · 0 tokens' }]);
         return true;
     };
-    const removeFile = (path: string) => {
-        if (!window.confirm(`Delete ${path}?`)) return;
-        const next = { ...files };
-        delete next[path];
-        setProject({ ...project, files: next });
-    };
+
+    const canRun = Boolean(startScript(files['package.json']));
+    const columns = { '--chat-w': `${chat.width}px`, '--preview-w': `${preview.width}px` } as CSSProperties;
 
     return (
-        <div className="flex h-dvh flex-col bg-bg">
+        <div className="flex h-dvh flex-col bg-bg" style={columns}>
             <header className="flex h-11 shrink-0 items-center gap-3 border-b border-line bg-panel px-3">
                 <Link href="/" className="flex items-center gap-1.5 text-[13px] font-semibold text-fg">
                     <Logo size={15} />
@@ -425,121 +367,30 @@ export function Playground() {
                 <span className="text-faint">/</span>
                 <span className="truncate text-[13px] text-muted">{project.name}</span>
                 <div className="ml-auto flex items-center gap-2">
-                    <button
-                        type="button"
-                        onClick={() => setRunOpen((v) => !v)}
-                        disabled={!startScript(files['package.json'])}
-                        className={`flex h-7 items-center gap-1.5 rounded-md border px-2.5 text-[12px] font-medium disabled:opacity-40 ${runOpen ? 'border-ok/40 bg-ok/10 text-ok' : 'border-line-strong text-fg hover:bg-panel-2'}`}
-                    >
-                        <span className={`size-1.5 rounded-full ${runOpen ? 'bg-ok' : 'bg-faint'}`} />
-                        {runOpen ? 'Running' : 'Run'}
+                    <button type="button" onClick={() => setExporting(true)} className={WHITE_BUTTON}>
+                        <Icon name="github" size={13} /> GitHub
                     </button>
-                    <button type="button" onClick={() => setExporting(true)} className="h-7 rounded-md border border-line-strong px-2.5 text-[12px] text-fg hover:bg-panel-2">
-                        GitHub
-                    </button>
-                    <button type="button" onClick={download} className="h-7 rounded-md border border-line-strong px-2.5 text-[12px] text-fg hover:bg-panel-2">
+                    <button type="button" onClick={download} className={WHITE_BUTTON}>
                         Download
-                    </button>
-                    <button
-                        type="button"
-                        onClick={() => {
-                            if (!window.confirm('Start a new project? This one is deleted from this browser unless you download it first.')) return;
-                            setRunOpen(false);
-                            setProject(undefined);
-                            setTurns([]);
-                            try {
-                                window.localStorage.removeItem(STORAGE);
-                                window.localStorage.removeItem(HISTORY);
-                            } catch {}
-                        }}
-                        className="h-7 rounded-md border border-line-strong px-2.5 text-[12px] text-muted hover:text-fg"
-                    >
-                        New
                     </button>
                 </div>
             </header>
 
-            <div className="flex min-h-0 flex-1 flex-col md:flex-row">
-                {/* Files */}
-                <aside className="hidden w-56 shrink-0 flex-col border-r border-line bg-panel md:flex">
-                    <div className="flex h-9 items-center justify-between px-3 text-[11px] font-semibold uppercase tracking-wider text-faint">
-                        Files
-                        <button type="button" onClick={addFile} title="New file" aria-label="New file" className="text-lg leading-none text-faint hover:text-fg">
-                            +
-                        </button>
-                    </div>
-                    <ul className="scroll-thin min-h-0 flex-1 overflow-y-auto pb-2">
-                        {paths.map((path) => (
-                            <li key={path} className="group flex items-center">
-                                <button
-                                    type="button"
-                                    onClick={() => setProject({ ...project, active: path })}
-                                    className={`flex min-w-0 flex-1 items-center gap-1.5 px-3 py-1 text-left font-mono text-[12.5px] ${path === active ? 'bg-panel-2 text-fg' : 'text-muted hover:text-fg'}`}
-                                >
-                                    <Icon name="file" size={13} className="shrink-0 text-faint" />
-                                    <span className="truncate">{path}</span>
-                                </button>
-                                <button
-                                    type="button"
-                                    onClick={() => removeFile(path)}
-                                    aria-label={`Delete ${path}`}
-                                    className="px-2 text-faint opacity-0 hover:text-bad group-hover:opacity-100"
-                                >
-                                    ×
-                                </button>
-                            </li>
-                        ))}
-                    </ul>
-                </aside>
-
-                {/* Editor, with the running app beneath */}
-                <main className="flex min-h-[45dvh] min-w-0 flex-1 flex-col md:min-h-0">
-                    <div className="flex h-9 shrink-0 items-center border-b border-line bg-panel px-3 font-mono text-[12.5px] text-muted">
-                        <select
-                            value={active ?? ''}
-                            onChange={(e) => setProject({ ...project, active: e.target.value })}
-                            aria-label="Open file"
-                            className="max-w-full truncate bg-transparent text-muted outline-none md:hidden"
-                        >
-                            {paths.map((path) => (
-                                <option key={path} value={path}>
-                                    {path}
-                                </option>
-                            ))}
-                        </select>
-                        <span className="hidden truncate md:inline">{active ?? 'No file open'}</span>
-                    </div>
-                    {active ? (
-                        <Editor value={files[active] ?? ''} onChange={(next) => setProject({ ...project, files: { ...files, [active]: next } })} />
-                    ) : (
-                        <div className="flex flex-1 items-center justify-center text-[13px] text-faint">Ask the agent to build something.</div>
-                    )}
-                    {runOpen && (
-                        <div className="h-[46%] min-h-[220px] shrink-0 border-t border-line bg-panel">
-                            <RunPanel
-                                load={async () => ({ files: toTree(files), run: startScript(files['package.json']) })}
-                                live={files}
-                                onClose={() => setRunOpen(false)}
-                            />
-                        </div>
-                    )}
-                </main>
-
-                {/* Agent — the same shape as the chat panel in the VS Code extension. */}
-                <aside className="flex max-h-[55dvh] w-full shrink-0 flex-col border-t border-line bg-panel md:max-h-none md:max-w-[380px] md:border-l md:border-t-0">
-                    <div className="flex h-10 shrink-0 items-center justify-between border-b border-line pl-3 pr-2">
+            <div className="flex min-h-0 flex-1">
+                {/* The agent, on the left: the same shape as the chat panel in the VS Code extension. */}
+                <aside className={`${view === 'chat' ? 'flex' : 'hidden'} w-full shrink-0 flex-col bg-panel lg:w-[var(--chat-w)] lg:border-r lg:border-line ${wide ? 'lg:hidden' : 'lg:flex'}`}>
+                    <div className="flex h-10 shrink-0 items-center justify-between border-b border-line pl-3 pr-1.5">
                         <span className="flex items-center gap-2 text-[13px] font-semibold text-fg">
                             <Logo size={15} /> FreeAgentCoder
                         </span>
-                        <button
-                            type="button"
-                            title="Clear the conversation"
-                            aria-label="Clear the conversation"
-                            onClick={() => setTurns([])}
-                            className="rounded-md px-2 py-1 text-[12px] text-faint hover:bg-panel-2 hover:text-fg"
-                        >
-                            New chat
-                        </button>
+                        <div className="flex items-center">
+                            <button type="button" title="Clear the conversation" onClick={() => setTurns([])} className="rounded-md px-2 py-1 text-[12px] text-faint hover:bg-panel-2 hover:text-fg">
+                                New chat
+                            </button>
+                            <button type="button" title="Start another project" onClick={newProject} className="rounded-md px-2 py-1 text-[12px] text-faint hover:bg-panel-2 hover:text-fg">
+                                New project
+                            </button>
+                        </div>
                     </div>
 
                     <div className="scroll-thin min-h-0 flex-1 overflow-y-auto px-3 py-4">
@@ -547,9 +398,7 @@ export function Playground() {
                             <div className="flex flex-col items-center gap-1.5 px-1 pt-6 text-center">
                                 <Logo size={34} />
                                 <h2 className="mt-2 text-[16px] font-semibold text-fg">What should we build?</h2>
-                                <p className="mb-3 max-w-[280px] text-[12.5px] leading-relaxed text-muted">
-                                    Describe it in plain words. Changes appear in the files, and live in Run.
-                                </p>
+                                <p className="mb-3 max-w-[280px] text-[12.5px] leading-relaxed text-muted">Describe it in plain words. Changes appear in the files, and live in the preview.</p>
                                 {SUGGESTIONS.map((text) => (
                                     <button
                                         key={text}
@@ -566,10 +415,7 @@ export function Playground() {
                             <div className="flex flex-col gap-5">
                                 {turns.map((turn, i) =>
                                     turn.role === 'user' ? (
-                                        <div
-                                            key={i}
-                                            className="max-w-[92%] self-end whitespace-pre-wrap break-words rounded-[12px_12px_4px_12px] border border-line bg-bg px-3 py-2 text-[13px] text-fg"
-                                        >
+                                        <div key={i} className="max-w-[92%] self-end whitespace-pre-wrap break-words rounded-[12px_12px_4px_12px] border border-line bg-bg px-3 py-2 text-[13px] text-fg">
                                             {turn.content}
                                         </div>
                                     ) : (
@@ -593,7 +439,10 @@ export function Playground() {
                                                             <li key={path}>
                                                                 <button
                                                                     type="button"
-                                                                    onClick={() => path in files && setProject({ ...project, active: path })}
+                                                                    onClick={() => {
+                                                                        if (path in files) setProject({ ...project, active: path });
+                                                                        setView('code');
+                                                                    }}
                                                                     className="flex items-center gap-2 font-mono text-[12px] text-muted hover:text-accent"
                                                                 >
                                                                     <Icon name="check" size={12} className="text-ok" />
@@ -661,15 +510,12 @@ export function Playground() {
                             <div className="flex items-center gap-1 px-1.5 pb-1.5 pt-1">
                                 <span className="flex h-6 min-w-0 items-center gap-1.5 rounded-md px-1.5 text-[12px] text-muted" title={own ? 'Using your own key' : 'Free requests on this site'}>
                                     <span className={`size-[7px] shrink-0 rounded-full ${(noTrial || (trial && trial.remaining === 0)) && !own ? 'bg-warn' : 'bg-ok'}`} />
-                                    <span className="truncate">{own ? (keys.length > 1 ? `Your ${keys.length} keys, rotating` : `Your ${own.provider} key`) : trial ? `${trial.remaining} of ${trial.limit} free left today` : noTrial ? 'Add a free key to start' : 'Free to try'}</span>
+                                    <span className="truncate">
+                                        {own ? (keys.length > 1 ? `Your ${keys.length} keys, rotating` : `Your ${own.provider} key`) : trial ? `${trial.remaining} of ${trial.limit} free left today` : noTrial ? 'Add a free key to start' : 'Free to try'}
+                                    </span>
                                 </span>
                                 <span className="flex-1" />
-                                <button
-                                    type="submit"
-                                    disabled={busy || !prompt.trim()}
-                                    aria-label="Send"
-                                    className="flex size-7 items-center justify-center rounded-[7px] bg-accent text-accent-fg hover:brightness-110 disabled:opacity-40"
-                                >
+                                <button type="submit" disabled={busy || !prompt.trim()} aria-label="Send" className="flex size-7 items-center justify-center rounded-[7px] bg-accent text-accent-fg hover:brightness-110 disabled:opacity-40">
                                     <Icon name="arrowRight" size={15} className="-rotate-90" />
                                 </button>
                             </div>
@@ -684,7 +530,85 @@ export function Playground() {
                         </div>
                     </form>
                 </aside>
+                {!wide && <Handle onPointerDown={chat.onPointerDown} label="Resize the chat" />}
+
+                {/* Files and the editor, in the middle */}
+                <main className={`${view === 'code' ? 'flex' : 'hidden'} min-w-0 flex-1 ${wide ? 'lg:hidden' : 'lg:flex'}`}>
+                    <aside className="hidden w-44 shrink-0 flex-col border-r border-line bg-panel xl:flex">
+                        <div className="flex h-9 items-center justify-between px-3 text-[11px] font-semibold uppercase tracking-wider text-faint">
+                            Files
+                            <button type="button" onClick={addFile} title="New file" aria-label="New file" className="text-lg leading-none text-faint hover:text-fg">
+                                +
+                            </button>
+                        </div>
+                        <ul className="scroll-thin min-h-0 flex-1 overflow-y-auto pb-2">
+                            {paths.map((path) => (
+                                <li key={path} className="group flex items-center">
+                                    <button
+                                        type="button"
+                                        onClick={() => setProject({ ...project, active: path })}
+                                        className={`flex min-w-0 flex-1 items-center gap-1.5 px-3 py-1 text-left font-mono text-[12.5px] ${path === active ? 'bg-panel-2 text-fg' : 'text-muted hover:text-fg'}`}
+                                    >
+                                        <Icon name="file" size={13} className="shrink-0 text-faint" />
+                                        <span className="truncate">{path}</span>
+                                    </button>
+                                    <button type="button" onClick={() => removeFile(path)} aria-label={`Delete ${path}`} className="px-2 text-faint opacity-0 hover:text-bad group-hover:opacity-100">
+                                        ×
+                                    </button>
+                                </li>
+                            ))}
+                        </ul>
+                    </aside>
+                    <div className="flex min-w-0 flex-1 flex-col">
+                        <div className="flex h-9 shrink-0 items-center gap-2 border-b border-line bg-panel px-3 font-mono text-[12.5px] text-muted">
+                            <select value={active ?? ''} onChange={(e) => setProject({ ...project, active: e.target.value })} aria-label="Open file" className="max-w-full truncate bg-transparent text-muted outline-none xl:hidden">
+                                {paths.map((path) => (
+                                    <option key={path} value={path}>
+                                        {path}
+                                    </option>
+                                ))}
+                            </select>
+                            <span className="hidden truncate xl:inline">{active ?? 'No file open'}</span>
+                            <button type="button" onClick={addFile} title="New file" aria-label="New file" className="ml-auto text-lg leading-none text-faint hover:text-fg xl:hidden">
+                                +
+                            </button>
+                        </div>
+                        {active ? (
+                            <Editor value={files[active] ?? ''} onChange={(next) => setProject({ ...project, files: { ...files, [active]: next } })} />
+                        ) : (
+                            <div className="flex flex-1 items-center justify-center text-[13px] text-faint">Ask the agent to build something.</div>
+                        )}
+                    </div>
+                </main>
+                {!wide && <Handle onPointerDown={preview.onPointerDown} label="Resize the preview" />}
+
+                {/* The running app, on the right */}
+                <section className={`${view === 'preview' ? 'flex' : 'hidden'} w-full min-w-0 shrink-0 flex-col bg-panel lg:flex ${wide ? 'lg:flex-1' : 'lg:w-[var(--preview-w)]'}`}>
+                    {runOpen ? (
+                        <RunPanel
+                            load={async () => ({ files: toTree(files), run: startScript(files['package.json']) })}
+                            live={files}
+                            onClose={() => {
+                                setRunOpen(false);
+                                setWide(false);
+                            }}
+                            expanded={wide}
+                            onExpand={() => setWide((v) => !v)}
+                        />
+                    ) : (
+                        <IdlePreview canRun={canRun} onRun={() => setRunOpen(true)} />
+                    )}
+                </section>
             </div>
+
+            {/* On a phone, one column at a time */}
+            <nav className="flex h-11 shrink-0 border-t border-line bg-panel lg:hidden" aria-label="Panels">
+                {(['chat', 'code', 'preview'] as View[]).map((v) => (
+                    <button key={v} type="button" onClick={() => setView(v)} aria-current={view === v} className={`flex-1 text-[12.5px] font-medium capitalize ${view === v ? 'text-fg' : 'text-muted'}`}>
+                        {v === 'chat' ? 'Agent' : v === 'code' ? 'Code' : runOpen ? 'Preview · running' : 'Preview'}
+                    </button>
+                ))}
+            </nav>
             {exporting && <GithubExport files={files} name={project.name} onClose={() => setExporting(false)} />}
         </div>
     );

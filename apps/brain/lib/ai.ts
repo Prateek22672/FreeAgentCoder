@@ -20,7 +20,7 @@ function customEntry(): RouterEntry | undefined {
     if (!baseURL || !model) return undefined;
     const contextWindow = Number(process.env.BRAIN_OPENAI_CONTEXT) || 32_768;
     return {
-        provider: new OpenAICompatProvider({ id: 'custom', baseURL, apiKey: process.env.BRAIN_OPENAI_API_KEY || undefined, maxOutputTokens: 4_096 }),
+        provider: new OpenAICompatProvider({ id: 'custom', baseURL, apiKey: process.env.BRAIN_OPENAI_API_KEY || undefined, maxOutputTokens: 8_192 }),
         model,
         contextWindow,
         label: 'Custom endpoint',
@@ -53,7 +53,7 @@ export function routerForKeys(list: [string, string][]): ModelRouter | undefined
         .map(([provider, key]) => {
             const preset = PRESETS[provider]!;
             return {
-                provider: createProvider(preset, { apiKey: key, maxOutputTokens: 4_096 }),
+                provider: createProvider(preset, { apiKey: key, maxOutputTokens: 8_192 }),
                 model: preset.defaultModel,
                 contextWindow: preset.contextWindow,
                 maxRequestTokens: preset.maxRequestTokens,
@@ -88,7 +88,7 @@ export function routerForKey(provider: string, key: string): ModelRouter | undef
     if (!preset) return undefined;
     return new ModelRouter([
         {
-            provider: createProvider(preset, { apiKey: key, maxOutputTokens: 4_096 }),
+            provider: createProvider(preset, { apiKey: key, maxOutputTokens: 8_192 }),
             model: preset.defaultModel,
             contextWindow: preset.contextWindow,
             maxRequestTokens: preset.maxRequestTokens,
@@ -129,7 +129,7 @@ export function getRouter(): ModelRouter | undefined {
         const key = preset?.keyEnv?.map((name) => process.env[name]).find(Boolean);
         if (!preset || !key) continue;
         entries.push({
-            provider: createProvider(preset, { apiKey: key, maxOutputTokens: 4_096 }),
+            provider: createProvider(preset, { apiKey: key, maxOutputTokens: 8_192 }),
             model: preset.defaultModel,
             contextWindow: preset.contextWindow,
             maxRequestTokens: preset.maxRequestTokens,
