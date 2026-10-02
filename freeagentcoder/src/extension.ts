@@ -1,5 +1,6 @@
 import * as vscode from 'vscode';
 import { Controller } from './controller';
+import { ASK_COMMAND, FIX_COMMAND, FixProvider, fixRequest, selectionReference } from './editorActions';
 import { readHandoff } from './handoff/task';
 import { noteInstall } from './updates';
 import { ChatViewProvider } from './webview/chatView';
@@ -41,6 +42,22 @@ export function activate(context: vscode.ExtensionContext): void {
                 await view.show({ type: 'focusInput', prefill: result.task.brief, note: result.note });
             },
         }),
+        vscode.languages.registerCodeActionsProvider({ scheme: 'file' }, new FixProvider(), { providedCodeActionKinds: FixProvider.kinds }),
+        vscode.commands.registerCommand(FIX_COMMAND, async (uri?: vscode.Uri, diagnostic?: vscode.Diagnostic) => {
+            const text = fixRequest(uri, diagnostic);
+            if (!text) {
+                void vscode.window.showInformationMessage('FreeAgentCoder: there is no error here to fix.');
+                return;
+            }
+            // While a task runs, the request waits in the input instead of interrupting it.
+            if (controller.busy) {
+                await view.show({ type: 'focusInput', prefill: text, note: 'Send it when the current task finishes.' });
+                return;
+            }
+            await view.show({ type: 'focusInput' });
+            await controller.handle({ type: 'send', text });
+        }),
+        vscode.commands.registerCommand(ASK_COMMAND, () => view.show({ type: 'focusInput', prefill: selectionReference() })),
         vscode.commands.registerCommand('freeagentcoder.getStarted', () =>
             vscode.commands.executeCommand('workbench.action.openWalkthrough', `${context.extension.id}#getStarted`, false),
         ),

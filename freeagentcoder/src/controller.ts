@@ -694,6 +694,11 @@ export class Controller implements vscode.Disposable {
      * files into the open folder, sends its prompts one after another, and
      * posts the numbers and the conversation back to the admin page.
      */
+    /** Whether a task is running, so a command can wait in the input instead of interrupting it. */
+    get busy(): boolean {
+        return this.session.running;
+    }
+
     async runLabTask(): Promise<void> {
         const token = vscode.workspace.getConfiguration('freeagentcoder').get<string>('labToken', '').trim();
         if (!token) {

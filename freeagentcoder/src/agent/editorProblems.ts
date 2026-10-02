@@ -3,10 +3,17 @@ import * as vscode from 'vscode';
 import { toolError, type Tool } from '@agentic/core';
 import { CHECKED_FILES, editNote, introduced, listProblems, type Problem } from './problems';
 
-/** Waiting for a language server: for its first report, then for it to go quiet, and never longer than the cap. */
+/**
+ * Waiting for a language server: for its first report (longer when the file has
+ * just been put in a tab, as a server may be starting), then for it to go
+ * quiet, and never longer than the cap.
+ */
 const FIRST_REPORT_MS = 2_000;
+const FIRST_REPORT_SHOWN_MS = 5_000;
 const SETTLE_MS = 350;
-const MAX_WAIT_MS = 4_000;
+const MAX_WAIT_MS = 6_000;
+/** File types whose language server has not answered this many times in a row are no longer waited on. */
+const MAX_MISSES = 2;
 
 function problemsOf(root: string, uri: vscode.Uri, diagnostics: readonly vscode.Diagnostic[], warnings: boolean): Problem[] {
     const file = path.relative(root, uri.fsPath).split(path.sep).join('/');
@@ -24,7 +31,7 @@ function problemsOf(root: string, uri: vscode.Uri, diagnostics: readonly vscode.
 }
 
 /** Resolves once diagnostics for these files have been reported and gone quiet, or the wait runs out. */
-function settled(uris: vscode.Uri[], signal: AbortSignal): Promise<boolean> {
+function settled(uris: vscode.Uri[], signal: AbortSignal, firstReportMs = FIRST_REPORT_MS): Promise<boolean> {
     const watched = new Set(uris.map((u) => u.toString()));
     return new Promise((resolve) => {
         let reported = false;
@@ -45,31 +52,70 @@ function settled(uris: vscode.Uri[], signal: AbortSignal): Promise<boolean> {
                 quiet = setTimeout(finish, SETTLE_MS);
             }
         });
-        const first = setTimeout(finish, FIRST_REPORT_MS);
+        const first = setTimeout(finish, firstReportMs);
         const cap = setTimeout(finish, MAX_WAIT_MS);
         signal.addEventListener('abort', finish, { once: true });
     });
 }
 
+function inTab(uri: vscode.Uri): boolean {
+    const target = uri.toString();
+    return vscode.window.tabGroups.all.some((group) => group.tabs.some((tab) => tab.input instanceof vscode.TabInputText && tab.input.uri.toString() === target));
+}
+
 /**
- * After the agent edits files, the errors the editor finds in them. The files
- * are opened (not shown) so their language server checks them; only errors the
- * change introduced are reported, so the model fixes them while the change is
- * fresh instead of finding them at the end.
+ * Puts a file in a preview tab without taking focus. Language servers (the
+ * TypeScript one among them) only check files shown in a tab; a preview tab is
+ * reused by the next one, so tabs do not pile up.
  */
-export function editorProblemsAfterEdit(root: string): (paths: string[], signal: AbortSignal) => Promise<string | undefined> {
+async function showQuietly(uri: vscode.Uri): Promise<boolean> {
+    try {
+        const document = await vscode.workspace.openTextDocument(uri);
+        await vscode.window.showTextDocument(document, { preview: true, preserveFocus: true });
+        return true;
+    } catch {
+        return false;
+    }
+}
+
+const typeOf = (uri: vscode.Uri) => path.extname(uri.fsPath).toLowerCase();
+
+/**
+ * After the agent edits files, the errors the editor finds in them, so the
+ * model fixes them while the change is fresh instead of finding them at the
+ * end. A file not in a tab is shown in a preview tab so it gets checked. When
+ * the file was already checked, only errors the change introduced are
+ * reported.
+ */
+export function editorProblemsAfterEdit(root: string, enabled: () => boolean = () => true): (paths: string[], signal: AbortSignal) => Promise<string | undefined> {
+    const misses = new Map<string, number>();
     return async (paths, signal) => {
-        const uris = paths.filter((p) => CHECKED_FILES.test(p)).map((p) => vscode.Uri.file(p));
+        if (!enabled()) {
+            return undefined;
+        }
+        const candidates = paths
+            .filter((p) => CHECKED_FILES.test(p))
+            .map((p) => vscode.Uri.file(p))
+            .filter((u) => (misses.get(typeOf(u)) ?? 0) < MAX_MISSES);
+        // Files already in a tab are checked as they are; of the rest, the first is shown (a second would replace it).
+        const tabbed = candidates.filter(inTab);
+        const shown = candidates.find((u) => !inTab(u));
+        const uris = shown ? [...tabbed, shown] : tabbed;
         if (!uris.length) {
             return undefined;
         }
-        // Read before the language server catches up: this is the file as it was checked before the edit.
-        const open = new Set(vscode.workspace.textDocuments.map((d) => d.uri.toString()));
-        const before = uris.flatMap((u) => problemsOf(root, u, vscode.languages.getDiagnostics(u), false));
-        const baseline = uris.every((u) => open.has(u.toString()));
-        const waiting = settled(uris, signal);
-        await Promise.all(uris.map((u) => vscode.workspace.openTextDocument(u).then(undefined, () => undefined)));
-        if (!(await waiting) || signal.aborted) {
+        // Read before the language server catches up: for a file in a tab, this is how it was checked before the edit.
+        const before = tabbed.flatMap((u) => problemsOf(root, u, vscode.languages.getDiagnostics(u), false));
+        const baseline = !shown;
+        const waiting = settled(uris, signal, shown ? FIRST_REPORT_SHOWN_MS : FIRST_REPORT_MS);
+        if (shown && !(await showQuietly(shown))) {
+            uris.pop();
+        }
+        const reported = await waiting;
+        for (const u of uris) {
+            misses.set(typeOf(u), reported ? 0 : (misses.get(typeOf(u)) ?? 0) + 1);
+        }
+        if (!reported || signal.aborted) {
             return undefined;
         }
         const after = uris.flatMap((u) => problemsOf(root, u, vscode.languages.getDiagnostics(u), false));
@@ -104,9 +150,11 @@ export function getProblemsTool(): Tool<{ path?: string; warnings?: boolean }> {
                     let problems: Problem[];
                     if (file) {
                         const uri = vscode.Uri.file(file);
-                        const waiting = settled([uri], ctx.signal);
-                        await vscode.workspace.openTextDocument(uri).then(undefined, () => undefined);
-                        if (!vscode.languages.getDiagnostics(uri).length) {
+                        const waiting = settled([uri], ctx.signal, FIRST_REPORT_SHOWN_MS);
+                        if (!inTab(uri)) {
+                            await showQuietly(uri);
+                            await waiting;
+                        } else if (!vscode.languages.getDiagnostics(uri).length) {
                             await waiting;
                         }
                         problems = problemsOf(workspace.root, uri, vscode.languages.getDiagnostics(uri), !!args.warnings);

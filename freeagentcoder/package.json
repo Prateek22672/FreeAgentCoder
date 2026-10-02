@@ -117,6 +117,16 @@
         "command": "freeagentcoder.plans",
         "title": "Plans",
         "category": "FreeAgentCoder"
+      },
+      {
+        "command": "freeagentcoder.fixProblem",
+        "title": "Fix This Error",
+        "category": "FreeAgentCoder"
+      },
+      {
+        "command": "freeagentcoder.askAboutSelection",
+        "title": "Ask FreeAgentCoder About This",
+        "category": "FreeAgentCoder"
       }
     ],
     "configuration": {
@@ -146,6 +156,11 @@
           "minimum": 0,
           "scope": "application",
           "markdownDescription": "The most tokens one task may use before it pauses and asks you to continue. It protects a daily free allowance, and a paid key, from a task that runs away. Nothing is lost when it pauses: press **Continue**. `0` turns the limit off."
+        },
+        "freeagentcoder.editorErrorsAfterEdit": {
+          "type": "boolean",
+          "default": true,
+          "markdownDescription": "After each edit, give the agent the errors the editor finds in the changed file (type, lint and syntax errors), so it fixes them at once. An edited file is shown in a preview tab, since language servers only check files that are open."
         },
         "freeagentcoder.checkPages": {
           "type": "boolean",
@@ -252,6 +267,13 @@
         {
           "command": "freeagentcoder.runLabTask",
           "when": "config.freeagentcoder.labToken != ''"
+        }
+      ],
+      "editor/context": [
+        {
+          "command": "freeagentcoder.askAboutSelection",
+          "when": "editorHasSelection",
+          "group": "freeagentcoder@1"
         }
       ]
     }

@@ -874,7 +874,7 @@ export class AgentSession implements vscode.Disposable {
                 })(),
                 maxSteps: MAX_STEPS,
                 extraTools: [checkPageTool(this.options.previews), getProblemsTool()],
-                afterEdit: editorProblemsAfterEdit(cwd),
+                afterEdit: editorProblemsAfterEdit(cwd, () => vscode.workspace.getConfiguration('freeagentcoder').get<boolean>('editorErrorsAfterEdit', true)),
             });
             this.local = local;
             this.localRoot = cwd;
