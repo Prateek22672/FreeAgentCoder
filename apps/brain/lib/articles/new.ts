@@ -21,7 +21,7 @@ export const FREE_AGENT_VSCODE: Article = {
     slug: 'free-ai-coding-agent-vscode',
     title: 'Free AI Coding Agent for VS Code (2026)',
     description:
-        'FreeAgentCoder is a free, open-source AI coding agent for VS Code. It plans, edits, runs your tests and fixes failures on free Gemini, Groq, Mistral and OpenRouter keys.',
+        'FreeAgentCoder is a free, open-source AI coding agent for VS Code. It plans, edits, runs your tests and fixes failures on free Gemini, Groq, OpenRouter and Cohere keys.',
     h1: 'A free AI coding agent for VS Code',
     dek: 'Not autocomplete: an agent that plans a task, edits files across your project, runs your build and tests, and keeps going until they pass. Free, on free API keys.',
     updated: '2026-09-30',

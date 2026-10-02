@@ -34,6 +34,6 @@ export const PRODUCT = 'FreeAgentCoder';
 export const TAGLINE = 'Your codebase has a brain.';
 
 export const DESCRIPTION =
-    'A free, open-source AI coding agent for VS Code that runs on free Gemini, Groq, Mistral and OpenRouter API keys — plus Project Brain: chat with any GitHub repo and see what a change breaks.';
+    'A free, open-source AI coding agent for VS Code that runs on free Gemini, Groq, OpenRouter and Cohere keys: a free alternative to Copilot, Cursor and Cline. Plus Project Brain: chat with any GitHub repo and see what a change breaks.';
 
 export const canonical = (path = '/') => `${SITE_URL}${path === '/' ? '' : path}`;
