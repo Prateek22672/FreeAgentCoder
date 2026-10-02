@@ -187,7 +187,7 @@ export class TurnRenderer {
     this.lastBlock = 'tool';
   }
 
-  private footer(reason: 'completed' | 'max_steps' | 'aborted' | 'error'): void {
+  private footer(reason: 'completed' | 'max_steps' | 'budget' | 'aborted' | 'error'): void {
     const parts = [
       `${this.steps} step${this.steps === 1 ? '' : 's'}`,
       formatDuration(Date.now() - this.startedAt),
@@ -195,7 +195,7 @@ export class TurnRenderer {
     if (this.turnUsage.inputTokens) parts.push(`${formatTokens(this.turnUsage.inputTokens)}↑ ${formatTokens(this.turnUsage.outputTokens)}↓`);
     if (this.lastModel) parts.push(this.lastModel);
     line();
-    if (reason === 'max_steps') line(c.yellow(`⏸ Paused after ${this.steps} steps. Type "continue" to keep going.`));
+    if (reason === 'max_steps' || reason === 'budget') line(c.yellow(`⏸ Paused after ${this.steps} steps. Type "continue" to keep going.`));
     else if (reason === 'aborted') line(c.yellow('⏹ Interrupted. Tell me what to do instead, or type "continue".'));
     line(c.dim(`  ${parts.join(' · ')}`));
   }

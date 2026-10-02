@@ -58,4 +58,10 @@ describe('explainError', () => {
         expect(isContextTooLarge('The conversation (~9 tokens) is larger than any configured model accepts (8).')).toBe(true);
         expect(isContextTooLarge('rate limit')).toBe(false);
     });
+
+    it('explains models that are too small for the task, and does not wait for them', () => {
+        const message = 'The models available right now are too small for this task: they take about 5.5K tokens per request, and the work does not fit in that even after summarizing it. Stopped rather than going round in circles.';
+        expect(recoveryFor(message, 0)).toBeUndefined();
+        expect(explainError(message)).toMatchObject({ title: 'The models available right now are too small for this task', action: 'openKeys' });
+    });
 });

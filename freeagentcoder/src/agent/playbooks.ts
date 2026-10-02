@@ -26,6 +26,12 @@ export interface Playbook {
     /** Files in the project root that mean the project already uses this stack. */
     projectFiles: string[];
     toolchains: string[];
+    /**
+     * Files that mean there is something to build or test ("*.ext" matches by
+     * ending). When set and none is near the files a task changed, the gates do
+     * not apply: a plain HTML page has no build to pass.
+     */
+    manifests?: string[];
     guide: string[];
     gates: QualityGate[];
     security: string[];
@@ -107,12 +113,13 @@ const WEB: Playbook = {
         'angular.json',
     ],
     toolchains: ['node', 'npm'],
+    manifests: ['package.json'],
     guide: [
-        'If no stack is named, use Vite + React + TypeScript + Tailwind CSS in a new folder, created with non-interactive flags. Remove template leftovers you do not use.',
-        'Structure: src/components/, src/pages/ (or routes/), src/hooks/, src/lib/; small typed components.',
+        'If no stack is named: a page or small site with no app state is plain HTML, CSS and JavaScript in its own folder (index.html, css/, js/, assets/), with no npm and no build. An app with screens, state or data is Vite + React + TypeScript + Tailwind CSS in a new folder, created with non-interactive flags; remove template leftovers you do not use.',
+        'Structure for an app: src/components/, src/pages/ (or routes/), src/hooks/, src/lib/; small typed components.',
         'Everything in client code is public: only VITE_ or NEXT_PUBLIC_ variables reach the browser, never secrets.',
         'Accessible (labels, alt text, keyboard focus) and responsive at phone width, with loading and error states.',
-        'Check it runs: start the dev server with background=true, then fetch_url the local URL or read the process output.',
+        'Check it runs. An app: start the dev server with background=true, then fetch_url the local URL or read the process output. Plain files: load the page with check_page and fix every error it reports, then call it with a script that uses the main controls and returns what changed; the editor shows the page to the user when you finish, so do not start a server for it.',
     ],
     gates: [
         {
@@ -147,6 +154,7 @@ const NODE_API: Playbook = {
     request: /\b(?:express|fastify|nestjs|hono|koa|node(?:\.js)?\s+(?:api|server|backend)|rest\s*api|graphql\s+(?:api|server)|api\s+server)\b/i,
     projectFiles: [],
     toolchains: ['node', 'npm'],
+    manifests: ['package.json'],
     guide: [
         'Structure: src/routes/, src/services/, src/db/, src/middleware/, src/config.ts; validate every request body and query (for example with zod).',
         'Configuration from environment variables with an .env.example; fail fast when one is missing.',
@@ -255,9 +263,29 @@ const GENERAL: Playbook = {
     request: /(?!)/,
     projectFiles: [],
     toolchains: [],
+    manifests: [
+        'package.json',
+        'pyproject.toml',
+        'requirements.txt',
+        'setup.py',
+        'Cargo.toml',
+        'go.mod',
+        'pom.xml',
+        'build.gradle',
+        'build.gradle.kts',
+        'pubspec.yaml',
+        'composer.json',
+        'Gemfile',
+        'Makefile',
+        'CMakeLists.txt',
+        '*.csproj',
+        '*.sln',
+    ],
     guide: [
-        "Choose a well-supported stack for the job and say why in one line, then follow that ecosystem's standard layout and tooling.",
-        'Check it runs: start it (background=true for servers) and confirm it responds or prints the expected output.',
+        'Pick the simplest stack that does the job well, and say why in one line. Something that runs in a browser with no backend (a game, a calculator, a small tool) is plain HTML, CSS and JavaScript: no framework, no npm, no build, no test runner. Use a framework or a toolchain only when the request names one or the project needs one.',
+        'A new project goes in its own folder, named after it, with files grouped: for plain web files index.html, css/, js/ and assets/.',
+        'Simple is not unfinished. Build every rule and feature the request implies (a board game: the board, the pieces, dice, turns, special squares, a winner and a restart), with a designed interface: a real layout, a considered palette, hover and focus states, and it fits a phone screen. Nothing stubbed, no placeholder text.',
+        'Check it for real. With a toolchain: its build or tests. A plain web page: load it with check_page, which runs it in a real browser and reports its errors and anything cut off, and fix every one; then call check_page with a script that uses each main feature like a user (click, wait, read the result) and returns the values that prove it works, and fix what is wrong. A server: start it with background=true and confirm it responds. The editor shows a web page to the user when you finish, so do not start a server just to show a static page.',
     ],
     gates: [
         {
@@ -322,11 +350,13 @@ export function buildBrief(playbooks: Playbook[], release: boolean, request: str
         'The editor added this brief because this is a complex task. Follow it; the user did not type it.',
         '',
         '## How to work',
-        `1. Preflight: call inspect_environment${toolchains.length ? ` with ${JSON.stringify(toolchains)}` : ' for the tools this task needs'}. If a required tool is missing, stop and tell the user exactly what to install and where to get it. Ask before installing SDKs, running system package managers, or changing PATH or shell profiles.`,
-        '2. Plan with todo_write: concrete steps that end with the quality gates below.',
-        '3. Build in small steps. After each milestone, run the matching gate and fix what it reports before moving on.',
+        toolchains.length
+            ? `1. Preflight: call inspect_environment with ${JSON.stringify(toolchains)}. If a required tool is missing, stop and tell the user exactly what to install and where to get it. Ask before installing SDKs, running system package managers, or changing PATH or shell profiles.`
+            : '1. Preflight: only when the work needs an installed toolchain (a compiler, an SDK, a package manager), call inspect_environment for it; if it is missing, stop and tell the user what to install. Plain HTML, CSS and JavaScript need none: skip this step.',
+        '2. Plan with todo_write: a few concrete steps that end with the checks below. Send the plan in the same reply as your first actions, never as a reply of its own.',
+        '3. Work in few, full replies: every reply resends the whole conversation, so put all the tool calls that do not depend on each other in one reply. Write each file complete in a single write_file, and create the files of a small project together. After each milestone, run the matching gate and fix what it reports.',
         '4. Use only real packages, APIs and URLs you have checked. Never fake a feature with a placeholder.',
-        '5. Do not finish until every required gate has passed, or you have clearly explained why one cannot run here.',
+        '5. Do not finish until every required gate has passed, or you have clearly explained why one cannot run here. A gate applies only when the project has the build or test it names: do not add a build system or a test runner just to pass one.',
         `6. End with the usual report plus a "### Security" section${release ? ' and a "### Before publishing" section' : ''}, saying what is done and what the user still has to do.`,
     ];
     for (const playbook of playbooks) {
@@ -343,7 +373,20 @@ export function buildBrief(playbooks: Playbook[], release: boolean, request: str
     return lines.join('\n');
 }
 
-export function evaluateGates(playbooks: Playbook[], runs: CommandRun[], release: boolean): GateResult[] {
+/** Whether a playbook's gates apply, given the file names found near what the task changed. */
+export function gatesApply(playbook: Playbook, nearby: ReadonlySet<string> | undefined): boolean {
+    if (!nearby || !playbook.manifests?.length) {
+        return true;
+    }
+    return playbook.manifests.some((name) => (name.startsWith('*.') ? [...nearby].some((file) => file.endsWith(name.slice(1))) : nearby.has(name)));
+}
+
+/**
+ * How each gate stands. `nearby` is the names of the files beside what the
+ * task changed; a playbook whose manifests are all missing there has nothing
+ * to build or test, so none of its gates is required.
+ */
+export function evaluateGates(playbooks: Playbook[], runs: CommandRun[], release: boolean, nearby?: ReadonlySet<string>): GateResult[] {
     const prefix = playbooks.length > 1;
     return playbooks.flatMap((playbook) =>
         playbook.gates.map((gate) => {
@@ -351,7 +394,7 @@ export function evaluateGates(playbooks: Playbook[], runs: CommandRun[], release
             return {
                 label: prefix ? `${playbook.name}: ${gate.label}` : gate.label,
                 command: gate.command,
-                required: isRequired(gate, release),
+                required: isRequired(gate, release) && gatesApply(playbook, nearby),
                 status: !run ? 'not_run' : run.exitCode === 0 ? 'passed' : 'failed',
                 exitCode: run?.exitCode,
             } satisfies GateResult;

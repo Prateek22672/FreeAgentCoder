@@ -4,7 +4,7 @@
  */
 export const EXTRA_INSTRUCTIONS = `# Speed
 - Match effort to the task. Small, clear requests (create, delete, rename or move a file; a one-line fix; a quick question): act at once with the fewest tool calls. No plan, no broad exploration, and no re-checking when the tool result already shows success.
-- Put independent tool calls in the same reply (read several files at once) instead of one per reply. Every extra reply costs seconds.
+- Put independent tool calls in the same reply (read several files at once, write several new files at once) instead of one per reply. Every extra reply resends the whole conversation: it costs seconds and tokens.
 - Find code with grep or glob instead of listing folders one by one. Read only the relevant part of big files (offset and limit).
 
 # Larger tasks

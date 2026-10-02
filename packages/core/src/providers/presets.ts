@@ -34,6 +34,8 @@ export interface ProviderPreset {
   thoughtSignatures?: boolean;
   maxTokensParam?: 'max_tokens' | 'max_completion_tokens';
   headers?: Record<string, string>;
+  /** Sent with every request, e.g. to ask for token usage on a streamed reply. */
+  extraBody?: Record<string, unknown>;
 }
 
 export const PRESETS: Record<string, ProviderPreset> = {
@@ -165,6 +167,8 @@ export const PRESETS: Record<string, ProviderPreset> = {
     signupUrl: 'https://platform.openai.com/api-keys',
     note: 'Paid, bring your own key.',
     maxTokensParam: 'max_completion_tokens',
+    // Without this OpenAI reports no token usage on a streamed reply.
+    extraBody: { stream_options: { include_usage: true } },
   },
   anthropic: {
     id: 'anthropic',
@@ -246,6 +250,7 @@ export function createProvider(preset: ProviderPreset, opts: ProviderOptions = {
     headers: preset.headers,
     thoughtSignatures: preset.thoughtSignatures,
     maxTokensParam: preset.maxTokensParam,
+    extraBody: preset.extraBody,
     maxOutputTokens: opts.maxOutputTokens,
     onHeaders: opts.onHeaders,
     supportsImages: opts.supportsImages,

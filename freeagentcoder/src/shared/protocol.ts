@@ -5,7 +5,17 @@ export type KeySource = 'extension' | 'env' | 'config';
 export type SettingsSection = 'overview' | 'keys' | 'plans' | 'usage' | 'health' | 'memory' | 'history' | 'model' | 'permissions' | 'logs';
 export type HistoryMode = 'ask' | 'on' | 'off';
 export type LogKind = 'provider' | 'agent' | 'extension';
-export type TurnEndReason = 'completed' | 'max_steps' | 'aborted' | 'error';
+/** `budget`: paused after using the tokens one task may use, for the user to say continue. */
+export type TurnEndReason = 'completed' | 'max_steps' | 'budget' | 'aborted' | 'error';
+
+/** Something to look at when a task ends: a page it wrote, or a server it left running. */
+export interface PreviewView {
+    kind: 'file' | 'url';
+    /** A path inside the project, or a local address. */
+    target: string;
+    /** Opened without being asked: the task made it new. */
+    auto: boolean;
+}
 export type FeatureId = 'seniorMode' | 'autoRecovery' | 'codeSearch' | 'readAttachments' | 'localOcr' | 'learning';
 export type AttachmentKind = 'image' | 'document' | 'text';
 export type LessonScope = 'project' | 'global';
@@ -404,6 +414,7 @@ export type ToWebview =
           tokens: number;
           files: ChangedFile[];
           canUndo: boolean;
+          preview?: PreviewView;
       }
     | { type: 'undone'; turnId: string; restored: string[]; deleted: string[] }
     | { type: 'checks'; turnId: string; playbooks: string[]; gates: GateView[]; security: string[]; release: string[] }
@@ -442,6 +453,7 @@ export type FromWebview =
     | { type: 'openFile'; path: string; line?: number }
     | { type: 'openDiff'; diffId: string; title: string }
     | { type: 'openExternal'; url: string }
+    | { type: 'openPreview'; kind: 'file' | 'url'; target: string }
     | { type: 'copy'; text: string }
     /** Reads the clipboard for the "Paste" button in the add-key form; only ever on an explicit click. */
     | { type: 'pasteClipboard' }

@@ -42,6 +42,10 @@ export function testPlaybook(checks: ProjectCheck[]): Playbook {
 }
 
 export function structureBlock(structure: string): string {
+    // Only the folder's own name: nothing is in it, and listing it again would cost a step.
+    if (structure.trim() && !structure.trim().includes('\n')) {
+        return '## Project structure\nThe project folder is empty: there is nothing to list, read or explore before you start.';
+    }
     return structure.trim() ? `## Project structure\nFolders and files in this project (generated folders left out):\n\`\`\`\n${structure.trim()}\n\`\`\`` : '';
 }
 

@@ -217,3 +217,58 @@ describe('Agent loop', () => {
     expect(events.at(-1)).toMatchObject({ type: 'done', reason: 'max_steps' });
   });
 });
+
+describe('Token use', () => {
+  const big = `${'const value = 1;\n'.repeat(600)}`;
+
+  it('pauses a turn that has used its token budget, and continues from there', async () => {
+    const { agent, provider } = setup([call('list_dir', {}), call('list_dir', { path: 'src' }), say('never reached in the first turn'), say('Done.')]);
+    agent.maxTurnTokens = 1;
+    const events = await collect(agent.run('go'));
+    // The first reply is always allowed; the budget is checked before the next one.
+    expect(events.at(-1)).toMatchObject({ type: 'done', reason: 'budget', steps: 1 });
+    expect(provider.requests).toHaveLength(1);
+    assertValidHistory(agent.messages);
+    agent.maxTurnTokens = 0;
+    expect((await collect(agent.run('continue'))).at(-1)).toMatchObject({ reason: 'completed' });
+  });
+
+  it('counts an estimate when the provider reports no usage', async () => {
+    const { agent } = setup([say('Hello there.')]);
+    const events = await collect(agent.run('hi'));
+    expect(events.some((e) => e.type === 'usage')).toBe(true);
+    expect(agent.usage.inputTokens).toBeGreaterThan(0);
+    expect(agent.usage.outputTokens).toBeGreaterThan(0);
+  });
+
+  it('stops instead of summarizing in circles when the models are too small for the task', async () => {
+    // A summary that is itself as big as the limit: nothing more can be dropped.
+    const summary = () => ({ role: 'assistant' as const, content: `SUMMARY ${'the user wants the big file inspected. '.repeat(500)}` });
+    const { agent, provider } = setup([call('read_file', { path: 'big.txt' }), summary, call('read_file', { path: 'big.txt' }), summary, say('never reached')], {
+      maxContextTokens: 4_000,
+      files: { '/big.txt': `${'x'.repeat(79)}\n`.repeat(400) },
+    });
+    const events = await collect(agent.run('inspect big.txt'));
+    expect(events.at(-1)).toMatchObject({ type: 'done', reason: 'error' });
+    expect(events.find((e) => e.type === 'error')).toMatchObject({ message: expect.stringContaining('too small for this task') });
+    expect(provider.remaining).toBe(1);
+  });
+
+  it('stops resending old file bodies long before the context limit', async () => {
+    const files = Object.fromEntries(Array.from({ length: 12 }, (_, i) => [`f${i}.js`, big]));
+    const script = [...Object.keys(files).map((path) => call('write_file', { path, content: files[path]! })), say('All written.')];
+    const { agent, provider } = setup(script, { files: {} });
+    const events = await collect(agent.run('write the files'));
+    expect(events.at(-1)).toMatchObject({ reason: 'completed' });
+    expect(events.some((e) => e.type === 'compacted' && e.kind === 'micro')).toBe(true);
+    // Never a summary: the limit (60k by default) was nowhere near.
+    expect(events.some((e) => e.type === 'compacted' && e.kind === 'summary')).toBe(false);
+    const sizes = provider.requests.map((r) => JSON.stringify(r.messages).length / 3.5);
+    expect(Math.max(...sizes)).toBeLessThan(30_000);
+    // The latest work is still there in full.
+    const last = provider.requests.at(-1)!;
+    expect(JSON.stringify(last.messages)).toContain('f11.js');
+    expect(JSON.stringify(last.messages.slice(-4))).toContain('const value = 1;');
+    assertValidHistory(agent.messages);
+  });
+});

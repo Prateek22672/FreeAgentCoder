@@ -2,7 +2,7 @@
   "name": "freeagentcoder",
   "displayName": "Free Agent Coder: Free AI Coding Agent & Chat, Copilot & Cursor Alternative",
   "description": "Free AI coding agent and chat for VS Code, a free alternative to Copilot, Cursor, Codex and Claude Code. Plans, edits, runs and tests your code on free Gemini, Groq or OpenRouter keys, or your own Claude or OpenAI key. Fyx does everyday chores with zero tokens. No subscription, open source.",
-  "version": "0.4.1",
+  "version": "0.4.2",
   "publisher": "PrateekKoratala",
   "license": "MIT",
   "icon": "media/icon.png",
@@ -138,6 +138,25 @@
           "default": true,
           "scope": "application",
           "markdownDescription": "**Fyx** does everyday tasks on your machine without an AI model: zipping and unzipping, git (status, pull, push, commit with your message, branches, clone, fork), installing and adding packages, running your project's scripts, creating, moving and copying files, and counting lines or sizes. They finish in seconds and use no tokens, and every command still asks the usual permission. It also learns: a short request the AI agent finished with a single command is done by Fyx the next time. Anything else goes to the AI agent as usual."
+        },
+        "freeagentcoder.taskTokenLimit": {
+          "type": "number",
+          "default": 500000,
+          "minimum": 0,
+          "scope": "application",
+          "markdownDescription": "The most tokens one task may use before it pauses and asks you to continue. It protects a daily free allowance, and a paid key, from a task that runs away. Nothing is lost when it pauses: press **Continue**. `0` turns the limit off."
+        },
+        "freeagentcoder.checkPages": {
+          "type": "boolean",
+          "default": true,
+          "scope": "application",
+          "markdownDescription": "Before the agent may call a plain web page done, load it in a hidden browser (Chrome, Edge, Brave or Chromium already on this computer) and send any error back to be fixed. The page is served from this computer only (127.0.0.1) and nothing is sent anywhere. Skipped when no such browser is installed."
+        },
+        "freeagentcoder.openPreview": {
+          "type": "boolean",
+          "default": true,
+          "scope": "application",
+          "markdownDescription": "When a task makes a new web page or leaves a dev server running, show it beside your code. A plain page is served from this computer only (127.0.0.1). Turn off to open previews only from the **Open preview** button."
         },
         "freeagentcoder.freeTrial": {
           "type": "boolean",

@@ -3,7 +3,7 @@ import { isDailyLimit } from '../usage/forecast';
 const TEMPORARY =
     /rate limit|rate-limited|cooling down|too many requests|timed out|timeout|network|fetch failed|ECONNRESET|ECONNREFUSED|ENOTFOUND|ETIMEDOUT|EAI_AGAIN|socket hang up|server error|overloaded|unavailable|stream ended early|\b50[0-4]\b/i;
 const OFFLINE = /fetch failed|ECONN|ENOTFOUND|ETIMEDOUT|EAI_AGAIN|socket hang up|network/i;
-const FINAL = /larger than any configured model|declined to continue|No model is configured/i;
+const FINAL = /larger than any configured model|too small for this task|declined to continue|No model is configured/i;
 const AUTH = /invalid api key|api key not valid|unauthori[sz]ed|authentication|\b401\b|\b403\b/i;
 
 /** Whether an error means the conversation no longer fits any model, which summarizing it can fix. */
@@ -39,6 +39,13 @@ export function explainError(message: string): { title: string; hint: string; ac
     const all = (test: (line: string) => boolean) => reasons.length > 0 && reasons.every(test);
     if (/No model is configured/i.test(message)) {
         return { title: 'No API key is ready to use', hint: 'Add a free key in Settings → API Keys to start.', action: 'openKeys' };
+    }
+    if (/too small for this task/i.test(message)) {
+        return {
+            title: 'The models available right now are too small for this task',
+            hint: "Only models that take a few thousand tokens per request can answer at the moment: Groq's free tier, or the free trial while its larger models are busy. Add a free Gemini key in Settings → API Keys (it takes about 1M tokens per request), then press Continue.",
+            action: 'openKeys',
+        };
     }
     if (isContextTooLarge(message)) {
         return {

@@ -13,7 +13,7 @@ import {
 } from '../tools/types';
 import { describeImages, normalizeImage } from '../providers/images';
 import type { AssistantMessage, ImagePart, Message, Todo, ToolCall, ToolSchema, Usage, UserMessage } from '../types';
-import { cleanModelText, truncateMiddle } from '../util/text';
+import { cleanModelText, estimateTokens, truncateMiddle } from '../util/text';
 import { displayPath, type Workspace } from '../workspace/types';
 import {
   compactionMessage,
@@ -43,6 +43,8 @@ export interface AgentOptions {
   maxSteps?: number;
   /** Compact the conversation beyond this many tokens. Default 60k. */
   maxContextTokens?: number;
+  /** Tokens one user turn may use before it pauses for the user to say continue. 0 or unset: no limit. */
+  maxTurnTokens?: number;
   /** Resume a saved conversation. */
   messages?: Message[];
   todos?: Todo[];
@@ -82,7 +84,7 @@ export type AgentEvent =
   | { type: 'compacted'; kind: 'micro' | 'summary'; before: number; after: number }
   | { type: 'usage'; usage: Usage; total: Usage }
   | { type: 'error'; message: string }
-  | { type: 'done'; reason: 'completed' | 'max_steps' | 'aborted' | 'error'; steps: number };
+  | { type: 'done'; reason: 'completed' | 'max_steps' | 'budget' | 'aborted' | 'error'; steps: number };
 
 const NUDGE_ACT =
   "You described your next step but didn't call a tool. Do it now by calling the right tool. If the task is actually finished, reply with a brief summary of what you did instead.";
@@ -93,6 +95,23 @@ const NUDGE_REPEAT =
   "You've made the same tool call three times in a row and got the same result. Repeating it won't help: try a different approach, or tell the user what's blocking you.";
 
 const MAX_RESULT_CHARS = 30_000;
+/**
+ * Old tool output and file bodies are blanked once the conversation passes
+ * this size, well before it nears a model's limit: every step resends the
+ * whole conversation, so bulk nobody reads again is paid for on every step.
+ */
+const TRIM_OLD_BULK_AT = 24_000;
+/** Summaries in one turn that still left the conversation at its limit, before the turn is stopped. */
+const MAX_FUTILE_SUMMARIES = 2;
+
+/**
+ * Thrown when the models that can answer are too small for the task: the
+ * conversation is at its limit again straight after being summarized, so
+ * every further step would summarize, forget, and re-read the same files.
+ */
+export function tooSmallMessage(limit: number): string {
+  return `The models available right now are too small for this task: they take about ${Math.round(limit / 100) / 10}K tokens per request, and the work does not fit in that even after summarizing it. Stopped rather than going round in circles.`;
+}
 
 /** Did the reply end by announcing an action instead of doing it? ("Let me create the file:") */
 export function announcesAction(text: string): boolean {
@@ -114,6 +133,8 @@ export class Agent {
   messages: Message[];
   todos: Todo[];
   usage: Usage = { inputTokens: 0, outputTokens: 0 };
+  /** Tokens one user turn may use before it pauses. Settable between turns. */
+  maxTurnTokens: number;
 
   private readonly toolMap: Map<string, Tool>;
   private readonly schemas: ToolSchema[];
@@ -130,6 +151,7 @@ export class Agent {
     this.messages = opts.messages ? [...opts.messages] : [];
     this.todos = opts.todos ? [...opts.todos] : [];
     this.approve = opts.approve;
+    this.maxTurnTokens = opts.maxTurnTokens ?? 0;
     this.toolMap = new Map(opts.tools.map((t) => [t.name, t]));
     this.schemas = opts.tools.map(toSchema);
   }
@@ -173,11 +195,13 @@ export class Agent {
     if (images?.length) request.images = images.map(normalizeImage);
     this.messages.push(request);
     const maxSteps = this.opts.maxSteps ?? 80;
+    const usedAtStart = this.usage.inputTokens + this.usage.outputTokens;
     let nudges = 0;
     let reviews = 0;
     let lastKey = '';
     let repeats = 0;
     let forcedCompaction = false;
+    let futile = 0;
 
     for (let step = 1; ; step++) {
       if (step > maxSteps) {
@@ -188,10 +212,23 @@ export class Agent {
         yield { type: 'done', reason: 'aborted', steps: step - 1 };
         return;
       }
-      yield* this.manageContext(signal);
+      if (this.maxTurnTokens > 0 && this.usage.inputTokens + this.usage.outputTokens - usedAtStart >= this.maxTurnTokens) {
+        yield { type: 'done', reason: 'budget', steps: step - 1 };
+        return;
+      }
+      if (yield* this.manageContext(signal)) {
+        // Summarized, and still at the limit: nothing more can be dropped.
+        if (++futile >= MAX_FUTILE_SUMMARIES) {
+          yield { type: 'error', message: tooSmallMessage(this.contextLimit()) };
+          yield { type: 'done', reason: 'error', steps: step - 1 };
+          return;
+        }
+      }
+      const requestSize = this.contextTokens();
 
       let message: AssistantMessage;
       let partial = '';
+      let reported = false;
       try {
         const stream = this.router.stream({ system: this.systemPrompt, messages: this.messages, tools: this.schemas, signal });
         let next = await stream.next();
@@ -209,6 +246,7 @@ export class Agent {
               yield { type: 'tool_call_streaming', name: ev.name };
               break;
             case 'usage':
+              reported = true;
               this.usage = {
                 inputTokens: this.usage.inputTokens + ev.usage.inputTokens,
                 outputTokens: this.usage.outputTokens + ev.usage.outputTokens,
@@ -254,6 +292,15 @@ export class Agent {
         }
       }
       message.content = cleanModelText(message.content);
+      if (!reported) {
+        // Some providers send no usage with a streamed reply; count an estimate so totals and budgets still hold.
+        const usage = {
+          inputTokens: requestSize,
+          outputTokens: estimateTokens(message.content) + (message.toolCalls ? estimateTokens(JSON.stringify(message.toolCalls)) : 0),
+        };
+        this.usage = { inputTokens: this.usage.inputTokens + usage.inputTokens, outputTokens: this.usage.outputTokens + usage.outputTokens };
+        yield { type: 'usage', usage, total: this.usage };
+      }
       this.messages.push(message);
       yield { type: 'assistant', message };
 
@@ -464,10 +511,11 @@ export class Agent {
     return final;
   }
 
-  private async *manageContext(signal: AbortSignal): AsyncGenerator<AgentEvent> {
+  /** Trims and, if needed, summarizes. Returns true when a summary still left the conversation at its limit. */
+  private async *manageContext(signal: AbortSignal): AsyncGenerator<AgentEvent, boolean> {
     const limit = this.contextLimit();
     let tokens = this.contextTokens();
-    if (tokens > limit * 0.7) {
+    if (tokens > Math.min(limit * 0.7, TRIM_OLD_BULK_AT)) {
       const saved = microCompact(this.messages);
       if (saved > 0) {
         dropEchoes(this.messages);
@@ -475,7 +523,9 @@ export class Agent {
         tokens -= saved;
       }
     }
-    if (tokens > limit) yield* this.compact(signal, 'auto');
+    if (tokens <= limit) return false;
+    yield* this.compact(signal, 'auto');
+    return this.contextTokens() > limit * 0.9;
   }
 
   /**

@@ -44,7 +44,9 @@ export function buildLocalSystemPrompt(env: LocalPromptEnv): string {
 - Never do anything destructive or outward-facing (deleting data, force-pushing, publishing, deploying) unless the user explicitly asked for it.`,
 
     `# Building new projects
-- If the user wants a new app and doesn't name a stack, choose a sensible modern default (web apps: Vite + React + TypeScript + Tailwind CSS) and create it in a new subfolder unless told otherwise.
+- Unless the user names a stack, pick the simplest one that does the job well. Something that runs in a browser with no backend and little state (a game, a calculator, a landing page, a small tool) is plain HTML, CSS and JavaScript: no framework, no build step, no npm. An app with several screens, shared state or data is Vite + React + TypeScript + Tailwind CSS.
+- Create it in a new subfolder named after the project unless told otherwise, with its files grouped the way the stack expects (a static site: index.html, css/, js/, assets/).
+- Write each new file complete in one write_file call, and create the files of a small project in the same reply. Simple does not mean unfinished: every feature working, a designed interface, nothing stubbed.
 - Commands run without a terminal attached, so always pass non-interactive flags (e.g. npm create vite@latest my-app -- --template react-ts, --yes).
 - Start dev servers and other long-running processes with run_command background=true, then check them with the process tool.`,
 

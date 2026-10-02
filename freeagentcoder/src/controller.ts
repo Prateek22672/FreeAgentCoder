@@ -35,6 +35,7 @@ import { compactNumber, errorMessage, formatDuration } from './shared/format';
 import { AUTO_MODEL, type AttachmentInput, type FromWebview, type HealthEntry, type HealthStatus, type HealthView, type HistoryMode, type KeySource, type KeyStatus, type KeyView, type LessonView, type OverviewView, type PermissionMode, type ProjectStatus, type PromptsLeft, type RoleHealth, type RouteView, type SettingsView, type Tier, type ToWebview, type PlansView } from './shared/protocol';
 import { adviseKeys, estimatePromptsLeft, providerCapacity } from './usage/advisor';
 import { capacityMessage, capacityRisk, estimateSavings, isDailyLimit, requestsNeeded, type TaskShape } from './usage/forecast';
+import { PagePreviews } from './preview/pages';
 import { UsageStore } from './usage/usageStore';
 
 const MODE_KEY = 'freeagentcoder.mode';
@@ -131,6 +132,7 @@ function dailyLimitFrom(message: string): number | undefined {
 export class Controller implements vscode.Disposable {
     private readonly keys: KeyStore;
     private readonly usage: UsageStore;
+    private readonly previews = new PagePreviews();
     private readonly history: HistoryStore;
     private readonly errorLog: ErrorLog;
     private readonly memory: MemoryStore;
@@ -207,6 +209,9 @@ export class Controller implements vscode.Disposable {
             mode: () => this.mode,
             log: (entry) => this.logTask(entry),
             features: () => this.features,
+            taskTokenLimit: () => Math.max(0, vscode.workspace.getConfiguration('freeagentcoder').get<number>('taskTokenLimit', 500_000)),
+            previews: this.previews,
+            checkPages: () => vscode.workspace.getConfiguration('freeagentcoder').get<boolean>('checkPages', true),
         });
 
         this.disposables.push(
@@ -281,6 +286,7 @@ export class Controller implements vscode.Disposable {
     dispose(): void {
         clearTimeout(this.settingsTimer);
         clearTimeout(this.logsTimer);
+        this.previews.dispose();
         this.telemetry.dispose();
         for (const disposable of this.disposables) {
             disposable.dispose();
@@ -409,6 +415,8 @@ export class Controller implements vscode.Disposable {
                     await vscode.env.openExternal(vscode.Uri.parse(message.url));
                 }
                 return;
+            case 'openPreview':
+                return this.openPreview(message.kind, String(message.target ?? ''));
             case 'copy':
                 await vscode.env.clipboard.writeText(message.text);
                 return;
@@ -1181,7 +1189,7 @@ export class Controller implements vscode.Disposable {
         this.dailyWarned.clear();
         this.telemetry.taskFinished(
             end.reason === 'completed' ? 'done' : end.reason === 'aborted' ? 'stopped' : 'failed',
-            end.reason === 'max_steps' ? 'max-steps' : (this.lastFailure ?? 'unknown'),
+            end.reason === 'max_steps' ? 'max-steps' : end.reason === 'budget' ? 'token-limit' : (this.lastFailure ?? 'unknown'),
             this.lastSpecialist,
             {
                 // A correction means the previous answer was not right: counted against accuracy.
@@ -1428,6 +1436,31 @@ export class Controller implements vscode.Disposable {
             await vscode.window.showTextDocument(uri, { preview: true, selection: position ? new vscode.Range(position, position) : undefined });
         } catch {
             this.toast(`Couldn't open ${filePath}.`, 'error');
+        }
+    }
+
+    /**
+     * Shows what a task made, beside the code: a dev server it left running,
+     * or a page it wrote, served from this computer so that scripts and
+     * modules load as they would on a real site. Only a page inside the open
+     * folder or an address on this computer is ever opened.
+     */
+    private async openPreview(kind: 'file' | 'url', target: string): Promise<void> {
+        try {
+            let url: string | undefined = target;
+            if (kind === 'file') {
+                const folder = vscode.workspace.workspaceFolders?.[0];
+                url = folder ? await this.previews.urlFor(folder.uri.fsPath, target) : undefined;
+            } else if (!/^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?(\/|$)/i.test(target)) {
+                return;
+            }
+            if (!url) {
+                return;
+            }
+            const address = url;
+            await vscode.commands.executeCommand('simpleBrowser.show', address).then(undefined, () => vscode.env.openExternal(vscode.Uri.parse(address)));
+        } catch {
+            this.toast(`Couldn't open a preview of ${target}.`, 'error');
         }
     }
 
@@ -1775,6 +1808,9 @@ export class Controller implements vscode.Disposable {
         }
         this.sink?.post(message);
         if (message.type === 'turnEnd') {
+            if (message.preview?.auto && vscode.workspace.getConfiguration('freeagentcoder').get<boolean>('openPreview', true)) {
+                void this.openPreview(message.preview.kind, message.preview.target);
+            }
             void this.afterTurn(message);
         }
     }

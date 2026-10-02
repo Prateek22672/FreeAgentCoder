@@ -1,5 +1,24 @@
 # Changelog
 
+## 0.4.2 — Small builds stay small
+
+### Fixed
+
+- **A small build no longer turns into a big one.** Asked for something like a browser game, the agent used to set up Vite, React, Tailwind and a test runner first, one small step at a time, and could use hundreds of thousands of tokens before writing any of the game. It now picks the simplest stack that does the job well: something that runs in a browser with no backend is plain HTML, CSS and JavaScript, written in a few steps, in its own folder (`index.html`, `css/`, `js/`). A framework is used when you name one or the app needs one.
+- **The agent is no longer sent back to pass a check that cannot exist.** A task could be refused its finish until a "build or tests" check passed, even for a project with nothing to build, which sent the agent off to add a build system. A check is now required only when the project has the build or test it names.
+- **Continue keeps the task's method and checks.** The Continue button used to restart the work as a quick task on the fast models.
+- Token counts are right on OpenAI keys, which reported none before.
+
+### Added
+
+- **Web pages are run before they are called done.** A page can read well and still crash on its first line, and a model cannot tell without running it. When a task writes or changes a plain web page, FreeAgentCoder now loads it in a hidden browser (Chrome, Edge, Brave or Chromium already on your computer), and any error — with its file and line — goes back to the agent to fix before it may finish. A page that loads cleanly costs no extra tokens. The agent can also run the same check itself, mid-task. `freeagentcoder.checkPages` turns it off; with no such browser installed it is skipped.
+- **A preview when the task ends.** A web page the agent made, or a dev server it left running, opens beside your code, and every finished task that made one has an **Open preview** button. A plain page is served from your own computer only (127.0.0.1), so its scripts load as they would on a real site; nothing leaves your machine. `freeagentcoder.openPreview` turns the automatic opening off.
+- **A token limit per task.** A task pauses after 500,000 tokens and asks before going on, so one runaway task cannot use up a day's free allowance or a paid key. Nothing is lost: press **Continue**. `freeagentcoder.taskTokenLimit` changes the limit; `0` turns it off.
+
+### Changed
+
+- **Long tasks cost less.** Old command output and file contents the agent no longer needs are dropped from the conversation much earlier, so each step of a long task resends less. The most recent work is always kept in full.
+
 ## 0.4.1 — Test lab
 
 - **FreeAgentCoder: Run a Test Task**, for the project's own testing. With a lab token from the admin page, it runs a fixed test task in the open folder and sends its numbers and conversation to the Test lab. Hidden unless `freeagentcoder.labToken` is set.

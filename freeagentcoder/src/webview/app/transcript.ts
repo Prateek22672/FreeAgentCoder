@@ -613,6 +613,7 @@ class TurnView {
         const outcomes: Record<TurnEndReason, [IconName, string, string]> = {
             completed: ['check', 'Done', 'ok'],
             max_steps: ['alert', 'Paused at the step limit', 'warn'],
+            budget: ['alert', 'Paused at the token limit', 'warn'],
             aborted: ['stop', 'Stopped', 'muted'],
             error: ['close', 'Failed', 'bad'],
         };
@@ -649,14 +650,26 @@ class TurnView {
         }
 
         const actions = h('div', { class: 'turn-actions' });
+        const preview = message.preview;
+        if (preview) {
+            actions.append(
+                button(
+                    'Open preview',
+                    'primary small',
+                    () => send({ type: 'openPreview', kind: preview.kind, target: preview.target }),
+                    'external',
+                    `Show ${preview.target} beside your code`,
+                ),
+            );
+        }
         if (message.canUndo) {
             this.undoButton = button('Undo changes', 'secondary small', () => send({ type: 'undo', turnId: this.id }), 'undo', 'Restore the files changed in this task');
             actions.append(this.undoButton);
         }
-        if (message.reason === 'max_steps') {
+        if (message.reason === 'max_steps' || message.reason === 'budget') {
             actions.append(button('Continue', 'primary small', () => send({ type: 'continue' })));
         }
-        if (message.reason === 'completed' || message.reason === 'max_steps') {
+        if (message.reason === 'completed' || message.reason === 'max_steps' || message.reason === 'budget') {
             actions.append(
                 button('Point out a fix', 'ghost small', () => window.dispatchEvent(new CustomEvent('fac:correct')), 'target', 'Tell FreeAgentCoder exactly what is wrong. Attach a screenshot if it helps.'),
             );

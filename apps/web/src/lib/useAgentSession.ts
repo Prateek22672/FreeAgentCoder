@@ -277,7 +277,7 @@ export function useAgentSession(): AgentSession {
               setItems((prev) => [...prev, { kind: 'notice', id: uid(), text: ev.message, level: 'error' }]);
               break;
             case 'done':
-              runRecord.reason = ev.reason;
+              runRecord.reason = ev.reason === 'budget' ? 'max_steps' : ev.reason;
               runRecord.steps = ev.steps;
               if (ev.reason === 'max_steps') setItems((prev) => [...prev, { kind: 'status', id: uid(), text: 'Paused at the step limit. Send "continue" to keep going.' }]);
               if (ev.reason === 'aborted') setItems((prev) => [...prev, { kind: 'status', id: uid(), text: 'Stopped.' }]);

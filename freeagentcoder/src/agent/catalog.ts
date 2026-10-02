@@ -140,7 +140,7 @@ export function planRoute<K extends KeyRef>(
     return { steps };
 }
 
-const FOLLOW_UP = /^(y|yes|yep|yeah|ok|okay|sure|continue|go on|go ahead|proceed|do it|keep going|next|retry|try again)[.!\s]*$/i;
+const FOLLOW_UP = /^(y|yes|yep|yeah|ok|okay|sure|continue|continue where you left off|go on|go ahead|proceed|do it|keep going|next|retry|try again)[.!\s]*$/i;
 const QUESTION = /^(what|why|how|where|which|who|when|explain|describe|summari[sz]e|show|list|find|search|read|tell|is|are|does|do|can|could|should|would)\b/i;
 export function isFollowUp(text: string): boolean {
     return FOLLOW_UP.test(text.trim());

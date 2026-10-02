@@ -1,3 +1,5 @@
+import { promises as fs } from 'node:fs';
+import * as path from 'node:path';
 import * as vscode from 'vscode';
 import {
     dangerousReason,
@@ -15,11 +17,13 @@ import {
 } from '@agentic/core';
 import { createLocalAgent, loadConfig, type AgenticConfig, type LocalAgent } from '@agentic/core/node';
 import { compactNumber, errorMessage } from '../shared/format';
-import type { ApprovalView, AttachmentView, ChangedFile, PermissionMode, Tier, ToolDisplayView, ToWebview, TurnEndReason } from '../shared/protocol';
+import type { ApprovalView, AttachmentView, ChangedFile, PermissionMode, PreviewView, Tier, ToolDisplayView, ToWebview, TurnEndReason } from '../shared/protocol';
 import type { DiffDocuments } from './diffDocuments';
 import { EXTRA_INSTRUCTIONS } from './instructions';
-import { evaluateGates, reviewMessage, type Playbook } from './playbooks';
+import { completionReview, gateResults } from './gates';
+import type { Playbook } from './playbooks';
 import type { ProjectCheck } from './projectChecks';
+import { checkPageTool, pageFeedback, pageProblem, type PagePreviews } from '../preview/pages';
 import { projectSnapshot } from './projectSnapshot';
 import { explainError, isContextTooLarge, recoveryFor } from './recovery';
 import { codeChanged, verificationReview, type SequencedRun } from './testing';
@@ -31,6 +35,9 @@ const MAX_STEPS = 150;
 const DIFF_LINES = 400;
 const OUTPUT_CHARS = 8_000;
 const RESUME_PROMPT = 'Continue the task from where you stopped. (The editor resumed it automatically after a temporary problem reaching the AI providers.)';
+/** A local address in what a dev server printed. */
+const LOCAL_URL = /https?:\/\/(?:localhost|127\.0\.0\.1|\[::1\]):\d+[^\s"'<>)\]]*/i;
+const ANSI = /\u001b\[[0-9;?]*[A-Za-z]/g;
 const COMPACTED_PROMPT =
     'Continue the task from where you stopped. (The editor summarized the earlier conversation because it had grown too large for the models; re-read any file you need rather than relying on memory of its contents.)';
 export interface TurnPlan {
@@ -88,6 +95,10 @@ interface ActiveTurn {
     /** Order of edits and command runs, so a check can be matched to the edit before it. */
     seq: number;
     lastEditSeq: number;
+    /** `lastEditSeq` as it was when a page was last loaded in a browser, so the same files are not checked twice. */
+    pageCheckSeq?: number;
+    /** Content that does not fit has been sent back once already. */
+    layoutRaised?: boolean;
     /** Ends an automatic-retry wait early (when the user stops the task). */
     wake?: () => void;
 }
@@ -99,6 +110,12 @@ export interface SessionOptions {
     mode(): PermissionMode;
     log(entry: SessionLogEntry): void;
     features(): { autoRecovery: boolean };
+    /** Tokens one task may use before it pauses for the user to continue. 0: no limit. */
+    taskTokenLimit(): number;
+    /** Serves and checks web pages in the open folder. */
+    previews: PagePreviews;
+    /** Whether a web page is loaded in a hidden browser before the agent may call it done. */
+    checkPages(): boolean;
 }
 
 /** One conversation with the engine: runs turns and translates its events for the webview. */
@@ -313,6 +330,7 @@ export class AgentSession implements vscode.Disposable {
             }
             const agent = local.agent;
             agent.permissions.mode = this.options.mode();
+            agent.maxTurnTokens = this.options.taskTokenLimit();
             turn.tokensAtStart = agent.usage.inputTokens + agent.usage.outputTokens;
             this.abort = new AbortController();
 
@@ -333,6 +351,14 @@ export class AgentSession implements vscode.Disposable {
                 const outcome = await this.runAgent(agent, input, turn.id, first ? images : undefined);
                 steps += outcome.steps;
                 reason = outcome.reason;
+                if (reason === 'budget') {
+                    this.options.post({
+                        type: 'notice',
+                        turnId: turn.id,
+                        level: 'warn',
+                        message: `Paused: this task has used ${compactNumber(agent.usage.inputTokens + agent.usage.outputTokens - turn.tokensAtStart)} tokens, the most one task may use before asking you. Nothing is lost. Press Continue to carry on, or change the limit in Settings (freeagentcoder.taskTokenLimit).`,
+                    });
+                }
                 if (reason !== 'error' || outcome.error === undefined) {
                     break;
                 }
@@ -396,7 +422,7 @@ export class AgentSession implements vscode.Disposable {
                 this.options.log({ kind: 'agent', source: 'Task', message: errorMessage(error), recovered: false, action: 'Stopped the task and showed the error' });
             }
         } finally {
-            this.finish(turn, reason, steps);
+            await this.finish(turn, reason, steps);
         }
     }
 
@@ -434,13 +460,10 @@ export class AgentSession implements vscode.Disposable {
         });
     }
 
-    private finish(turn: ActiveTurn, reason: TurnEndReason, steps: number): void {
+    private async finish(turn: ActiveTurn, reason: TurnEndReason, steps: number): Promise<void> {
         for (const resolve of [...this.approvals.values()]) {
             resolve({ allow: false, feedback: 'The task ended before this was approved.' });
         }
-        this.turn = undefined;
-        this.abort = undefined;
-
         const files: ChangedFile[] = [];
         for (const [path, file] of turn.files) {
             const diff = lineDiff(file.before, file.after, 0);
@@ -451,12 +474,25 @@ export class AgentSession implements vscode.Disposable {
             }
         }
 
-        if (turn.playbooks.length && (turn.runs.length || turn.files.size)) {
+        // Everything that needs the disk is read before the turn is marked over, so a new task cannot start in between.
+        const gates =
+            turn.playbooks.length && (turn.runs.length || turn.files.size) && this.localRoot
+                ? await gateResults(turn.playbooks, turn.runs, turn.release, this.localRoot, turn.files.keys()).catch(() => undefined)
+                : undefined;
+        const preview = reason === 'aborted' || reason === 'error' ? undefined : await this.previewFor(turn).catch(() => undefined);
+        if (reason === 'completed' && preview?.kind === 'file') {
+            // The agent may finish only so many times; if it changed the page after its last check, say how it stands.
+            await this.pageReview(turn, '', true).catch(() => undefined);
+        }
+        this.turn = undefined;
+        this.abort = undefined;
+
+        if (gates) {
             this.options.post({
                 type: 'checks',
                 turnId: turn.id,
                 playbooks: turn.playbooks.map((p) => p.name),
-                gates: evaluateGates(turn.playbooks, turn.runs, turn.release),
+                gates,
                 security: [...new Set(turn.playbooks.flatMap((p) => p.security))],
                 release: turn.release ? [...new Set(turn.playbooks.flatMap((p) => p.release))] : [],
             });
@@ -477,8 +513,108 @@ export class AgentSession implements vscode.Disposable {
             tokens,
             files,
             canUndo,
+            preview,
         });
         this.options.post({ type: 'usage', ...this.usageInfo() });
+    }
+
+    /**
+     * What to show when the task ends: the address of a server it left running,
+     * or a web page it wrote that opens straight from the disk.
+     */
+    private async previewFor(turn: ActiveTurn): Promise<PreviewView | undefined> {
+        const root = this.localRoot;
+        if (!root || !this.local) {
+            return undefined;
+        }
+        for (const proc of this.local.processes.list()) {
+            const url = proc.exited ? undefined : LOCAL_URL.exec(proc.output.replace(ANSI, ''))?.[0];
+            if (url) {
+                return { kind: 'url', target: url.replace('[::1]', 'localhost'), auto: turn.runs.some((run) => run.background) };
+            }
+        }
+        const page = await this.pageFor(turn);
+        return page ? { kind: 'file', target: page.file, auto: page.created } : undefined;
+    }
+
+    /**
+     * The plain web page this task worked on: an HTML file it wrote, or the
+     * index.html beside the scripts and styles it changed. A page next to a
+     * package.json belongs to a dev server and shows nothing on its own.
+     */
+    private async pageFor(turn: ActiveTurn): Promise<{ file: string; created: boolean } | undefined> {
+        const root = this.localRoot;
+        if (!root) {
+            return undefined;
+        }
+        const has = (file: string) =>
+            fs.stat(path.join(root, file)).then(
+                (stat) => stat.isFile(),
+                () => false,
+            );
+        const inside = [...turn.files.entries()].filter(([file]) => !path.isAbsolute(file));
+        const pages = inside.filter(([file]) => /\.html?$/i.test(file)).sort(([a, fa], [b, fb]) => rank(a, fa.created) - rank(b, fb.created));
+        for (const [file, touched] of pages) {
+            if (!(await has(path.posix.join(path.posix.dirname(file), 'package.json')))) {
+                return { file, created: touched.created };
+            }
+        }
+        for (const [file] of inside.filter(([name]) => /\.(?:js|mjs|css)$/i.test(name))) {
+            // Walk up from the script or stylesheet to the page that loads it.
+            for (let dir = path.posix.dirname(file); ; dir = path.posix.dirname(dir)) {
+                if (await has(path.posix.join(dir, 'package.json'))) {
+                    break;
+                }
+                if (await has(path.posix.join(dir, 'index.html'))) {
+                    return { file: path.posix.join(dir, 'index.html'), created: false };
+                }
+                if (dir === '.' || dir === '/') {
+                    break;
+                }
+            }
+        }
+        return undefined;
+    }
+
+    /**
+     * Loads the page this task worked on in a hidden browser. With errors, the
+     * agent is sent back to fix them (or, at the very end, the user is told);
+     * a page that loads cleanly costs nothing more.
+     */
+    private async pageReview(turn: ActiveTurn, reply: string, final = false): Promise<string | undefined> {
+        const root = this.localRoot;
+        if (!root || !this.options.checkPages() || !turn.files.size || turn.pageCheckSeq === turn.lastEditSeq || reply.trim().endsWith('?')) {
+            return undefined;
+        }
+        const page = await this.pageFor(turn);
+        if (!page) {
+            return undefined;
+        }
+        const report = await this.options.previews.check(root, page.file, this.abort?.signal);
+        if (!report || this.abort?.signal.aborted) {
+            return undefined;
+        }
+        turn.pageCheckSeq = turn.lastEditSeq;
+        const layout = !turn.layoutRaised && !final;
+        const problem = pageProblem(report, layout || final);
+        if (problem && layout && !report.errors.length && report.layout.length) {
+            turn.layoutRaised = true;
+        }
+        if (!problem) {
+            this.options.post({ type: 'notice', turnId: turn.id, level: 'info', message: `Checked ${page.file} in a browser: it loads with no errors.` });
+            return undefined;
+        }
+        this.options.post({
+            type: 'notice',
+            turnId: turn.id,
+            level: 'warn',
+            message: !final
+                ? `Loaded ${page.file} in a browser: ${problem}. Sending it back to be fixed.`
+                : pageProblem(report)
+                  ? `${page.file} still does not work in a browser (${problem}). Send "fix the errors in the page" to carry on.`
+                  : `${page.file} loads, but ${problem} Send "fix the layout" if that is not intended.`,
+        });
+        return pageFeedback(page.file, report, layout);
     }
 
     private forward(turnId: string, event: AgentEvent): void {
@@ -546,6 +682,9 @@ export class AgentSession implements vscode.Disposable {
             diffId = this.recordFile(raw.path, raw.before, raw.after, raw.created);
         }
         const turn = this.turn;
+        if (ok && event.call.name === 'check_page' && turn) {
+            turn.pageCheckSeq = turn.lastEditSeq;
+        }
         if (raw?.type === 'command' && event.call.name === 'run_command' && turn) {
             turn.runs.push({ command: raw.command, exitCode: raw.exitCode, background: !!raw.background, seq: ++turn.seq });
         }
@@ -613,20 +752,22 @@ export class AgentSession implements vscode.Disposable {
      * passed, and any other complex task that changed code must have passed
      * one of the project's own checks since its last edit.
      */
-    private readonly reviewCompletion = (message: AssistantMessage): string | undefined => {
+    private readonly reviewCompletion = async (message: AssistantMessage): Promise<string | undefined> => {
         const turn = this.turn;
         if (!turn) {
             return undefined;
         }
+        let feedback: string | undefined;
         if (turn.playbooks.length) {
-            return turn.files.size || turn.runs.length || turn.playbooks.some((p) => p.id === 'test')
-                ? reviewMessage(evaluateGates(turn.playbooks, turn.runs, turn.release), message.content)
-                : undefined;
+            feedback =
+                (turn.files.size || turn.runs.length || turn.playbooks.some((p) => p.id === 'test')) && this.localRoot
+                    ? await completionReview(turn.playbooks, turn.runs, turn.release, this.localRoot, turn.files.keys(), message.content)
+                    : undefined;
+        } else if (turn.deep && turn.checks.length && turn.files.size && codeChanged(turn.files.keys())) {
+            feedback = verificationReview(turn.checks, turn.runs, turn.lastEditSeq, message.content);
         }
-        if (turn.deep && turn.checks.length && turn.files.size && codeChanged(turn.files.keys())) {
-            return verificationReview(turn.checks, turn.runs, turn.lastEditSeq, message.content);
-        }
-        return undefined;
+        // Whatever the checks say, a web page must also load: a hidden browser opens it and reports its errors.
+        return feedback ?? this.pageReview(turn, message.content).catch(() => undefined);
     };
 
     private readonly approve = (request: ApprovalRequest): Promise<ApprovalDecision> => {
@@ -687,6 +828,7 @@ export class AgentSession implements vscode.Disposable {
                 agentName: 'FreeAgentCoder',
                 extraInstructions: [EXTRA_INSTRUCTIONS, await projectSnapshot(cwd)].filter(Boolean).join('\n\n'),
                 maxSteps: MAX_STEPS,
+                extraTools: [checkPageTool(this.options.previews)],
             });
             this.local = local;
             this.localRoot = cwd;
@@ -701,4 +843,9 @@ export class AgentSession implements vscode.Disposable {
         const explained = explainError(message);
         this.options.post({ type: 'error', turnId, message: explained.title, hint: explained.hint, action: explained.action, details: message });
     }
+}
+
+/** Which page to show first: a new index.html nearest the top of the project. */
+function rank(file: string, created: boolean): number {
+    return (created ? 0 : 100) + (/(^|\/)index\.html?$/i.test(file) ? 0 : 10) + file.split('/').length;
 }

@@ -3,6 +3,7 @@ import { PermissionPolicy, type PermissionMode } from '../agent/permissions';
 import { buildLocalSystemPrompt } from '../agent/prompt';
 import type { ModelRouter } from '../providers/router';
 import { fileTools } from '../tools/index';
+import type { Tool } from '../tools/types';
 import { CodeIndex, searchCodeTool } from '../tools/search';
 import type { Message, Todo } from '../types';
 import { buildRouter, type AgenticConfig } from './config';
@@ -49,6 +50,8 @@ export interface LocalAgentOptions {
   extraInstructions?: string;
   /** Checked before the agent ends a turn; see AgentOptions.reviewCompletion. */
   reviewCompletion?: AgentOptions['reviewCompletion'];
+  /** Tools the host app adds to the built-in ones. */
+  extraTools?: Tool[];
 }
 
 export interface LocalAgent {
@@ -92,6 +95,7 @@ export async function createLocalAgent(opts: LocalAgentOptions): Promise<LocalAg
       processTool(processes),
       fetchUrlTool,
       environmentTool,
+      ...(opts.extraTools ?? []),
     ],
     systemPrompt,
     permissions: new PermissionPolicy(opts.mode ?? opts.config.mode ?? 'ask'),

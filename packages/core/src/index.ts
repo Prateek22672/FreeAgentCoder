@@ -1,5 +1,5 @@
 export * from './types';
-export { Agent, announcesAction, type AgentEvent, type AgentOptions, type RunOptions } from './agent/agent';
+export { Agent, announcesAction, tooSmallMessage, type AgentEvent, type AgentOptions, type RunOptions } from './agent/agent';
 export {
   PermissionPolicy,
   PERMISSION_MODES,

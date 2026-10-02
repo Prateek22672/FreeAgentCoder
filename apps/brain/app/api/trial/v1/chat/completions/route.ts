@@ -87,9 +87,11 @@ export async function POST(request: Request): Promise<Response> {
     const order = plan(await poolTargets(), tier, size);
     if (!order.length) {
         void note('failed', install);
-        // Said as "too large" when keys exist but none takes a request this size, so the extension compacts and retries.
+        // Keys exist, but the ones that take a request this size are used up or resting. Said as busy, not as
+        // "too large": told that, the extension shrinks its limit to the small models' size for the whole session
+        // and summarizes in circles, where waiting or another key is what helps.
         return size > 6_000
-            ? error('Request too large for the free trial’s models. Maximum context exceeded.', 413, 'context_length_exceeded')
+            ? error('The free trial’s large-context models are busy or used up for now, and this request is too big for its small ones. Try again in a few minutes, or add your own free Gemini key.', 429, 'rate_limit_exceeded')
             : error('The free trial has no model available right now. Try again in a minute, or add your own free key.', 503, 'trial_unavailable');
     }
 
