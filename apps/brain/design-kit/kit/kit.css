@@ -1,0 +1,117 @@
+/*
+ * Fyxable kit: motion and surface utilities shared by every site.
+ * Colours come from the site's own tokens (--accent, --ink, --line), set in styles.css.
+ * Everything here turns itself off for people who ask for reduced motion.
+ */
+:root {
+  --ease-out: cubic-bezier(.16, 1, .3, 1);
+  --ease-in-out: cubic-bezier(.76, 0, .24, 1);
+}
+
+/* Fade-up on entering the viewport (Reveal, Stagger). */
+.k-reveal { opacity: 0; transform: translateY(var(--k-rise, 24px)); transition: opacity .9s var(--ease-out), transform .9s var(--ease-out); transition-delay: var(--k-delay, 0ms); }
+.k-reveal.is-in { opacity: 1; transform: none; }
+
+/* Masked line reveal (Lines): each line rises out of its own clipped box. */
+.k-line { display: block; overflow: hidden; padding-bottom: .06em; margin-bottom: -.06em; }
+.k-line > span { display: block; transform: translateY(110%); transition: transform 1.1s var(--ease-out); transition-delay: var(--k-delay, 0ms); }
+.is-in .k-line > span { transform: none; }
+
+/* Word cycle (WordCycle). */
+.k-cycle { position: relative; display: inline-flex; align-items: baseline; vertical-align: bottom; }
+.k-cycle-measure { position: absolute; visibility: hidden; pointer-events: none; white-space: nowrap; }
+.k-cycle-box { display: inline-block; white-space: nowrap; transition: width .6s var(--ease-out); }
+.k-cycle-word { display: inline-block; animation: k-cycle-in .9s var(--ease-out) backwards; transition: transform .45s cubic-bezier(.7, 0, .84, 0), opacity .45s ease-in, filter .45s ease-in; }
+.k-cycle-word[data-out='true'] { transform: translateY(-40%); opacity: 0; filter: blur(12px); }
+@keyframes k-cycle-in { from { transform: translateY(40%); opacity: 0; filter: blur(12px); } }
+
+/* Marquee (Marquee): a doubled track moved by -50%, faded at both edges. */
+.k-marquee { overflow: hidden; -webkit-mask-image: linear-gradient(90deg, transparent, #000 8%, #000 92%, transparent); mask-image: linear-gradient(90deg, transparent, #000 8%, #000 92%, transparent); }
+.k-marquee-track { display: flex; width: max-content; animation: k-marquee var(--k-duration, 30s) linear infinite; }
+.k-marquee[data-reverse='true'] .k-marquee-track { animation-direction: reverse; }
+.k-marquee-item { display: inline-flex; align-items: center; gap: var(--k-gap, 3rem); padding-right: var(--k-gap, 3rem); white-space: nowrap; }
+.k-marquee-item::after { content: ''; width: .35em; height: .35em; border-radius: 50%; background: currentColor; opacity: .45; }
+@keyframes k-marquee { to { transform: translateX(-50%); } }
+
+/* Scroll highlight (ScrollHighlight): words light up as the paragraph is read. */
+.k-highlight .k-w { color: var(--k-dim, color-mix(in srgb, currentColor 18%, transparent)); transition: color .25s ease; }
+.k-highlight .k-w.on { color: inherit; }
+.k-highlight .k-w.accent.on { color: var(--accent); }
+
+/* Pinned scene (Pinned): a tall section with a sticky, full-height frame. */
+.k-pin { position: relative; }
+.k-pin-frame { position: sticky; top: 0; height: 100dvh; overflow: hidden; }
+
+/* Film grain: put <div className="k-grain" /> inside a position:relative section. */
+.k-grain { position: absolute; inset: -50%; pointer-events: none; opacity: var(--k-grain, .06); mix-blend-mode: overlay; z-index: 1;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 512 512' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.75' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  animation: k-grain .15s steps(1) infinite; }
+@keyframes k-grain { 0%, 100% { transform: translate(0, 0); } 20% { transform: translate(3%, 1%); } 60% { transform: translate(1%, -4%); } }
+
+/* Hairline grid: cells separated by 1px rules instead of cards. */
+.k-cells { display: grid; gap: 1px; background: var(--line, color-mix(in srgb, currentColor 10%, transparent)); border: 1px solid var(--line, color-mix(in srgb, currentColor 10%, transparent)); }
+.k-cells > * { background: var(--bg, #fff); padding: clamp(1.25rem, 2.4vw, 2rem); }
+
+/* Pill call to action with a trailing icon circle; the gap opens on hover. */
+.k-cta { display: inline-flex; align-items: center; gap: 10px; padding: 6px 6px 6px 20px; border-radius: 999px; background: var(--cta-bg, currentColor); color: var(--cta-fg, var(--bg, #fff)); font-weight: 500; text-decoration: none; transition: gap .35s var(--ease-out), transform .2s; }
+.k-cta:hover { gap: 16px; }
+.k-cta:active { transform: scale(.97); }
+.k-cta > i { display: grid; place-items: center; width: 34px; height: 34px; border-radius: 50%; background: var(--accent, #d97757); color: var(--on-accent, #fff); font-style: normal; transition: transform .35s var(--ease-out); }
+.k-cta:hover > i { transform: rotate(-45deg) scale(1.08); }
+
+/* Hover fill-wipe: a colour rises from below and the text inverts. */
+.k-wipe { position: relative; overflow: hidden; isolation: isolate; }
+.k-wipe::before { content: ''; position: absolute; inset: 0; z-index: -1; background: var(--accent, #d97757); transform: translateY(101%); transition: transform .55s var(--ease-in-out); }
+.k-wipe:hover::before, .k-wipe:focus-visible::before { transform: none; }
+.k-wipe > * { transition: color .4s; }
+.k-wipe:hover > * { color: var(--bg, #fff); }
+
+/* Glass surface for cards and chips over imagery or gradients. */
+.k-glass { background: color-mix(in srgb, #fff 8%, transparent); border: 1px solid color-mix(in srgb, #fff 16%, transparent); -webkit-backdrop-filter: blur(16px); backdrop-filter: blur(16px); }
+
+/* Adaptive pill nav (PillNav). */
+.k-nav { position: fixed; inset: 14px 0 auto; z-index: 50; display: flex; justify-content: center; padding: 0 14px; pointer-events: none; }
+.k-nav-pill { pointer-events: auto; display: flex; align-items: center; gap: 2px; padding: 5px 5px 5px 14px; border-radius: 999px; -webkit-backdrop-filter: blur(20px); backdrop-filter: blur(20px); box-shadow: 0 10px 40px -12px rgb(0 0 0 / .45);
+  background: rgb(12 12 14 / .72); color: rgb(255 255 255 / .86); transition: background .5s, color .5s; font-size: 14px; }
+.k-nav-pill a { color: inherit; text-decoration: none; padding: 8px 12px; border-radius: 999px; transition: background .2s; }
+.k-nav-pill a:hover { background: rgb(255 255 255 / .1); }
+.k-nav-brand { font-weight: 600; margin-right: 6px; }
+.k-nav-pill .k-nav-cta { margin-left: 4px; padding: 9px 16px; background: #fff; color: #0b0b0c; }
+.k-nav-pill.light { background: rgb(255 255 255 / .9); color: #222; }
+.k-nav-pill.light a:hover { background: rgb(0 0 0 / .05); }
+.k-nav-pill.light .k-nav-cta { background: #0b0b0c; color: #fff; }
+.k-nav-toggle { display: none; border: 0; background: transparent; color: inherit; padding: 8px 10px; font: inherit; cursor: pointer; }
+@media (max-width: 720px) {
+  .k-nav-links { display: none; }
+  .k-nav-toggle { display: inline-block; }
+  .k-nav-pill.open { flex-wrap: wrap; border-radius: 22px; }
+  .k-nav-pill.open .k-nav-links { display: flex; flex-direction: column; flex-basis: 100%; padding: 6px 0; }
+}
+
+/* FAQ (Faq): a + that turns into an x, and the answer opens smoothly. */
+.k-faq { border-top: 1px solid var(--line, color-mix(in srgb, currentColor 12%, transparent)); }
+.k-faq details { border-bottom: 1px solid var(--line, color-mix(in srgb, currentColor 12%, transparent)); }
+.k-faq summary { display: flex; justify-content: space-between; align-items: center; gap: 24px; padding: 22px 0; cursor: pointer; list-style: none; font-size: 1.08rem; }
+.k-faq summary::-webkit-details-marker { display: none; }
+.k-faq summary::after { content: '+'; font-size: 1.5rem; line-height: 1; color: var(--accent, currentColor); transition: transform .3s var(--ease-out); }
+.k-faq details[open] summary::after { transform: rotate(45deg); }
+.k-faq .k-faq-a { overflow: hidden; display: grid; grid-template-rows: 0fr; transition: grid-template-rows .4s var(--ease-out); }
+.k-faq details[open] .k-faq-a { grid-template-rows: 1fr; }
+.k-faq .k-faq-a > div { min-height: 0; padding-bottom: 0; color: var(--muted, color-mix(in srgb, currentColor 65%, transparent)); line-height: 1.7; max-width: 62ch; }
+.k-faq details[open] .k-faq-a > div { padding-bottom: 22px; }
+
+/* Stat strip (StatStrip): 1px dividers from the gap over a tinted parent. */
+.k-stats { display: grid; grid-template-columns: repeat(var(--k-cols, 3), 1fr); gap: 1px; background: var(--line, color-mix(in srgb, currentColor 12%, transparent)); border-radius: 16px; overflow: hidden; }
+.k-stats > div { background: var(--bg, #fff); padding: 20px 16px; }
+.k-stats dd { margin: 0; font-size: clamp(1.5rem, 3vw, 2.2rem); font-weight: 600; font-variant-numeric: tabular-nums; letter-spacing: -.02em; }
+.k-stats dt { margin-top: 4px; font-size: 11px; letter-spacing: .1em; text-transform: uppercase; opacity: .6; }
+@media (max-width: 560px) { .k-stats { grid-template-columns: 1fr 1fr; } }
+
+/* Scroll cue: a line that draws itself down, then retracts. */
+.k-cue { width: 1px; height: 64px; background: linear-gradient(currentColor, transparent); animation: k-cue 2.2s ease-in-out infinite; }
+@keyframes k-cue { 0% { transform: scaleY(0); transform-origin: top; } 50% { transform: scaleY(1); transform-origin: top; } 51% { transform-origin: bottom; } 100% { transform: scaleY(0); transform-origin: bottom; } }
+
+@media (prefers-reduced-motion: reduce) {
+  .k-reveal, .k-line > span, .k-cycle-word { opacity: 1 !important; transform: none !important; filter: none !important; transition: none !important; animation: none !important; }
+  .k-marquee-track, .k-grain, .k-cue { animation: none; }
+}

@@ -2,6 +2,7 @@ import 'server-only';
 import { createCipheriv, createDecipheriv, createHash, randomBytes, randomUUID } from 'node:crypto';
 import { createProvider, PRESETS, type ChatRequest, type Provider, type RouterEntry, type StreamEvent } from '@agentic/core';
 import { checkKey, deepCheckKey, PUBLISHED_LIMITS, type Health } from './keyhealth';
+import { outputTokens } from './modelLimits';
 import { NO_STORE_MESSAGE, settingsNeedStore, store } from './kv';
 
 /**
@@ -246,7 +247,7 @@ export async function poolEntries(): Promise<RouterEntry[]> {
         const apiKey = decrypt(k.cipher);
         if (!preset || !apiKey) return;
         entries.push({
-            provider: watched(createProvider(preset, { apiKey, maxOutputTokens: 4_096 }), k.id),
+            provider: watched(createProvider(preset, { apiKey, maxOutputTokens: outputTokens(preset.id) }), k.id),
             model: preset.defaultModel,
             contextWindow: preset.contextWindow,
             maxRequestTokens: preset.maxRequestTokens,

@@ -10,3 +10,8 @@ coverage/
 .wrangler/
 .vercel/
 *.vsix
+
+# Reference projects shared for the design library: studied, never committed.
+websites/
+# Reference apps shared for the design library: studied, never committed.
+app-ref/

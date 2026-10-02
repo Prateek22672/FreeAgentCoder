@@ -8,6 +8,7 @@
  */
 import 'server-only';
 import { ModelRouter, OpenAICompatProvider, PRESETS, createProvider, type RouterEntry } from '@agentic/core';
+import { outputTokens } from './modelLimits';
 
 /** Large-context providers first: answers are built from many excerpts. */
 const ORDER = ['gemini', 'openrouter', 'mistral', 'groq'];
@@ -53,7 +54,7 @@ export function routerForKeys(list: [string, string][]): ModelRouter | undefined
         .map(([provider, key]) => {
             const preset = PRESETS[provider]!;
             return {
-                provider: createProvider(preset, { apiKey: key, maxOutputTokens: 8_192 }),
+                provider: createProvider(preset, { apiKey: key, maxOutputTokens: outputTokens(preset.id) }),
                 model: preset.defaultModel,
                 contextWindow: preset.contextWindow,
                 maxRequestTokens: preset.maxRequestTokens,
@@ -88,7 +89,7 @@ export function routerForKey(provider: string, key: string): ModelRouter | undef
     if (!preset) return undefined;
     return new ModelRouter([
         {
-            provider: createProvider(preset, { apiKey: key, maxOutputTokens: 8_192 }),
+            provider: createProvider(preset, { apiKey: key, maxOutputTokens: outputTokens(preset.id) }),
             model: preset.defaultModel,
             contextWindow: preset.contextWindow,
             maxRequestTokens: preset.maxRequestTokens,
@@ -129,7 +130,7 @@ export function getRouter(): ModelRouter | undefined {
         const key = preset?.keyEnv?.map((name) => process.env[name]).find(Boolean);
         if (!preset || !key) continue;
         entries.push({
-            provider: createProvider(preset, { apiKey: key, maxOutputTokens: 8_192 }),
+            provider: createProvider(preset, { apiKey: key, maxOutputTokens: outputTokens(preset.id) }),
             model: preset.defaultModel,
             contextWindow: preset.contextWindow,
             maxRequestTokens: preset.maxRequestTokens,
