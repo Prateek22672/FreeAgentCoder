@@ -168,14 +168,15 @@ describe('Agent loop', () => {
     let summaryRequest: { tools: unknown[]; text: string } | undefined;
     const { agent, provider } = setup(
       [
-        call('read_file', { path: 'big.txt' }),
+        calls([1, 2, 3, 4, 5].map((n) => ['read_file', { path: `big${n}.txt` }])),
         (req) => {
           summaryRequest = { tools: req.tools, text: req.messages[0]!.content };
           return { role: 'assistant', content: 'SUMMARY: the user asked to inspect big.txt; it was read.' };
         },
         say('Done after compaction.'),
       ],
-      { maxContextTokens: 8_000, files: { '/big.txt': `${'x'.repeat(79)}\n`.repeat(400) } },
+      // Each read is sent cut to 8K characters, so it takes several to outgrow the limit.
+      { maxContextTokens: 8_000, files: Object.fromEntries([1, 2, 3, 4, 5].map((n) => [`/big${n}.txt`, `${'x'.repeat(79)}\n`.repeat(400)])) },
     );
     const events = await collect(agent.run('inspect big.txt'));
     expect(events.some((e) => e.type === 'compacted' && e.kind === 'summary')).toBe(true);
@@ -244,9 +245,10 @@ describe('Token use', () => {
   it('stops instead of summarizing in circles when the models are too small for the task', async () => {
     // A summary that is itself as big as the limit: nothing more can be dropped.
     const summary = () => ({ role: 'assistant' as const, content: `SUMMARY ${'the user wants the big file inspected. '.repeat(500)}` });
-    const { agent, provider } = setup([call('read_file', { path: 'big.txt' }), summary, call('read_file', { path: 'big.txt' }), summary, say('never reached')], {
+    const reads = () => calls([1, 2].map((n) => ['read_file', { path: `big${n}.txt` }]));
+    const { agent, provider } = setup([reads(), summary, reads(), summary, say('never reached')], {
       maxContextTokens: 4_000,
-      files: { '/big.txt': `${'x'.repeat(79)}\n`.repeat(400) },
+      files: Object.fromEntries([1, 2].map((n) => [`/big${n}.txt`, `${'x'.repeat(79)}\n`.repeat(400)])),
     });
     const events = await collect(agent.run('inspect big.txt'));
     expect(events.at(-1)).toMatchObject({ type: 'done', reason: 'error' });

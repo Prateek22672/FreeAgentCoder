@@ -17,6 +17,16 @@
 
 ### Changed
 
+- **Small tasks use far fewer tokens.** Measured on a typical small fix, the same steps now cost about 65% less:
+  - Each request carries a lighter copy of the conversation: long tool output is cut to what is worth reading (keeping the start and the end), and a file read is dropped once the file has been read again or changed.
+  - A quick task is offered only the tools it needs and asks the model to think less, so the fixed cost of every request fell from about 4,100 to 2,700 tokens. The instructions were rewritten to say the same in fewer words, and the Python section is sent only for Python projects.
+  - A new request unrelated to the previous one no longer resends that task's output.
+  - Quick tasks are handed the likely relevant files up front, so they spend fewer steps looking.
+  - Old output is trimmed in batches rather than on every step, so the providers' prompt caches keep working.
+- **A stuck model is stopped instead of burning tokens.** Five identical calls in a row, or six steps in a row where everything failed, end the task with an explanation (after advice to change approach at the third). A cut-off reply is told to be concise rather than to continue, and nudges reset whenever the agent makes progress.
+- **Edits that are nearly right are applied.** When an edit differs from the file only by trailing spaces, curly quotes or dashes, or the same indentation on every line, and exactly one place fits, it is applied and the reply says so, instead of costing a retry.
+- **The plan is finished.** A task that stops with open items in its plan is sent back once to finish them or say why not, and every few steps the agent is reminded where it is.
+- Token estimates learn from what each provider reports, so compaction starts at the right time.
 - **Settings are easier to move around.** A clear **Back** and **Done** at the top (Esc works too), the sections as a rail of icons down the left instead of a strip that scrolled sideways, and on the API Keys page your own keys come first, with the explanations after them.
 - **Installing opens FreeAgentCoder.** After an install or a reinstall the panel and the Get started guide open on their own, instead of nothing appearing until you found the side bar.
 - **Long tasks cost less.** Old command output and file contents the agent no longer needs are dropped from the conversation much earlier, so each step of a long task resends less. The most recent work is always kept in full.

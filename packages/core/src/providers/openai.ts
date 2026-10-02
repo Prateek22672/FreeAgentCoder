@@ -19,6 +19,8 @@ export interface OpenAICompatConfig {
   headers?: Record<string, string>;
   /** Gemini 3 rejects function calls in history without a thought signature. */
   thoughtSignatures?: boolean;
+  /** Accepts `reasoning_effort` (Gemini, Groq's gpt-oss, OpenAI's reasoning models). */
+  reasoningEffort?: boolean;
   maxTokensParam?: 'max_tokens' | 'max_completion_tokens';
   maxOutputTokens?: number;
   extraBody?: Record<string, unknown>;
@@ -141,6 +143,7 @@ export class OpenAICompatProvider implements Provider {
       }));
     }
     if (req.temperature !== undefined) body.temperature = req.temperature;
+    if (req.effort && this.cfg.reasoningEffort) body.reasoning_effort = req.effort;
     if (this.cfg.maxOutputTokens) body[this.cfg.maxTokensParam ?? 'max_tokens'] = this.cfg.maxOutputTokens;
     Object.assign(body, this.cfg.extraBody);
     return body;
@@ -243,10 +246,11 @@ export class OpenAICompatProvider implements Provider {
             throw errorFromPayload(this.id, e);
           }
           const u = (chunk.usage ?? (chunk.x_groq as { usage?: unknown } | undefined)?.usage) as
-            | { prompt_tokens?: number; completion_tokens?: number }
+            | { prompt_tokens?: number; completion_tokens?: number; prompt_tokens_details?: { cached_tokens?: number } }
             | undefined;
           if (u && typeof u.prompt_tokens === 'number') {
-            usage = { inputTokens: u.prompt_tokens, outputTokens: u.completion_tokens ?? 0 };
+            const cached = u.prompt_tokens_details?.cached_tokens;
+            usage = { inputTokens: u.prompt_tokens, outputTokens: u.completion_tokens ?? 0, ...(cached ? { cachedTokens: cached } : {}) };
           }
           const choice = (chunk.choices as Record<string, unknown>[] | undefined)?.[0];
           if (!choice) continue;

@@ -19,6 +19,11 @@ const BULKY_ARGS = ['content', 'new_string', 'old_string'];
 
 export const IMAGES_REMOVED_NOTE = 'attached earlier — removed to save context';
 
+/**
+ * Blanks old tool output and old file bodies in tool-call arguments. Provider
+ * echo data (Gemini signatures, Claude thinking) is dropped only from the
+ * assistant messages whose arguments changed, so the recent ones still replay.
+ */
 export function microCompact(messages: Message[], keepRecentTools = 6): number {
   let saved = 0;
   let toolSeen = 0;
@@ -36,8 +41,11 @@ export function microCompact(messages: Message[], keepRecentTools = 6): number {
       if (!m.synthetic) requestSeen = true;
     } else if (m.role === 'tool') {
       toolSeen++;
-      if (toolSeen > keepRecentTools && m.content.length > 400) {
-        const note = `[Earlier ${m.name} output removed to save context. Run the tool again if you need it.]`;
+      if (toolSeen > keepRecentTools && m.content.length > 400 && !m.content.startsWith('[Earlier ')) {
+        // An error is kept as one line: it stops the same mistake being made again.
+        const note = m.isError
+          ? `[Earlier ${m.name} error: ${m.content.split('\n')[0]!.slice(0, 160)}]`
+          : `[Earlier ${m.name} output removed to save context. Run the tool again if you need it.]`;
         saved += estimateTokens(m.content) - estimateTokens(note);
         m.content = note;
       }
@@ -51,12 +59,22 @@ export function microCompact(messages: Message[], keepRecentTools = 6): number {
             const note = `[${value.length} characters omitted]`;
             saved += estimateTokens(value) - estimateTokens(note);
             call.args[key] = note;
+            delete m.echo;
           }
         }
       }
     }
   }
   return saved;
+}
+
+/**
+ * The start of a new, unrelated task: everything bulky from earlier tasks is
+ * blanked (the requests, replies and the list of files changed stay), so a
+ * small fix after a big build does not resend the build. Returns tokens saved.
+ */
+export function startFresh(messages: Message[]): number {
+  return microCompact(messages, 0);
 }
 
 export function dropEchoes(messages: Message[]): void {

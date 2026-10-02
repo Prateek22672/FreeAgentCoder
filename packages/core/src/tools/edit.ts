@@ -12,7 +12,7 @@ interface Args {
 export const editFileTool: Tool<Args> = {
   name: 'edit_file',
   description:
-    'Change part of an existing file by exact string replacement. old_string must match the file exactly (including indentation) and be unique; include a few surrounding lines if needed, or set replace_all to change every occurrence. Do not include read_file line-number prefixes. Read the file first.',
+    'Replace exact text in a file you have read. old_string must match once (add surrounding lines if needed) or set replace_all; no line-number prefixes.',
   parameters: {
     type: 'object',
     properties: {
@@ -63,6 +63,18 @@ async function prepareEdit(args: Args, ctx: ToolContext): Promise<PreparedCall |
       count = occurrences(text, oldS);
     }
   }
+  // Weak models get trailing spaces, curly quotes and indentation slightly wrong. Rather than costing a
+  // whole round trip, apply the edit when exactly one place matches once those are evened out.
+  let normalized = '';
+  if (count === 0 && !args.replace_all) {
+    const found = looseMatch(text, oldS, newS);
+    if (found) {
+      oldS = found.oldS;
+      newS = found.newS;
+      count = 1;
+      normalized = ` (matched after evening out ${found.how} at line ${lineAt(text, text.indexOf(oldS))})`;
+    }
+  }
   if (count === 0) return toolError(notFound(text, oldS, shown));
   if (count > 1 && !args.replace_all) {
     const lines = occurrenceLines(text, oldS).slice(0, 12);
@@ -86,7 +98,7 @@ async function prepareEdit(args: Args, ctx: ToolContext): Promise<PreparedCall |
       await ws.writeFile(abs, after);
       await markWritten(ctx, abs);
       return {
-        content: `Edited ${shown}${replaced > 1 ? ` (${replaced} replacements)` : ''}. The changed region now reads:\n${regionAround(updated, first, newS.length)}`,
+        content: `Edited ${shown}${replaced > 1 ? ` (${replaced} replacements)` : ''}${normalized}. The changed region now reads:\n${regionAround(updated, first, newS.length)}`,
         summary: replaced > 1 ? `${replaced} replacements` : 'edited',
         display,
       };
@@ -145,6 +157,68 @@ export function stripLineNumbers(s: string): string | null {
   const nonEmpty = lines.filter((l) => l.trim() !== '');
   if (!nonEmpty.length || !nonEmpty.every((l) => prefix.test(l))) return null;
   return lines.map((l) => l.replace(prefix, '')).join('\n');
+}
+
+/** Curly quotes, long dashes and non-breaking spaces, as their plain forms. */
+function plainPunctuation(s: string): string {
+  return s
+    .replace(/[‘’‚‛]/g, "'")
+    .replace(/[“”„‟]/g, '"')
+    .replace(/[–—−]/g, '-')
+    .replace(/[   ]/g, ' ');
+}
+
+/**
+ * The one place in `text` that `oldS` means, when it differs only by trailing
+ * spaces, punctuation style, or the same indentation shift on every line.
+ * Returns the file's exact text to replace and the replacement adjusted to
+ * match, or nothing when no single place fits. Never a fuzzy match: a wrong
+ * place is worse than a retry.
+ */
+export function looseMatch(text: string, oldS: string, newS: string): { oldS: string; newS: string; how: string } | undefined {
+  const fileLines = text.split('\n');
+  const want = oldS.split('\n');
+  while (want.length > 1 && !want[want.length - 1]!.trim()) want.pop();
+  if (!want.some((l) => l.trim())) return undefined;
+  const indentOf = (l: string) => /^[ \t]*/.exec(l)![0];
+
+  const tryRule = (how: string, same: (fileLine: string, wanted: string) => boolean, shift: boolean) => {
+    const hits: { at: number; delta?: { from: string; to: string } }[] = [];
+    for (let i = 0; i + want.length <= fileLines.length && hits.length < 2; i++) {
+      let delta: { from: string; to: string } | undefined;
+      let ok = true;
+      for (let j = 0; j < want.length && ok; j++) {
+        const f = fileLines[i + j]!;
+        const w = want[j]!;
+        if (!f.trim() && !w.trim()) continue;
+        if (shift) {
+          // Every non-blank line must be off by the same indentation.
+          const fi = indentOf(f);
+          const wi = indentOf(w);
+          const d = fi.endsWith(wi) ? { from: '', to: fi.slice(0, fi.length - wi.length) } : wi.endsWith(fi) ? { from: wi.slice(0, wi.length - fi.length), to: '' } : undefined;
+          if (!d || (delta && (delta.from !== d.from || delta.to !== d.to))) ok = false;
+          else delta = d;
+          if (ok && !same(f.slice(fi.length), w.slice(wi.length))) ok = false;
+        } else if (!same(f, w)) ok = false;
+      }
+      if (ok && (!shift || (delta && (delta.from || delta.to)))) hits.push({ at: i, delta });
+    }
+    if (hits.length !== 1) return undefined;
+    const { at, delta } = hits[0]!;
+    const exact = fileLines.slice(at, at + want.length).join('\n');
+    let replacement = newS;
+    if (delta) {
+      replacement = newS
+        .split('\n')
+        .map((l) => (!l.trim() ? l : delta.from && l.startsWith(delta.from) ? l.slice(delta.from.length) : delta.to + l))
+        .join('\n');
+    }
+    return { oldS: exact, newS: replacement, how };
+  };
+
+  const trimEnd = (a: string, b: string) => a.trimEnd() === b.trimEnd();
+  const plain = (a: string, b: string) => plainPunctuation(a).trimEnd() === plainPunctuation(b).trimEnd();
+  return tryRule('trailing spaces', trimEnd, false) ?? tryRule('quote and dash style', plain, false) ?? tryRule('indentation', plain, true);
 }
 
 function notFound(text: string, oldS: string, shown: string): string {

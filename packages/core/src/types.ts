@@ -90,6 +90,8 @@ export interface ToolSchema {
 export interface Usage {
   inputTokens: number;
   outputTokens: number;
+  /** Input tokens the provider served from its prompt cache (part of inputTokens). */
+  cachedTokens?: number;
 }
 
 export interface Todo {

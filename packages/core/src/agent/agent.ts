@@ -22,6 +22,7 @@ import {
   IMAGES_REMOVED_NOTE,
   microCompact,
   splitTail,
+  startFresh,
   SUMMARY_INSTRUCTIONS,
   SUMMARY_SYSTEM,
   transcript,
@@ -29,6 +30,7 @@ import {
 import { PermissionPolicy, type ApprovalDecision, type ApprovalRequest } from './permissions';
 import { CheckpointStore, FileReadTracker, type UndoResult } from './state';
 import { extractTextToolCalls } from './textcalls';
+import { requestView } from './view';
 
 export interface AgentOptions {
   router: ModelRouter;
@@ -63,6 +65,15 @@ export interface RunOptions {
    * them; text-only models get a placeholder naming them.
    */
   images?: ImagePart[];
+  /**
+   * A new task unrelated to the conversation so far: earlier tool output is
+   * blanked first (requests and replies stay), so it is not resent each step.
+   */
+  fresh?: boolean;
+  /** Only these tools are offered this turn (a quick task needs few). Default: all. */
+  tools?: string[];
+  /** How hard reasoning models think this turn. */
+  effort?: 'low' | 'medium' | 'high';
 }
 
 export type AgentEvent =
@@ -90,17 +101,34 @@ const NUDGE_ACT =
   "You described your next step but didn't call a tool. Do it now by calling the right tool. If the task is actually finished, reply with a brief summary of what you did instead.";
 const NUDGE_EMPTY =
   'Your last reply was empty. Continue the task using the tools, or if it is complete, give a brief summary of what you did.';
-const NUDGE_CUT_OFF = 'Your previous reply was cut off by the output limit. Continue exactly where you stopped.';
+const NUDGE_CUT_OFF =
+  'Your reply was cut off by the output limit. Be concise: one step at a time and short explanations. Write a large file in parts: the first part with write_file, then the rest with edit_file.';
 const NUDGE_REPEAT =
   "You've made the same tool call three times in a row and got the same result. Repeating it won't help: try a different approach, or tell the user what's blocking you.";
 
 const MAX_RESULT_CHARS = 30_000;
+/** Nudges in a row without progress, before the reply is accepted as it is. */
+const MAX_NUDGES = 3;
+/** The same calls this many times in a row: warned at the first number, stopped at the second. */
+const REPEAT_WARN = 3;
+const REPEAT_STOP = 5;
+/** Steps in a row where every call failed: guidance at the first, a stop at the second. */
+const FAILED_STEPS_GUIDE = 3;
+const FAILED_STEPS_STOP = 6;
+/** How often an open plan is shown again, in steps. */
+const PLAN_REMINDER_EVERY = 8;
 /**
  * Old tool output and file bodies are blanked once the conversation passes
  * this size, well before it nears a model's limit: every step resends the
  * whole conversation, so bulk nobody reads again is paid for on every step.
  */
 const TRIM_OLD_BULK_AT = 24_000;
+/** Growth, in tokens, before old output is masked again. */
+const MASK_AGAIN_AFTER = 12_000;
+/** Tool results kept whole when masking. */
+const KEEP_RECENT_TOOLS = 4;
+/** History size above which a new, unrelated task starts with earlier output blanked. */
+const FRESH_START_AT = 8_000;
 /** Summaries in one turn that still left the conversation at its limit, before the turn is stopped. */
 const MAX_FUTILE_SUMMARIES = 2;
 
@@ -142,6 +170,13 @@ export class Agent {
   private readonly checkpoints = new CheckpointStore();
   private approve?: AgentOptions['approve'];
   private running = false;
+  /** Reported input tokens over estimated ones, so the estimate tracks the real tokenizer. */
+  private calibration = 1;
+  /** Context size right after the last masking, so masking happens in batches, not on every step. */
+  private maskedAt = 0;
+  /** The tools and reasoning effort of the turn being run. */
+  private turnSchemas: ToolSchema[];
+  private turnEffort?: RunOptions['effort'];
 
   constructor(private readonly opts: AgentOptions) {
     this.workspace = opts.workspace;
@@ -154,6 +189,7 @@ export class Agent {
     this.maxTurnTokens = opts.maxTurnTokens ?? 0;
     this.toolMap = new Map(opts.tools.map((t) => [t.name, t]));
     this.schemas = opts.tools.map(toSchema);
+    this.turnSchemas = this.schemas;
   }
 
   get isRunning(): boolean {
@@ -170,7 +206,12 @@ export class Agent {
 
   /** Estimated size of the next request, in tokens. */
   contextTokens(): number {
-    return estimateRequestTokens(this.systemPrompt, this.messages, this.schemas);
+    return Math.ceil(this.rawTokens() * this.calibration);
+  }
+
+  /** The estimate before calibration: characters over 3.5, of what is actually sent. */
+  private rawTokens(): number {
+    return estimateRequestTokens(this.systemPrompt, requestView(this.messages), this.turnSchemas);
   }
 
   contextLimit(): number {
@@ -182,10 +223,27 @@ export class Agent {
   async *run(input: string, options: RunOptions = {}): AsyncGenerator<AgentEvent> {
     if (this.running) throw new Error('The agent is already working on something.');
     this.running = true;
+    const only = options.tools ? new Set(options.tools) : undefined;
+    this.turnSchemas = only ? this.schemas.filter((t) => only.has(t.name)) : this.schemas;
+    this.turnEffort = options.effort;
     try {
+      if (options.fresh && this.messages.length) {
+        const before = this.contextTokens();
+        // Small histories cost little and may hold what the next request refers to.
+        if (before > FRESH_START_AT) {
+          const saved = startFresh(this.messages);
+          if (saved > 0) {
+            this.files.clear();
+            this.maskedAt = this.contextTokens();
+            yield { type: 'compacted', kind: 'micro', before, after: this.maskedAt };
+          }
+        }
+      }
       yield* this.loop(input, options.signal ?? new AbortController().signal, options.images);
     } finally {
       this.running = false;
+      this.turnSchemas = this.schemas;
+      this.turnEffort = undefined;
     }
   }
 
@@ -200,6 +258,8 @@ export class Agent {
     let reviews = 0;
     let lastKey = '';
     let repeats = 0;
+    let failedSteps = 0;
+    let planChecked = false;
     let forcedCompaction = false;
     let futile = 0;
 
@@ -225,12 +285,13 @@ export class Agent {
         }
       }
       const requestSize = this.contextTokens();
+      const rawSize = this.rawTokens();
 
       let message: AssistantMessage;
       let partial = '';
       let reported = false;
       try {
-        const stream = this.router.stream({ system: this.systemPrompt, messages: this.messages, tools: this.schemas, signal });
+        const stream = this.router.stream({ system: this.systemPrompt, messages: requestView(this.messages), tools: this.turnSchemas, signal, effort: this.turnEffort });
         let next = await stream.next();
         while (!next.done) {
           const ev = next.value;
@@ -247,6 +308,10 @@ export class Agent {
               break;
             case 'usage':
               reported = true;
+              if (ev.usage.inputTokens > 0 && rawSize > 500) {
+                const ratio = Math.min(1.6, Math.max(0.8, ev.usage.inputTokens / rawSize));
+                this.calibration = this.calibration * 0.5 + ratio * 0.5;
+              }
               this.usage = {
                 inputTokens: this.usage.inputTokens + ev.usage.inputTokens,
                 outputTokens: this.usage.outputTokens + ev.usage.outputTokens,
@@ -305,7 +370,7 @@ export class Agent {
       yield { type: 'assistant', message };
 
       if (!message.toolCalls?.length) {
-        if (nudges < 2) {
+        if (nudges < MAX_NUDGES) {
           const nudge =
             message.stop === 'max_tokens' ? NUDGE_CUT_OFF : !message.content ? NUDGE_EMPTY : announcesAction(message.content) ? NUDGE_ACT : null;
           if (nudge) {
@@ -313,6 +378,16 @@ export class Agent {
             this.messages.push({ role: 'user', content: nudge, synthetic: true });
             continue;
           }
+        }
+        const open = this.todos.filter((t) => t.status !== 'completed');
+        if (!planChecked && open.length && message.stop !== 'max_tokens' && !message.content.trim().endsWith('?')) {
+          planChecked = true;
+          this.messages.push({
+            role: 'user',
+            synthetic: true,
+            content: `Your plan still has ${open.length} open item${open.length === 1 ? '' : 's'}: ${open.map((t) => `"${t.content}"`).join(', ')}. Finish them, or update the plan with todo_write (mark them completed, or remove them) and say why.`,
+          });
+          continue;
         }
         if (reviews < 2 && this.opts.reviewCompletion && message.stop !== 'max_tokens') {
           const feedback = await this.opts.reviewCompletion(message);
@@ -328,6 +403,9 @@ export class Agent {
       }
 
       const calls = message.toolCalls;
+      nudges = 0;
+      let failed = 0;
+      let lastError = '';
       for (let i = 0; i < calls.length; i++) {
         if (signal.aborted) {
           for (const skipped of calls.slice(i)) {
@@ -338,6 +416,10 @@ export class Agent {
         }
         const call = calls[i]!;
         const result = yield* this.execute(call, signal, message.stop === 'max_tokens');
+        if (result.isError) {
+          failed++;
+          lastError = `${call.name}: ${result.content.split('\n')[0]!.slice(0, 200)}`;
+        }
         this.messages.push({
           role: 'tool',
           toolCallId: call.id,
@@ -347,12 +429,38 @@ export class Agent {
         });
       }
 
-      const key = JSON.stringify(calls.map((c) => [c.name, c.args]));
-      repeats = key === lastKey ? repeats + 1 : 0;
+      // Polling a background process is meant to repeat.
+      const key = calls.every((c) => c.name === 'process') ? '' : JSON.stringify(calls.map((c) => [c.name, sortedArgs(c.args)]));
+      repeats = key && key === lastKey ? repeats + 1 : 0;
       lastKey = key;
-      if (repeats >= 2) {
-        this.messages.push({ role: 'user', content: NUDGE_REPEAT, synthetic: true });
-        repeats = 0;
+      if (repeats + 1 >= REPEAT_STOP) {
+        yield { type: 'error', message: `Stopped: the same ${calls[0]!.name} call was made ${REPEAT_STOP} times in a row with the same result. Nothing is lost; send a message to carry on differently.` };
+        yield { type: 'done', reason: 'error', steps: step };
+        return;
+      }
+      if (repeats + 1 === REPEAT_WARN) this.messages.push({ role: 'user', content: NUDGE_REPEAT, synthetic: true });
+
+      failedSteps = failed === calls.length ? failedSteps + 1 : 0;
+      if (failedSteps >= FAILED_STEPS_STOP) {
+        yield { type: 'error', message: `Stopped after ${FAILED_STEPS_STOP} steps in a row where every tool call failed (last: ${lastError}). Nothing is lost; send a message to continue.` };
+        yield { type: 'done', reason: 'error', steps: step };
+        return;
+      }
+      if (failedSteps === FAILED_STEPS_GUIDE) {
+        this.messages.push({
+          role: 'user',
+          synthetic: true,
+          content: `The last ${FAILED_STEPS_GUIDE} steps all failed (latest: ${lastError}). Change strategy instead of retrying: read the file again before editing it, use write_file to rewrite a file whose edits keep failing, check the path with glob, or ask the user what is blocking you.`,
+        });
+      }
+      const open = this.todos.filter((t) => t.status !== 'completed');
+      if (open.length && step % PLAN_REMINDER_EVERY === 0) {
+        const doing = this.todos.find((t) => t.status === 'in_progress');
+        this.messages.push({
+          role: 'user',
+          synthetic: true,
+          content: `[Plan: ${this.todos.length - open.length}/${this.todos.length} done${doing ? `; in progress: "${doing.content}"` : ''}]`,
+        });
       }
     }
   }
@@ -380,9 +488,13 @@ export class Agent {
       return result;
     };
 
-    if (!tool) {
+    if (!tool || !this.turnSchemas.some((t) => t.name === call.name)) {
       yield { type: 'tool_start', call, label: call.name };
-      return yield* finish(call.name, toolError(`Unknown tool "${call.name}". Available tools: ${[...this.toolMap.keys()].join(', ')}.`));
+      const available = this.turnSchemas.map((t) => t.name).join(', ');
+      return yield* finish(
+        call.name,
+        toolError(tool ? `${call.name} is not available for this quick task. Use one of: ${available}, or say what you need it for.` : `Unknown tool "${call.name}". Available tools: ${available}.`),
+      );
     }
     if (call.argsError) {
       yield { type: 'tool_start', call, label: call.name };
@@ -515,12 +627,15 @@ export class Agent {
   private async *manageContext(signal: AbortSignal): AsyncGenerator<AgentEvent, boolean> {
     const limit = this.contextLimit();
     let tokens = this.contextTokens();
-    if (tokens > Math.min(limit * 0.7, TRIM_OLD_BULK_AT)) {
-      const saved = microCompact(this.messages);
+    // In batches: once masked, the conversation must grow a good deal before masking again. Masking on
+    // every step would change old messages each time and defeat the providers' prompt caches.
+    const grown = !this.maskedAt || tokens >= this.maskedAt + Math.max(MASK_AGAIN_AFTER, limit * 0.25);
+    if (tokens > Math.min(limit * 0.7, TRIM_OLD_BULK_AT) && (grown || tokens > limit)) {
+      const saved = microCompact(this.messages, KEEP_RECENT_TOOLS);
       if (saved > 0) {
-        dropEchoes(this.messages);
-        yield { type: 'compacted', kind: 'micro', before: tokens, after: tokens - saved };
-        tokens -= saved;
+        tokens = this.contextTokens();
+        this.maskedAt = tokens;
+        yield { type: 'compacted', kind: 'micro', before: tokens + saved, after: tokens };
       }
     }
     if (tokens <= limit) return false;
@@ -558,6 +673,7 @@ export class Agent {
     ];
     dropEchoes(this.messages);
     this.files.clear();
+    this.maskedAt = 0;
     yield { type: 'compacted', kind: 'summary', before, after: this.contextTokens() };
   }
 
@@ -611,4 +727,9 @@ export class Agent {
     this.todos = [];
     this.files.clear();
   }
+}
+
+/** Arguments with their keys in a fixed order, so the same call written twice compares equal. */
+function sortedArgs(args: Record<string, unknown>): Record<string, unknown> {
+  return Object.fromEntries(Object.keys(args).sort().map((k) => [k, args[k]]));
 }

@@ -24,7 +24,7 @@ function escapeRegex(s: string): string {
 export const grepTool: Tool<Args> = {
   name: 'grep',
   description:
-    'Search file contents with a regular expression (JavaScript syntax), e.g. "function\\s+handleSubmit" or "TODO". Skips .gitignored files, node_modules and lockfiles. output: "content" (matching lines with line numbers; default), "files" (paths only) or "count".',
+    'Search file contents with a JavaScript regular expression. Skips ignored files and node_modules. output: "content" (lines with numbers, default), "files" or "count".',
   parameters: {
     type: 'object',
     properties: {

@@ -19,7 +19,7 @@ import { createLocalAgent, loadConfig, type AgenticConfig, type LocalAgent } fro
 import { compactNumber, errorMessage } from '../shared/format';
 import type { ApprovalView, AttachmentView, ChangedFile, PermissionMode, PreviewView, Tier, ToolDisplayView, ToWebview, TurnEndReason } from '../shared/protocol';
 import type { DiffDocuments } from './diffDocuments';
-import { EXTRA_INSTRUCTIONS } from './instructions';
+import { editorInstructions } from './instructions';
 import { completionReview, gateResults } from './gates';
 import type { Playbook } from './playbooks';
 import type { ProjectCheck } from './projectChecks';
@@ -32,6 +32,11 @@ type ToolEndEvent = Extract<AgentEvent, { type: 'tool_end' }>;
 type RawDisplay = NonNullable<ToolEndEvent['result']['display']>;
 
 const MAX_STEPS = 150;
+/**
+ * A quick task's tools: reading, searching, editing and one command. Leaving the
+ * rest out saves about a thousand tokens on every step; the deep tier has all.
+ */
+export const QUICK_TOOLS = ['read_file', 'edit_file', 'write_file', 'list_dir', 'glob', 'grep', 'search_code', 'run_command'];
 const DIFF_LINES = 400;
 const OUTPUT_CHARS = 8_000;
 const RESUME_PROMPT = 'Continue the task from where you stopped. (The editor resumed it automatically after a temporary problem reaching the AI providers.)';
@@ -64,6 +69,8 @@ export interface TurnPlan {
     test?: boolean;
     /** The project's own checks; a complex task that changes code must pass one before it may finish. */
     checks?: ProjectCheck[];
+    /** A new request unrelated to the conversation so far: earlier tool output is not resent. */
+    fresh?: boolean;
 }
 
 export interface SessionLogEntry {
@@ -348,7 +355,12 @@ export class AgentSession implements vscode.Disposable {
 
             let compacted = false;
             for (let attempt = 0, first = true; ; first = false) {
-                const outcome = await this.runAgent(agent, input, turn.id, first ? images : undefined);
+                const outcome = await this.runAgent(agent, input, turn.id, first ? images : undefined, {
+                    fresh: first && plan.fresh,
+                    tools: plan.tier === 'fast' ? QUICK_TOOLS : undefined,
+                    // Quick tasks need little thinking; deep tasks keep each provider's own default.
+                    effort: plan.tier === 'fast' ? 'low' : undefined,
+                });
                 steps += outcome.steps;
                 reason = outcome.reason;
                 if (reason === 'budget') {
@@ -431,11 +443,12 @@ export class AgentSession implements vscode.Disposable {
         input: string,
         turnId: string,
         images?: ImagePart[],
+        turnOptions: { fresh?: boolean; tools?: string[]; effort?: 'low' | 'medium' | 'high' } = {},
     ): Promise<{ reason: TurnEndReason; steps: number; error?: string }> {
         let reason: TurnEndReason = 'error';
         let steps = 0;
         let error: string | undefined;
-        for await (const event of agent.run(input, { signal: this.abort?.signal, images })) {
+        for await (const event of agent.run(input, { signal: this.abort?.signal, images, ...turnOptions })) {
             if (event.type === 'done') {
                 reason = event.reason;
                 steps = event.steps;
@@ -854,7 +867,10 @@ export class AgentSession implements vscode.Disposable {
                 messages: restore?.messages,
                 todos: restore?.todos,
                 agentName: 'FreeAgentCoder',
-                extraInstructions: [EXTRA_INSTRUCTIONS, await projectSnapshot(cwd)].filter(Boolean).join('\n\n'),
+                extraInstructions: await (async () => {
+                    const snapshot = await projectSnapshot(cwd);
+                    return [editorInstructions({ python: /\bPython\b|Jupyter/.test(snapshot) }), snapshot].filter(Boolean).join('\n\n');
+                })(),
                 maxSteps: MAX_STEPS,
                 extraTools: [checkPageTool(this.options.previews)],
             });

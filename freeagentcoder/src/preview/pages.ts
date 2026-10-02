@@ -107,7 +107,7 @@ export function checkPageTool(previews: PagePreviews): Tool<{ path: string; scri
     return {
         name: 'check_page',
         description:
-            'Load a web page from the project in a real browser (hidden) and get what went wrong: uncaught errors and console errors with file and line, files that failed to load, content that is cut off or wider than the window, and the text the page shows after its scripts ran. With `script`, also act on the page like a user and see what happened: click the main controls, then return what changed. Use it after writing or changing a plain HTML page, before you call the work done: once to load it, and once with a script that uses each main feature and returns the values that prove it works. For an app with a dev server, start the server and use fetch_url instead.',
+            'Load an HTML page from the project in a hidden real browser: get its errors (file and line), files that failed to load, cut-off layout and the text shown. With `script`, act on it like a user and return what changed. Use it before calling a plain web page done: once to load, once with a script that uses the main features. For a dev-server app use fetch_url.',
         parameters: {
             type: 'object',
             properties: {
@@ -115,7 +115,7 @@ export function checkPageTool(previews: PagePreviews): Tool<{ path: string; scri
                 script: {
                     type: 'string',
                     description:
-                        "Optional JavaScript run in the page after it loads, as the body of an async function. Use the DOM like a user would and return a value to see it, e.g. \"document.querySelector('#roll').click(); await new Promise(r => setTimeout(r, 1500)); return { dice: document.querySelector('#dice').textContent, position: document.querySelector('#p1').textContent };\". Timers run fast; about 7 seconds of page time are available.",
+                        "Optional JavaScript, run as the body of an async function after load; return a value to see it. E.g. \"document.querySelector('#roll').click(); await new Promise(r => setTimeout(r, 1500)); return document.querySelector('#score').textContent;\"",
                 },
             },
             required: ['path'],

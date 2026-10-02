@@ -121,7 +121,7 @@ export async function inspectEnvironment(
 export const environmentTool: Tool<{ tools?: string[] }> = {
   name: 'inspect_environment',
   description:
-    'Check in one quick call which developer toolchains are installed and their versions: Node.js, npm, pnpm, Yarn, Bun, Python, uv, Poetry, Conda, Java, Flutter, Dart, Go, Rust, .NET, Docker, Git, adb and the Android SDK. Use it before creating, building or running a project instead of searching the disk.',
+    'Check which developer toolchains are installed, with versions (Node, Python, Java, Flutter, Go, Rust, .NET, Docker, Git, Android SDK and more), in one call. Use it before building a project instead of searching the disk.',
   parameters: {
     type: 'object',
     properties: {

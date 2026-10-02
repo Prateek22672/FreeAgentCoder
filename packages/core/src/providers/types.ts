@@ -7,6 +7,8 @@ export interface ChatRequest {
   tools: ToolSchema[];
   signal?: AbortSignal;
   temperature?: number;
+  /** How hard a reasoning model should think. Sent only to providers that take it. */
+  effort?: 'low' | 'medium' | 'high';
 }
 
 export type StreamEvent =

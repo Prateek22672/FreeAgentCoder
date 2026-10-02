@@ -50,6 +50,8 @@ function bodyFor(target: PoolTarget, body: Record<string, unknown>, tier: 'fast'
     delete out.max_tokens;
     delete out.max_completion_tokens;
     out[target.maxTokensParam] = Math.min(asked, MAX_OUTPUT);
+    // Only some providers take a reasoning effort; the others may refuse an unknown field.
+    if (!['gemini', 'groq', 'openai'].includes(target.provider)) delete out.reasoning_effort;
     if (!target.thoughtSignatures && Array.isArray(out.messages)) {
         out.messages = (out.messages as Record<string, unknown>[]).map((m) =>
             Array.isArray(m.tool_calls) ? { ...m, tool_calls: (m.tool_calls as Record<string, unknown>[]).map(({ extra_content: _drop, ...call }) => call) } : m,

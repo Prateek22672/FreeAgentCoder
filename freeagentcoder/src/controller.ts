@@ -616,8 +616,9 @@ export class Controller implements vscode.Disposable {
             agentPrompt += `\n\n${lessonsBlock(lessons)}`;
         }
 
-        if (this.features.codeSearch && tier === 'deep' && !followUp && !test) {
-            const hits = await this.relevantFiles(cwd, prompt);
+        // Quick tasks get the likely files too: naming them up front saves exploring for them, step by resent step.
+        if (this.features.codeSearch && !followUp && !test && this.session.indexedFiles !== 0) {
+            const hits = (await this.relevantFiles(cwd, prompt)).slice(0, tier === 'fast' ? 4 : 8);
             if (hits.length) {
                 agentPrompt += `\n\n## Likely relevant files\nFound by a local search of this project for the words in the request. Read them before changing anything; not all of them may matter.\n${hits
                     .map((hit) => `- ${hit.path}:${hit.start}-${hit.end} (${hit.matched.join(', ')})`)
@@ -684,6 +685,7 @@ export class Controller implements vscode.Disposable {
             capacity: this.forecast({ tier, playbooks: playbooks.length, attachments: attachments.length, correction, test }),
             test,
             checks,
+            fresh: !followUp && !correction,
         });
     }
 

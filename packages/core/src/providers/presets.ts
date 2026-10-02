@@ -36,6 +36,8 @@ export interface ProviderPreset {
   headers?: Record<string, string>;
   /** Sent with every request, e.g. to ask for token usage on a streamed reply. */
   extraBody?: Record<string, unknown>;
+  /** Accepts `reasoning_effort`. */
+  reasoningEffort?: boolean;
 }
 
 export const PRESETS: Record<string, ProviderPreset> = {
@@ -55,6 +57,7 @@ export const PRESETS: Record<string, ProviderPreset> = {
     signupUrl: 'https://aistudio.google.com/apikey',
     note: 'Free tier, 1M-token context, strong at agentic coding. Daily request quota applies.',
     thoughtSignatures: true,
+    reasoningEffort: true,
   },
   groq: {
     id: 'groq',
@@ -72,6 +75,7 @@ export const PRESETS: Record<string, ProviderPreset> = {
     signupUrl: 'https://console.groq.com/keys',
     note: 'Very fast. The free tier allows only ~8K tokens per minute, so it handles small requests and bigger ones go elsewhere.',
     maxTokensParam: 'max_completion_tokens',
+    reasoningEffort: true,
   },
   cerebras: {
     id: 'cerebras',
@@ -169,6 +173,7 @@ export const PRESETS: Record<string, ProviderPreset> = {
     maxTokensParam: 'max_completion_tokens',
     // Without this OpenAI reports no token usage on a streamed reply.
     extraBody: { stream_options: { include_usage: true } },
+    reasoningEffort: true,
   },
   anthropic: {
     id: 'anthropic',
@@ -251,6 +256,7 @@ export function createProvider(preset: ProviderPreset, opts: ProviderOptions = {
     thoughtSignatures: preset.thoughtSignatures,
     maxTokensParam: preset.maxTokensParam,
     extraBody: preset.extraBody,
+    reasoningEffort: preset.reasoningEffort,
     maxOutputTokens: opts.maxOutputTokens,
     onHeaders: opts.onHeaders,
     supportsImages: opts.supportsImages,

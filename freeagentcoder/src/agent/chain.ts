@@ -146,6 +146,7 @@ export class ChainBuilder {
             baseURL: TRIAL_URL,
             apiKey: key.secret,
             thoughtSignatures: true,
+            reasoningEffort: true,
             supportsImages: false,
             maxOutputTokens: 8_192,
             onHeaders: (headers) => this.hooks.onHeaders(key, headers),
