@@ -155,6 +155,15 @@ export function Playground() {
     const chatEnd = useRef<HTMLDivElement>(null);
     const pendingRequest = useRef<string | undefined>(undefined);
 
+    // How many free requests this visitor has today, before they send anything.
+    const [noTrial, setNoTrial] = useState(false);
+    useEffect(() => {
+        void fetch('/api/ai')
+            .then((r) => r.json() as Promise<{ trial: { limit: number; remaining: number } | null }>)
+            .then((d) => (d.trial ? setTrial({ remaining: d.trial.remaining, limit: d.trial.limit }) : setNoTrial(true)))
+            .catch(() => undefined);
+    }, []);
+
     // Seconds on the clock while the agent works, as the extension shows.
     useEffect(() => {
         if (!busy) return;
@@ -540,8 +549,8 @@ export function Playground() {
                             />
                             <div className="flex items-center gap-1 px-1.5 pb-1.5 pt-1">
                                 <span className="flex h-6 min-w-0 items-center gap-1.5 rounded-md px-1.5 text-[12px] text-muted" title={own ? 'Using your own key' : 'Free requests on this site'}>
-                                    <span className={`size-[7px] shrink-0 rounded-full ${trial && trial.remaining === 0 && !own ? 'bg-warn' : 'bg-ok'}`} />
-                                    <span className="truncate">{own ? `Your ${own.provider} key` : trial ? `${trial.remaining} of ${trial.limit} free left` : 'Free to try'}</span>
+                                    <span className={`size-[7px] shrink-0 rounded-full ${(noTrial || (trial && trial.remaining === 0)) && !own ? 'bg-warn' : 'bg-ok'}`} />
+                                    <span className="truncate">{own ? `Your ${own.provider} key` : trial ? `${trial.remaining} of ${trial.limit} free left today` : noTrial ? 'Add a free key to start' : 'Free to try'}</span>
                                 </span>
                                 <span className="flex-1" />
                                 <button
