@@ -22,6 +22,7 @@ export function activate(context: vscode.ExtensionContext): void {
         vscode.commands.registerCommand('freeagentcoder.plans', () => view.show({ type: 'showSettings', section: 'plans' })),
         vscode.commands.registerCommand('freeagentcoder.stop', () => controller.handle({ type: 'stop' })),
         vscode.commands.registerCommand('freeagentcoder.telemetry', () => controller.chooseTelemetry()),
+        vscode.commands.registerCommand('freeagentcoder.runLabTask', () => controller.runLabTask()),
         vscode.commands.registerCommand('freeagentcoder.testProject', async () => {
             await view.show({ type: 'focusInput' });
             await controller.handle({ type: 'testProject' });

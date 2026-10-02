@@ -59,6 +59,9 @@ export default async function AdminPage() {
         <Shell>
             <div className="flex items-start justify-between gap-4">
                 <h1 className="text-2xl font-semibold tracking-tight">FreeAgentCoder</h1>
+                <a href="/admin/lab" className="ml-auto mr-3 rounded-md border border-line px-3 py-1.5 text-[13px] text-muted hover:border-accent hover:text-fg">
+                    Test lab
+                </a>
                 <form action={signOutAction}>
                     <button type="submit" className="rounded-md border border-line px-3 py-1.5 text-[13px] text-muted hover:border-accent hover:text-fg">
                         Sign out

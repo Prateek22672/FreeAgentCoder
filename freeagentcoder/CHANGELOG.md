@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.4.1 — Test lab
+
+- **FreeAgentCoder: Run a Test Task**, for the project's own testing. With a lab token from the admin page, it runs a fixed test task in the open folder and sends its numbers and conversation to the Test lab. Hidden unless `freeagentcoder.labToken` is set.
+
 ## 0.4.0 — Specialists, and a Plans page
 
 ### Added

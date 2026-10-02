@@ -2,7 +2,7 @@
   "name": "freeagentcoder",
   "displayName": "Free Agent Coder: Free AI Coding Agent & Chat, Copilot & Cursor Alternative",
   "description": "Free AI coding agent and chat for VS Code, a free alternative to Copilot, Cursor, Codex and Claude Code. Plans, edits, runs and tests your code on free Gemini, Groq or OpenRouter keys, or your own Claude or OpenAI key. Fyx does everyday chores with zero tokens. No subscription, open source.",
-  "version": "0.4.0",
+  "version": "0.4.1",
   "publisher": "PrateekKoratala",
   "license": "MIT",
   "icon": "media/icon.png",
@@ -68,6 +68,11 @@
   "contributes": {
     "commands": [
       {
+        "command": "freeagentcoder.runLabTask",
+        "title": "Run a Test Task",
+        "category": "FreeAgentCoder"
+      },
+      {
         "command": "freeagentcoder.open",
         "title": "Open Chat",
         "category": "FreeAgentCoder"
@@ -121,6 +126,12 @@
           "default": "",
           "scope": "application",
           "markdownDescription": "Where anonymous usage counts are sent, if you have agreed to send any. Leave empty to use the project's own site. Nothing is sent unless you said yes in **FreeAgentCoder: Anonymous Usage Data**."
+        },
+        "freeagentcoder.labToken": {
+          "type": "string",
+          "default": "",
+          "scope": "application",
+          "markdownDescription": "For the project's own testing: the token from the admin Test lab. When set, **FreeAgentCoder: Run a Test Task** runs a test task in the open folder and sends its results to the Test lab. Leave empty."
         },
         "freeagentcoder.fyx": {
           "type": "boolean",
@@ -215,7 +226,15 @@
           }
         ]
       }
-    ]
+    ],
+    "menus": {
+      "commandPalette": [
+        {
+          "command": "freeagentcoder.runLabTask",
+          "when": "config.freeagentcoder.labToken != ''"
+        }
+      ]
+    }
   },
   "scripts": {
     "vscode:prepublish": "npm run package",

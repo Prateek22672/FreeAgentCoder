@@ -1,4 +1,5 @@
-import { readdir, readFile } from 'node:fs/promises';
+import { mkdir, readdir, readFile, writeFile } from 'node:fs/promises';
+import { LabRecorder } from './lab/recorder';
 import * as path from 'node:path';
 import * as vscode from 'vscode';
 import { ModelRouter, PRESETS, tokenize, type SearchHit } from '@agentic/core';
@@ -147,6 +148,8 @@ export class Controller implements vscode.Disposable {
     private chatId = newChatId();
     private chatCreatedAt = Date.now();
     private turnRequests = 0;
+    /** Set while a test-lab task runs. */
+    private lab?: LabRecorder;
     /** Set while Fyx is doing a task, so it is counted as Fyx's and not as a model's. */
     private fyxTurn?: { kind: string; saved: number; prompt: string; learned: boolean };
     /** The request and the commands the agent ran this turn, so Fyx can learn one-command chores. */
@@ -674,6 +677,102 @@ export class Controller implements vscode.Disposable {
             test,
             checks,
         });
+    }
+
+    /**
+     * The test lab: fetches the admin's test tasks, writes the chosen task's
+     * files into the open folder, sends its prompts one after another, and
+     * posts the numbers and the conversation back to the admin page.
+     */
+    async runLabTask(): Promise<void> {
+        const token = vscode.workspace.getConfiguration('freeagentcoder').get<string>('labToken', '').trim();
+        if (!token) {
+            void vscode.window.showInformationMessage('Set freeagentcoder.labToken first: copy it from the Test lab page in the admin panel.');
+            return;
+        }
+        const folder = vscode.workspace.workspaceFolders?.[0];
+        if (!folder) {
+            void vscode.window.showWarningMessage('Open an empty folder first: the test task writes its files there.');
+            return;
+        }
+        if (this.session.running) {
+            void vscode.window.showWarningMessage('Wait for the current task to finish first.');
+            return;
+        }
+        type Task = { id: string; title: string; category: string; prompts: string[]; files: Record<string, string> };
+        let tasks: Task[];
+        try {
+            const response = await fetch(`${SITE_URL}/api/lab/tasks`, { headers: { 'x-lab-token': token }, signal: AbortSignal.timeout(15_000) });
+            const body = (await response.json()) as { tasks?: Task[]; error?: string };
+            if (!response.ok || !body.tasks) {
+                throw new Error(body.error ?? `HTTP ${response.status}`);
+            }
+            tasks = body.tasks;
+        } catch (error) {
+            void vscode.window.showErrorMessage(`Could not load the test tasks: ${errorMessage(error)}`);
+            return;
+        }
+        const pick = await vscode.window.showQuickPick(
+            tasks.map((t) => ({ label: t.title, description: `${t.prompts.length} prompt${t.prompts.length === 1 ? '' : 's'} · ${Object.keys(t.files).length} files`, task: t })),
+            { placeHolder: 'Pick a test task to run in this folder' },
+        );
+        if (!pick) {
+            return;
+        }
+        const task = pick.task;
+        const root = folder.uri.fsPath;
+        const existing = (await readdir(root).catch(() => [] as string[])).filter((n) => !n.startsWith('.'));
+        if (existing.length) {
+            const go = await vscode.window.showWarningMessage(
+                `This folder is not empty (${existing.length} items). A test is fairest in an empty folder. Run it here anyway?`,
+                { modal: true },
+                'Run here',
+            );
+            if (go !== 'Run here') {
+                return;
+            }
+        }
+        for (const [file, content] of Object.entries(task.files)) {
+            const target = path.join(root, file);
+            if (!target.startsWith(root)) {
+                continue;
+            }
+            await mkdir(path.dirname(target), { recursive: true });
+            await writeFile(target, content, 'utf8');
+        }
+        await vscode.commands.executeCommand('freeagentcoder.open');
+        const recorder = new LabRecorder();
+        this.lab = recorder;
+        try {
+            for (const [i, prompt] of task.prompts.entries()) {
+                recorder.begin(prompt, i);
+                await this.send(prompt, [], false);
+                recorder.finish();
+            }
+        } finally {
+            this.lab = undefined;
+        }
+        try {
+            const response = await fetch(`${SITE_URL}/api/lab/results`, {
+                method: 'POST',
+                headers: { 'x-lab-token': token, 'content-type': 'application/json' },
+                body: JSON.stringify({
+                    taskId: task.id,
+                    title: task.title,
+                    category: task.category,
+                    extension: String(this.context.extension.packageJSON.version ?? ''),
+                    turns: recorder.turns,
+                    transcript: redact(recorder.transcript),
+                }),
+                signal: AbortSignal.timeout(20_000),
+            });
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}`);
+            }
+            void vscode.window.showInformationMessage(`Test "${task.title}" finished and was sent to the Test lab.`);
+        } catch (error) {
+            void vscode.window.showErrorMessage(`The test ran but could not be sent: ${errorMessage(error)}`);
+        }
     }
 
     private fyxEnabled(): boolean {
@@ -1669,6 +1768,7 @@ export class Controller implements vscode.Disposable {
     }
 
     private post(message: ToWebview): void {
+        this.lab?.capture(message, { requests: this.turnRequests, fyx: !!this.fyxTurn });
         this.watchTurn(message);
         if (TRANSCRIPT_TYPES.has(message.type)) {
             this.remember(message);

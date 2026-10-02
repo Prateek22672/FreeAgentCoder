@@ -5,6 +5,8 @@ const nextConfig = {
   // Workspace packages ship TypeScript source; Next compiles them like app code.
   transpilePackages: ['@agentic/core', '@agentic/project-brain'],
   poweredByHeader: false,
+  // Test-lab tasks can carry starter files; allow a little more than the 1 MB default.
+  experimental: { serverActions: { bodySizeLimit: '2mb' } },
   async headers() {
     return [
       {
