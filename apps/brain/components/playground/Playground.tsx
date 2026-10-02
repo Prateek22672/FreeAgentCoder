@@ -8,7 +8,7 @@ import { KeyPanel } from '@/components/KeyPanel';
 import { Logo } from '@/components/Logo';
 import { RunPanel, startScript, toTree } from '@/components/workbench/RunPanel';
 import { ownKeyHeaders, useOwnKey } from '@/lib/keys';
-import { type Brief, firstRequest, starterFor } from '@/lib/brief';
+import { type Brief, type Goal, firstRequest, GOAL_ORDER, GOALS, starterFor, suggestGoal } from '@/lib/brief';
 import { STARTERS, starterById } from '@/lib/starters';
 import { planWebFyx, withPackages } from '@/lib/webFyx';
 import { GithubExport } from './GithubExport';
@@ -102,6 +102,57 @@ function Play({ size = 11 }: { size?: number }) {
         <svg viewBox="0 0 12 12" width={size} height={size} fill="currentColor" aria-hidden>
             <path d="M2.5 1.5v9l8-4.5z" />
         </svg>
+    );
+}
+
+/**
+ * For a project opened without a brief (made before the onboarding, or
+ * imported): what it is and what it is for, asked once and kept with the
+ * project, so every request is built to it.
+ */
+function AboutProject({ onSave }: { onSave: (brief: Brief) => void }) {
+    const [idea, setIdea] = useState('');
+    const [goal, setGoal] = useState<Goal | undefined>();
+    const picked = goal ?? (idea.trim() ? suggestGoal(idea).goal : undefined);
+    return (
+        <div className="fx-step mb-5 rounded-xl border border-accent/40 bg-accent/[0.06] p-3.5">
+            <p className="text-[13px] font-semibold text-fg">What is this project?</p>
+            <p className="mt-0.5 text-[12px] leading-relaxed text-muted">Say what it is and who it is for. It is kept with the project, and every change is made to fit it.</p>
+            <textarea
+                value={idea}
+                onChange={(e) => setIdea(e.target.value)}
+                rows={2}
+                placeholder="A booking site for my yoga studio, calm and minimal"
+                aria-label="What this project is"
+                className="mt-2.5 block w-full resize-none rounded-md border border-line-strong bg-bg px-2.5 py-2 text-[13px] text-fg outline-none placeholder:text-faint focus:border-accent"
+            />
+            <div className="mt-2 flex flex-wrap gap-1.5">
+                {GOAL_ORDER.map((g) => (
+                    <button
+                        key={g}
+                        type="button"
+                        aria-pressed={picked === g}
+                        onClick={() => setGoal(g)}
+                        className={`rounded-full border px-2.5 py-0.5 text-[11.5px] ${picked === g ? 'border-fg bg-fg text-bg' : 'border-line text-muted hover:border-accent hover:text-fg'}`}
+                    >
+                        {GOALS[g].label}
+                    </button>
+                ))}
+            </div>
+            <div className="mt-3 flex items-center gap-3">
+                <button
+                    type="button"
+                    disabled={!idea.trim()}
+                    onClick={() => onSave({ goal: picked ?? 'try', idea: idea.trim(), mobile: suggestGoal(idea).mobile })}
+                    className="h-8 rounded-md bg-accent px-3 text-[12.5px] font-semibold text-accent-fg hover:brightness-110 disabled:opacity-50"
+                >
+                    Save
+                </button>
+                <button type="button" onClick={() => onSave({ goal: 'try', idea: '' })} className="text-[12px] text-faint hover:text-fg">
+                    Skip
+                </button>
+            </div>
+        </div>
     );
 }
 
@@ -358,7 +409,7 @@ export function Playground() {
 
     const canRun = Boolean(startScript(files['package.json']));
     return (
-        <div className="flex h-dvh flex-col bg-bg">
+        <div className="fx-arrive flex h-dvh flex-col bg-bg">
             <header className="flex h-11 shrink-0 items-center gap-3 border-b border-line bg-panel px-3">
                 <Link href="/" className="flex items-center gap-1.5 text-[13px] font-semibold text-fg">
                     <Logo size={15} />
@@ -398,6 +449,7 @@ export function Playground() {
                     </div>
 
                     <div className="scroll-thin min-h-0 flex-1 overflow-y-auto px-3 py-4">
+                        {!project.brief && <AboutProject onSave={(brief) => setProject({ ...project, brief })} />}
                         {!turns.length && !busy ? (
                             <div className="flex flex-col items-center gap-1.5 px-1 pt-6 text-center">
                                 <Logo size={34} />

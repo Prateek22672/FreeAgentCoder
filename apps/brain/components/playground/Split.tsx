@@ -15,9 +15,11 @@ import { useCallback, useEffect, useRef, useState, type CSSProperties, type Keyb
 export type PanelId = 'chat' | 'code' | 'preview';
 export type Slot = 0 | 1 | 2;
 
-const ORDER_KEY = 'fyxable.layout.order';
-const WIDTH_KEY = 'fyxable.layout.widths';
-const DEFAULT_ORDER: PanelId[] = ['chat', 'code', 'preview'];
+// v2: the preset changed to code, preview, agent; earlier saved layouts start from it once.
+const ORDER_KEY = 'fyxable.layout.order.v2';
+const WIDTH_KEY = 'fyxable.layout.widths.v2';
+/** The preset: the code on the left, the running app large in the centre, the agent on the right. */
+const DEFAULT_ORDER: PanelId[] = ['code', 'preview', 'chat'];
 /** The centre never gets narrower than this. */
 const MIN_CENTER = 320;
 const MIN_SIDE = 260;
@@ -25,8 +27,8 @@ const HANDLE = 4;
 
 /** A good width for a panel at the side of a row this wide. */
 function fitted(panel: PanelId, row: number): number {
-    const share = panel === 'chat' ? 0.27 : panel === 'preview' ? 0.4 : 0.36;
-    const preferred = panel === 'chat' ? 360 : panel === 'preview' ? 560 : 480;
+    const share = panel === 'chat' ? 0.27 : panel === 'preview' ? 0.4 : 0.34;
+    const preferred = panel === 'chat' ? 500 : panel === 'preview' ? 560 : 660;
     return Math.round(Math.max(MIN_SIDE, Math.min(preferred, row * share)));
 }
 
@@ -79,7 +81,7 @@ export function useLayout(): Layout {
         setRowNode(el);
     }, []);
     const [order, setOrder] = useState<PanelId[]>(DEFAULT_ORDER);
-    const [widths, setWidths] = useState<Record<PanelId, number>>({ chat: 360, code: 480, preview: 520 });
+    const [widths, setWidths] = useState<Record<PanelId, number>>({ chat: 460, code: 600, preview: 520 });
     const [dragging, setDragging] = useState<PanelId>();
     const [target, setTarget] = useState<Slot>();
 

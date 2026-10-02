@@ -79,6 +79,13 @@ export function Onboard({ idea: initialIdea, onStart, onImport }: { idea?: strin
     const [repo, setRepo] = useState('');
     const [importing, setImporting] = useState<{ busy?: boolean; error?: string }>({});
     const importRef = useRef<HTMLInputElement>(null);
+    /** The page zooms away before the workbench opens. */
+    const [leaving, setLeaving] = useState(false);
+    const leave = (then: () => void) => {
+        if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return then();
+        setLeaving(true);
+        window.setTimeout(then, 420);
+    };
 
     const choose = (g: Goal, reason = '') => {
         setGoal(g);
@@ -93,12 +100,12 @@ export function Onboard({ idea: initialIdea, onStart, onImport }: { idea?: strin
         choose(s.goal, s.why);
     };
     const start = (withLook: boolean) => {
-        onStart({
+        leave(() => onStart({
             goal,
             idea: idea.trim(),
             mobile,
             ...(withLook ? { kind, style, theme, accent, fonts: fonts === FONTS[0] ? undefined : fonts, sections: picks.length ? picks : undefined } : {}),
-        });
+        }));
     };
     const importRepo = async () => {
         const spec = repo.trim();
@@ -108,7 +115,7 @@ export function Onboard({ idea: initialIdea, onStart, onImport }: { idea?: strin
             const response = await fetch('/api/import', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ repo: spec }) });
             const data = (await response.json()) as Imported & { error?: string };
             if (!response.ok) throw new Error(data.error ?? 'Could not import that repository.');
-            onImport(data);
+            leave(() => onImport(data));
         } catch (error) {
             setImporting({ error: (error as Error).message });
         }
@@ -148,7 +155,7 @@ export function Onboard({ idea: initialIdea, onStart, onImport }: { idea?: strin
     );
 
     return (
-        <div className="min-h-dvh bg-bg">
+        <div className={`min-h-dvh overflow-hidden bg-bg ${leaving ? 'fx-leave' : ''}`}>
             <header className="flex h-14 items-center gap-2 border-b border-line px-4">
                 <Link href="/" className="flex items-center gap-2 font-display text-[15px] font-semibold text-fg">
                     <Logo /> Fyxable
@@ -157,6 +164,7 @@ export function Onboard({ idea: initialIdea, onStart, onImport }: { idea?: strin
             </header>
 
             <div className="mx-auto max-w-3xl px-4 py-10 sm:py-14">
+                <div key={step} className="fx-step">
                 <ol className="flex items-center gap-2 text-[12px] font-medium text-faint" aria-label="Steps">
                     {(['ask', 'path', 'prefs'] as Step[]).map((s, i) => (
                         <li key={s} className={`flex items-center gap-2 ${s === step ? 'text-fg' : ''}`}>
@@ -349,6 +357,7 @@ export function Onboard({ idea: initialIdea, onStart, onImport }: { idea?: strin
                         </div>
                     </>
                 )}
+                </div>
             </div>
         </div>
     );
