@@ -6,7 +6,7 @@
 
 **An autonomous AI coding agent and chat that runs on your own free API keys.**
 
-FreeAgentCoder plans, writes, runs and verifies code in your project. Add free API keys from Gemini, Groq or Mistral, and it sends each request to the right model, switching to your next key whenever one hits its limit.
+FreeAgentCoder plans, writes, runs and verifies code in your project. Add free API keys from Gemini, Groq, OpenRouter or Cohere, and it sends each request to the right model, switching to your next key whenever one hits its limit.
 
 It is a free alternative to paid AI coding assistants: no subscription, no per-seat fee and no usage metering of ours. The only limits are the free tiers of the keys you bring, and you can add as many keys as you like.
 
@@ -147,6 +147,15 @@ When you ask for something big, such as *"build a Flutter wallpaper app that's r
 - Python and ML aware: uses your virtualenv, keeps test runs small, runs long training jobs in the background, and reads Jupyter notebooks as clean cells without their outputs.
 - Respects `.gitignore` and skips dependency, cache and experiment-tracking folders.
 - Instant local code search: a built-in index of file names and identifiers finds the right files for a request without using any API quota, and complex tasks start with the most relevant files already attached.
+
+## How it compares
+
+If you're looking at **GitHub Copilot**, **Cursor**, **Windsurf**, **Cline**, **Roo Code**, **Kilo Code**, **Codex** or **Claude Code**, here's what's different about FreeAgentCoder:
+
+- **Built to run on free keys.** It spreads the work across all the free Gemini, Groq, OpenRouter and Cohere keys you add, and moves to the next one when a key hits its limit, so a free tier goes a long way. Paid Claude or OpenAI keys work too.
+- **No new editor, no subscription.** It's an extension for the VS Code you already use, with no account and no plan to buy.
+- **Fyx: chores with zero tokens.** Running your project, zipping folders, committing and pushing, and installing packages happen on your machine without calling a model.
+- **Checks its own work.** It runs your build and tests, loads web pages in a real browser, and reads your editor's errors after each edit before it says it's done.
 
 ## Supported providers
 
