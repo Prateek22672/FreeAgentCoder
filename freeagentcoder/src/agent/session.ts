@@ -484,6 +484,15 @@ export class AgentSession implements vscode.Disposable {
             // The agent may finish only so many times; if it changed the page after its last check, say how it stands.
             await this.pageReview(turn, '', true).catch(() => undefined);
         }
+        const missing = await this.missingFiles(turn).catch(() => []);
+        if (missing.length) {
+            this.options.post({
+                type: 'notice',
+                turnId: turn.id,
+                level: 'warn',
+                message: `${missing.length} of the ${turn.files.size} files this task wrote ${missing.length === 1 ? 'is' : 'are'} no longer on disk (${missing.slice(0, 3).join(', ')}${missing.length > 3 ? '…' : ''}). They were written, then removed: by a command the task ran, a sync tool such as OneDrive, or Undo. Check the commands above, or ask for them to be written again.`,
+            });
+        }
         this.turn = undefined;
         this.abort = undefined;
 
@@ -516,6 +525,25 @@ export class AgentSession implements vscode.Disposable {
             preview,
         });
         this.options.post({ type: 'usage', ...this.usageInfo() });
+    }
+
+    /** Files the task wrote that are gone by the time it ends. */
+    private async missingFiles(turn: ActiveTurn): Promise<string[]> {
+        const root = this.localRoot;
+        if (!root) {
+            return [];
+        }
+        const checks = await Promise.all(
+            [...turn.files.entries()].map(async ([file, touched]) => {
+                const gone = await fs.stat(path.resolve(root, file)).then(
+                    () => false,
+                    () => true,
+                );
+                // A file the task deleted on purpose ends empty.
+                return gone && touched.after !== '' ? file : undefined;
+            }),
+        );
+        return checks.filter((file): file is string => file !== undefined);
     }
 
     /**

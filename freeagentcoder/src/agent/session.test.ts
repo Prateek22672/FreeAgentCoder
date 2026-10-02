@@ -1,3 +1,4 @@
+import { unlinkSync } from 'node:fs';
 import { mkdtemp, readFile, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import * as path from 'node:path';
@@ -124,6 +125,22 @@ describe('a task through the session', async () => {
         },
         180_000,
     );
+
+    it('says so when files it wrote are gone by the end', async () => {
+        const task = start([
+            calls([
+                ['write_file', { path: 'notes/keep.md', content: 'kept' }],
+                ['write_file', { path: 'notes/lost.md', content: 'lost' }],
+            ]),
+            () => {
+                // Something outside the agent removes a file it wrote.
+                unlinkSync(path.join(root, 'notes', 'lost.md'));
+                return { role: 'assistant', content: 'Done.' };
+            },
+        ]);
+        await task.run();
+        expect(task.notices().some((n) => n.startsWith('1 of the 2 files this task wrote is no longer on disk (notes/lost.md)'))).toBe(true);
+    });
 
     it('pauses at the token limit and says how to carry on', async () => {
         const task = start([call('list_dir', {}), say('never reached')], { tokenLimit: 1 });
