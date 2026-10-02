@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { strToU8, zipSync } from 'fflate';
 import { Icon } from '@/components/icons';
 import { KeyPanel } from '@/components/KeyPanel';
@@ -13,11 +13,12 @@ import { STARTERS, starterById } from '@/lib/starters';
 import { planWebFyx, withPackages } from '@/lib/webFyx';
 import { GithubExport } from './GithubExport';
 import { Onboard, describeImport } from './Onboard';
-import { Handle, useDragWidth } from './Split';
+import { DropZones, Grip, Handle, useLayout } from './Split';
 
 /**
- * Fyxable's workbench: the agent on the left, the files and editor in the
- * middle, the running app on the right, each column as wide as you drag it.
+ * Fyxable's workbench: the agent, the files and editor, and the running app,
+ * in three slots you can rearrange by dragging a panel's grip, resize by
+ * dragging the dividers, and fit again by double-clicking one.
  * The project lives in this browser's storage and leaves only when you
  * download or export it.
  */
@@ -152,8 +153,9 @@ export function Playground() {
     const { own, keys } = useOwnKey();
     const chatEnd = useRef<HTMLDivElement>(null);
     const pendingRequest = useRef<string | undefined>(undefined);
-    const chat = useDragWidth('fyxable.chat', 360, 280);
-    const preview = useDragWidth('fyxable.preview', 520, 320, true);
+    const layout = useLayout();
+    /** Where a panel sits on a wide screen, unless the preview is shown alone. */
+    const place = (panel: 'chat' | 'code' | 'preview') => (wide ? (panel === 'preview' ? { flex: '1 1 0', minWidth: 0 } : undefined) : layout.panelStyle(panel));
 
     // How many free requests this visitor has today, before they send anything.
     const [noTrial, setNoTrial] = useState(false);
@@ -355,10 +357,8 @@ export function Playground() {
     };
 
     const canRun = Boolean(startScript(files['package.json']));
-    const columns = { '--chat-w': `${chat.width}px`, '--preview-w': `${preview.width}px` } as CSSProperties;
-
     return (
-        <div className="flex h-dvh flex-col bg-bg" style={columns}>
+        <div className="flex h-dvh flex-col bg-bg">
             <header className="flex h-11 shrink-0 items-center gap-3 border-b border-line bg-panel px-3">
                 <Link href="/" className="flex items-center gap-1.5 text-[13px] font-semibold text-fg">
                     <Logo size={15} />
@@ -376,12 +376,16 @@ export function Playground() {
                 </div>
             </header>
 
-            <div className="flex min-h-0 flex-1">
-                {/* The agent, on the left: the same shape as the chat panel in the VS Code extension. */}
-                <aside className={`${view === 'chat' ? 'flex' : 'hidden'} w-full shrink-0 flex-col bg-panel lg:w-[var(--chat-w)] lg:border-r lg:border-line ${wide ? 'lg:hidden' : 'lg:flex'}`}>
-                    <div className="flex h-10 shrink-0 items-center justify-between border-b border-line pl-3 pr-1.5">
-                        <span className="flex items-center gap-2 text-[13px] font-semibold text-fg">
-                            <Logo size={15} /> FreeAgentCoder
+            <div ref={layout.rowRef} className="relative flex min-h-0 flex-1">
+                <DropZones layout={layout} />
+                {/* The agent: the same shape as the chat panel in the VS Code extension. */}
+                <aside data-panel="chat" style={place('chat')} className={`${view === 'chat' ? 'flex' : 'hidden'} w-full flex-col bg-panel ${wide ? 'lg:hidden' : 'lg:flex'}`}>
+                    <div className="flex h-10 shrink-0 items-center justify-between border-b border-line pl-1.5 pr-1.5">
+                        <span className="flex items-center gap-1.5 text-[13px] font-semibold text-fg">
+                            <Grip panel="chat" layout={layout} />
+                            <span className="flex items-center gap-2 pl-1 lg:pl-0">
+                                <Logo size={15} /> FreeAgentCoder
+                            </span>
                         </span>
                         <div className="flex items-center">
                             <button type="button" title="Clear the conversation" onClick={() => setTurns([])} className="rounded-md px-2 py-1 text-[12px] text-faint hover:bg-panel-2 hover:text-fg">
@@ -530,10 +534,10 @@ export function Playground() {
                         </div>
                     </form>
                 </aside>
-                {!wide && <Handle onPointerDown={chat.onPointerDown} label="Resize the chat" />}
+                {!wide && <Handle layout={layout} divider={0} />}
 
-                {/* Files and the editor, in the middle */}
-                <main className={`${view === 'code' ? 'flex' : 'hidden'} min-w-0 flex-1 ${wide ? 'lg:hidden' : 'lg:flex'}`}>
+                {/* Files and the editor */}
+                <main data-panel="code" style={place('code')} className={`${view === 'code' ? 'flex' : 'hidden'} min-w-0 flex-1 bg-bg ${wide ? 'lg:hidden' : 'lg:flex'}`}>
                     <aside className="hidden w-44 shrink-0 flex-col border-r border-line bg-panel xl:flex">
                         <div className="flex h-9 items-center justify-between px-3 text-[11px] font-semibold uppercase tracking-wider text-faint">
                             Files
@@ -560,7 +564,8 @@ export function Playground() {
                         </ul>
                     </aside>
                     <div className="flex min-w-0 flex-1 flex-col">
-                        <div className="flex h-9 shrink-0 items-center gap-2 border-b border-line bg-panel px-3 font-mono text-[12.5px] text-muted">
+                        <div className="flex h-9 shrink-0 items-center gap-2 border-b border-line bg-panel pl-1.5 pr-3 font-mono text-[12.5px] text-muted">
+                            <Grip panel="code" layout={layout} />
                             <select value={active ?? ''} onChange={(e) => setProject({ ...project, active: e.target.value })} aria-label="Open file" className="max-w-full truncate bg-transparent text-muted outline-none xl:hidden">
                                 {paths.map((path) => (
                                     <option key={path} value={path}>
@@ -580,10 +585,16 @@ export function Playground() {
                         )}
                     </div>
                 </main>
-                {!wide && <Handle onPointerDown={preview.onPointerDown} label="Resize the preview" />}
+                {!wide && <Handle layout={layout} divider={1} />}
 
-                {/* The running app, on the right */}
-                <section className={`${view === 'preview' ? 'flex' : 'hidden'} w-full min-w-0 shrink-0 flex-col bg-panel lg:flex ${wide ? 'lg:flex-1' : 'lg:w-[var(--preview-w)]'}`}>
+                {/* The running app */}
+                <section data-panel="preview" style={place('preview')} className={`${view === 'preview' ? 'flex' : 'hidden'} w-full min-w-0 flex-col bg-panel lg:flex`}>
+                    <div className="hidden h-9 shrink-0 items-center gap-1.5 border-b border-line pl-1.5 pr-3 text-[12px] font-semibold text-muted lg:flex">
+                        <Grip panel="preview" layout={layout} />
+                        Preview
+                        <span className={`ml-1 size-1.5 rounded-full ${runOpen ? 'bg-ok' : 'bg-faint'}`} />
+                        <span className="font-normal text-faint">{runOpen ? 'running' : 'not running'}</span>
+                    </div>
                     {runOpen ? (
                         <RunPanel
                             load={async () => ({ files: toTree(files), run: startScript(files['package.json']) })}
