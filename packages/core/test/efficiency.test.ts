@@ -73,7 +73,18 @@ describe('what each request carries', () => {
     // The second request carries the first read cut down; the third has it replaced by the second.
     expect(sent(provider, 1).length).toBeLessThan(12_000);
     expect(sent(provider, 2)).toContain('[Outdated: big.ts');
-    expect(JSON.stringify(agent.messages).length).toBeGreaterThan(40_000);
+    // The kept history still has both reads in full.
+    expect(JSON.stringify(agent.messages).length).toBeGreaterThan(sent(provider, 2).length + 5_000);
+  });
+
+  it('reads a long file in a first page that starts with its outline', async () => {
+    const body = Array.from({ length: 30 }, (_, i) => `export function step${i}() {\n${'  work();\n'.repeat(40)}}\n`).join('');
+    const { agent } = setup([call('read_file', { path: 'long.ts' }), say('Done.')], { '/long.ts': body });
+    await collect(agent.run('read it'));
+    const result = agent.messages.find((m) => m.role === 'tool')!.content;
+    expect(result.startsWith('Outline of long.ts')).toBe(true);
+    expect(result).toContain('export function step29()');
+    expect(result).toContain('Continue with offset=501');
   });
 });
 

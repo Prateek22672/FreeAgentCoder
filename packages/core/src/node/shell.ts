@@ -234,7 +234,7 @@ function runForeground(shell: ShellInfo, command: string, cwd: string, timeoutSe
           ? 'Stopped: the user interrupted.'
           : `Exit code: ${code ?? sig}`;
       settle({
-        content: `${status}\n${truncateMiddle(clean, 12_000, 0.2) || '(no output)'}`,
+        content: `${status}\n${truncateMiddle(clean, 8_000, 0.25) || '(no output)'}`,
         isError: timedOut || interrupted || code !== 0,
         summary: timedOut ? 'timed out' : interrupted ? 'interrupted' : `exit ${code ?? sig}`,
         display: { type: 'command', command, output: clean.slice(-4000), exitCode: code, timedOut },

@@ -4,8 +4,13 @@ import { suggestSimilar } from './common';
 import { toolError, type Tool, type ToolContext, type ToolResult } from './types';
 
 const MAX_LINES = 2000;
+/** Lines read when no range is asked for: enough for most files; a longer one comes with its outline. */
+const DEFAULT_LINES = 500;
 const MAX_LINE_CHARS = 2000;
 const MAX_CHARS = 40_000;
+/** Characters returned when no range is asked for. */
+const DEFAULT_CHARS = 20_000;
+const MAX_OUTLINE = 40;
 const MAX_BYTES = 10 * 1024 * 1024;
 
 interface Args {
@@ -23,7 +28,7 @@ export const readFileTool: Tool<Args> = {
     properties: {
       path: { type: 'string', description: 'File path, relative to the project root or absolute' },
       offset: { type: 'integer', description: 'First line to return (1-based). Default 1' },
-      limit: { type: 'integer', description: `Maximum lines to return. Default ${MAX_LINES}` },
+      limit: { type: 'integer', description: `Maximum lines to return. Default ${DEFAULT_LINES}, at most ${MAX_LINES}` },
     },
     required: ['path'],
   },
@@ -59,7 +64,9 @@ async function readFile(args: Args, ctx: ToolContext): Promise<ToolResult> {
   const total = lines.length;
   const start = Math.max(1, Math.floor(args.offset ?? 1));
   if (start > total) return toolError(`offset ${start} is past the end of ${shown} (${total} lines).`);
-  const limit = Math.max(1, Math.floor(args.limit ?? MAX_LINES));
+  const ranged = args.offset !== undefined || args.limit !== undefined;
+  const limit = Math.min(MAX_LINES, Math.max(1, Math.floor(args.limit ?? DEFAULT_LINES)));
+  const maxChars = ranged ? MAX_CHARS : DEFAULT_CHARS;
   const last = Math.min(total, start + limit - 1);
   const width = String(last).length;
 
@@ -69,12 +76,17 @@ async function readFile(args: Args, ctx: ToolContext): Promise<ToolResult> {
     let line = lines[i]!;
     if (line.length > MAX_LINE_CHARS) line = `${line.slice(0, MAX_LINE_CHARS)} … [line truncated]`;
     const next = `${String(i + 1).padStart(width)}\t${line}\n`;
-    if (out.length + next.length > MAX_CHARS && end >= start) break;
+    if (out.length + next.length > maxChars && end >= start) break;
     out += next;
     end = i + 1;
   }
   const partial = end < total;
-  if (partial) out += `\n… showing lines ${start}-${end} of ${total}. Continue with offset=${end + 1}.`;
+  if (partial) {
+    out += `\n… showing lines ${start}-${end} of ${total}. Continue with offset=${end + 1}.`;
+    // An outline of the whole file, so the right part can be read next instead of paging through.
+    const outline = start === 1 && !notebook ? fileOutline(lines) : '';
+    if (outline) out = `Outline of ${shown} (${total} lines):\n${outline}\n\n${out}`;
+  }
   return {
     content: out.trimEnd(),
     summary: `${notebook ? 'notebook, ' : ''}${partial || start > 1 ? `lines ${start}-${end} of ${total}` : `${total} lines`}`,
@@ -108,4 +120,16 @@ export function renderNotebook(json: string): string | null {
     parts.push(`# %% [${cell.cell_type ?? 'code'}] cell ${index + 1}${outputs}\n${source.trimEnd()}`);
   });
   return parts.join('\n\n');
+}
+
+/** Top-level definitions with their line numbers: functions, classes, types, exports, Python defs, CSS rules. */
+export function fileOutline(lines: string[]): string {
+  const defs: string[] = [];
+  const pattern =
+    /^(?:export\s+(?:default\s+)?)?(?:async\s+)?(?:function\*?|class|interface|type|enum|const|let|def|struct|impl|fn|func|pub\s+fn|module|namespace)\s+[\w$]+|^\s{0,4}(?:async\s+)?def\s+\w+|^\s{0,2}(?:public|private|protected|static|async)\s+[\w$<>[\], ]+\(|^[.#@a-zA-Z][^{};]*\{\s*$/;
+  for (let i = 0; i < lines.length && defs.length < MAX_OUTLINE; i++) {
+    const line = lines[i]!;
+    if (line.length < 200 && pattern.test(line)) defs.push(`${i + 1}: ${line.trim().replace(/\s*\{\s*$/, '').slice(0, 100)}`);
+  }
+  return defs.join('\n');
 }
