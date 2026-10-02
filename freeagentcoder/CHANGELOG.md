@@ -1,5 +1,20 @@
 # Changelog
 
+## 0.5.0 — It sees what your editor sees
+
+### Added
+
+- **Edits come back with the editor's errors.** After each change, the agent is told the type, lint and syntax errors your editor now finds in that file — only the ones the change introduced — so it fixes them at once instead of finding out at the end, or never. An edited file is shown in a preview tab without taking your focus, since language servers only check open files. It costs nothing when there are no errors. `freeagentcoder.editorErrorsAfterEdit` turns it off.
+- **A `get_problems` tool.** The agent can ask for the editor's errors in one file or across the project, which is much faster than running a full type check or build.
+- **Fix with FreeAgentCoder.** Every error in the editor has a **Fix with FreeAgentCoder** quick fix (the light bulb, or Ctrl+.). It sends the error, with its file and line, as a task. If a task is already running, the request waits in the chat input instead.
+- **Ask FreeAgentCoder About This.** Right-click a selection to put a reference to those lines (`src/app.ts:12-20`) in the chat input, ready for your question.
+- **@-mention files.** Type `@` in the chat to pick a project file. Mentioned files go with your request already read, so the agent starts on them without spending a step (and a resend of the whole conversation) reading them first.
+
+### Changed
+
+- **Long files are read with a map.** A long file is read 500 lines at a time, and the first page starts with an outline of the whole file (its functions, classes and types, with line numbers), so the agent reads the part it needs next instead of paging through.
+- Command output sent to the model is capped at 8,000 characters, keeping the start and the end, where the errors usually are.
+
 ## 0.4.2 — Small builds stay small
 
 ### Fixed

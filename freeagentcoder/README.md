@@ -87,6 +87,8 @@ Describe the change there and click **Work on this in VS Code**. FreeAgentCoder 
 - **No "done" on broken code.** A complex task that changed code can't finish until one of those checks has passed *after its last edit*, or it explains exactly why none can run.
 - **Test my project.** One click runs every check it found and writes a report in plain words: what passed, and for each failure *what failed, why, and how to fix it*. It changes nothing unless you ask. For machine-learning projects it runs a small smoke check, never a full training run.
 - **Knows your project's layout.** Complex tasks start with a compact map of your folders, so changes land in the right place.
+- **Sees your editor's errors.** Each edit comes back with the type, lint and syntax errors your editor finds in the changed file (only the new ones), so the agent fixes them on the spot. Every error also has a **Fix with FreeAgentCoder** quick fix.
+- **@-mention files.** Type `@` in the chat to pick a file; it goes with your request already read. Right-click a selection for **Ask FreeAgentCoder About This**.
 
 ## Never stops without telling you why
 
