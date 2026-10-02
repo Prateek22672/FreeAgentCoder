@@ -124,7 +124,7 @@ export function Hero({ trust }: { trust?: Trust }) {
                                     Free keys that work: Gemini, Groq, OpenRouter and Cohere, no card needed. Mistral, Cerebras and keys copied from the internet will fail.
                                 </p>
                             </div>
-                            <p className="hidden max-w-[19rem] text-right text-[13px] leading-relaxed text-white/60 xl:block">
+                            <p data-fly-avoid className="hidden max-w-[19rem] text-right text-[13px] leading-relaxed text-white/60 transition-opacity duration-300 data-[covered]:opacity-0 xl:block">
                                 From a GitHub link to a verified change: it maps the code, plans the edit and runs your tests before it says done.
                             </p>
                         </div>

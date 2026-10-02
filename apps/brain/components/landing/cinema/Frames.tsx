@@ -12,7 +12,7 @@ import { InstallLink } from '@/components/InstallLink';
  * - ScrollFrames: every section marked data-frame arrives in 3D (tilted back,
  *   slightly small and dim) and settles flat as it reaches the screen, then
  *   recedes as it leaves. Pinned scenes are left alone; they have their own.
- * - FloatingStart: once the hero has gone by, a "Get started" pill zooms up
+ * - FloatingStart: from the Fyx frame on, a "Get started" pill zooms up
  *   from the bottom and follows you, stepping aside near the final call to
  *   action and the footer.
  */
@@ -167,11 +167,13 @@ export function FloatingStart() {
     useEffect(() => {
         const cta = document.querySelector('[data-cta]');
         const footer = document.querySelector('footer');
+        // It joins at the first section marked data-float-from (the Fyx frame), once that is half way up the screen.
+        const from = document.querySelector('[data-float-from]');
         let raf = 0;
         const check = () => {
             raf = 0;
             const vh = window.innerHeight;
-            const pastHero = window.scrollY > vh * 1.1;
+            const pastHero = from ? from.getBoundingClientRect().top < vh * 0.5 : window.scrollY > vh * 1.1;
             const nearEnd = [cta, footer].some((el) => {
                 const r = el?.getBoundingClientRect();
                 return !!r && r.top < vh * 0.85 && r.bottom > 0;

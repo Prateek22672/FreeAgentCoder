@@ -23,8 +23,19 @@ export function PanelFlight() {
         let shown = false;
 
         const ease = (t: number) => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2);
+        // Text the panel would cover (at rest on a short screen, or in flight) fades out while it does.
+        const overlaps = (a: DOMRect, b: DOMRect) => a.left < b.right && b.left < a.right && a.top < b.bottom && b.top < a.bottom;
+        const uncover = () => {
+            for (const text of document.querySelectorAll<HTMLElement>('[data-fly-avoid]')) {
+                const r = text.getBoundingClientRect();
+                const panels = [document.querySelector<HTMLElement>('[data-fly="from"]'), shown ? el : null];
+                const covered = r.width > 0 && panels.some((p) => p && overlaps(r, p.getBoundingClientRect()));
+                if (covered !== text.hasAttribute('data-covered')) text.toggleAttribute('data-covered', covered);
+            }
+        };
         const tick = () => {
             frame = requestAnimationFrame(tick);
+            uncover();
             const from = document.querySelector<HTMLElement>('[data-fly="from"]');
             const to = document.querySelector<HTMLElement>('[data-fly="to"]');
             const carousel = to?.closest('section');
