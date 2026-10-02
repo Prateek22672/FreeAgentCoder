@@ -9,7 +9,7 @@ import { settingsNeedStore, store } from './kv';
  * private, and the trial steps aside by itself.
  *
  * Three limits, all set from the admin page:
- *  - per install, a day: enough for two or three real tasks;
+ *  - per install, a day: enough for one or two real tasks;
  *  - per network address, a day: a few installs' worth, so a fresh install id
  *    does not reset it, while a shared office or campus still gets through;
  *  - for everyone, a day: so the pool's free quota is never drained, and the
@@ -33,10 +33,11 @@ export interface ExtTrialSettings {
 
 export const DEFAULT_EXT_TRIAL: ExtTrialSettings = {
     enabled: true,
-    requestsPerInstall: 40,
-    tokensPerInstall: 400_000,
-    requestsPerAddress: 120,
-    dailyCap: 1_500,
+    // 35% below the first limits (40, 400K, 120, 1,500), to spend the pool's keys more slowly.
+    requestsPerInstall: 26,
+    tokensPerInstall: 260_000,
+    requestsPerAddress: 78,
+    dailyCap: 975,
 };
 
 const SETTINGS = 'pb:exttrial:settings';
