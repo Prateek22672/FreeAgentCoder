@@ -7,7 +7,8 @@ import { Icon } from '@/components/icons';
 import { KeyPanel } from '@/components/KeyPanel';
 import { Logo } from '@/components/Logo';
 import { RunPanel, startScript, toTree } from '@/components/workbench/RunPanel';
-import { useOwnKey } from '@/lib/keys';
+import { ownKeyHeaders, useOwnKey } from '@/lib/keys';
+import { GithubExport } from './GithubExport';
 import { STARTERS, starterById } from '@/lib/starters';
 
 /**
@@ -91,7 +92,7 @@ function Start({ onPick }: { onPick: (starter: string, request?: string) => void
     const [idea, setIdea] = useState('');
     return (
         <div className="mx-auto w-full max-w-3xl px-4 py-16">
-            <p className="text-[12px] font-semibold uppercase tracking-wider text-accent">Playground</p>
+            <p className="text-[12px] font-semibold uppercase tracking-wider text-accent">Fyxable · by Free Agent Coder</p>
             <h1 className="mt-2 font-display text-4xl font-semibold tracking-tight text-fg">Build something from nothing.</h1>
             <p className="mt-3 max-w-xl text-[15px] leading-relaxed text-muted">
                 Describe it, and the agent writes it. Edit anything, and see it running — all in this tab. No GitHub and no sign-in; the project stays in your
@@ -151,7 +152,8 @@ export function Playground() {
     const [runOpen, setRunOpen] = useState(false);
     const [trial, setTrial] = useState<{ remaining: number; limit: number }>();
     const [elapsed, setElapsed] = useState(0);
-    const { own } = useOwnKey();
+    const [exporting, setExporting] = useState(false);
+    const { own, keys } = useOwnKey();
     const chatEnd = useRef<HTMLDivElement>(null);
     const pendingRequest = useRef<string | undefined>(undefined);
 
@@ -180,7 +182,7 @@ export function Playground() {
             pendingRequest.current = ask;
             setProject({ name: ask.slice(0, 40), files: { ...starter.files } });
             setTurns([]);
-            window.history.replaceState(null, '', '/playground');
+            window.history.replaceState(null, '', '/fyxable');
         } else {
             setProject(loadSaved<Project>(STORAGE));
             setTurns(loadSaved<Turn[]>(HISTORY) ?? []);
@@ -209,11 +211,7 @@ export function Playground() {
             setNeedKey(undefined);
             setTurns((t) => [...t, { role: 'user', content: text }]);
             try {
-                const headers: Record<string, string> = { 'content-type': 'application/json' };
-                if (own) {
-                    headers['x-brain-provider'] = own.provider;
-                    headers['x-brain-key'] = own.key;
-                }
+                const headers: Record<string, string> = { 'content-type': 'application/json', ...ownKeyHeaders(keys) };
                 const response = await fetch('/api/playground', {
                     method: 'POST',
                     headers,
@@ -251,7 +249,7 @@ export function Playground() {
                 setBusy(false);
             }
         },
-        [own, turns],
+        [keys, turns],
     );
 
     // A request typed on the start screen goes out once the starter is in place.
@@ -270,7 +268,7 @@ export function Playground() {
             <div className="min-h-dvh bg-bg">
                 <header className="flex h-14 items-center gap-2 border-b border-line px-4">
                     <Link href="/" className="flex items-center gap-2 font-display text-[15px] font-semibold text-fg">
-                        <Logo /> FreeAgentCoder
+                        <Logo /> Fyxable
                     </Link>
                 </header>
                 <Start
@@ -312,7 +310,7 @@ export function Playground() {
             <header className="flex h-11 shrink-0 items-center gap-3 border-b border-line bg-panel px-3">
                 <Link href="/" className="flex items-center gap-1.5 text-[13px] font-semibold text-fg">
                     <Logo size={15} />
-                    <span className="hidden sm:inline">FreeAgentCoder</span>
+                    <span className="hidden sm:inline">Fyxable</span>
                 </Link>
                 <span className="text-faint">/</span>
                 <span className="truncate text-[13px] text-muted">{project.name}</span>
@@ -325,6 +323,9 @@ export function Playground() {
                     >
                         <span className={`size-1.5 rounded-full ${runOpen ? 'bg-ok' : 'bg-faint'}`} />
                         {runOpen ? 'Running' : 'Run'}
+                    </button>
+                    <button type="button" onClick={() => setExporting(true)} className="h-7 rounded-md border border-line-strong px-2.5 text-[12px] text-fg hover:bg-panel-2">
+                        GitHub
                     </button>
                     <button type="button" onClick={download} className="h-7 rounded-md border border-line-strong px-2.5 text-[12px] text-fg hover:bg-panel-2">
                         Download
@@ -550,7 +551,7 @@ export function Playground() {
                             <div className="flex items-center gap-1 px-1.5 pb-1.5 pt-1">
                                 <span className="flex h-6 min-w-0 items-center gap-1.5 rounded-md px-1.5 text-[12px] text-muted" title={own ? 'Using your own key' : 'Free requests on this site'}>
                                     <span className={`size-[7px] shrink-0 rounded-full ${(noTrial || (trial && trial.remaining === 0)) && !own ? 'bg-warn' : 'bg-ok'}`} />
-                                    <span className="truncate">{own ? `Your ${own.provider} key` : trial ? `${trial.remaining} of ${trial.limit} free left today` : noTrial ? 'Add a free key to start' : 'Free to try'}</span>
+                                    <span className="truncate">{own ? (keys.length > 1 ? `Your ${keys.length} keys, rotating` : `Your ${own.provider} key`) : trial ? `${trial.remaining} of ${trial.limit} free left today` : noTrial ? 'Add a free key to start' : 'Free to try'}</span>
                                 </span>
                                 <span className="flex-1" />
                                 <button
@@ -574,6 +575,7 @@ export function Playground() {
                     </form>
                 </aside>
             </div>
+            {exporting && <GithubExport files={files} name={project.name} onClose={() => setExporting(false)} />}
         </div>
     );
 }

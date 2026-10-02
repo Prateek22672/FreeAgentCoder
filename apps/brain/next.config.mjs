@@ -7,6 +7,10 @@ const nextConfig = {
   poweredByHeader: false,
   // Test-lab tasks can carry starter files; allow a little more than the 1 MB default.
   experimental: { serverActions: { bodySizeLimit: '2mb' } },
+  // The Playground became Fyxable; old links keep working, with their query.
+  async redirects() {
+    return [{ source: '/playground', destination: '/fyxable', permanent: true }];
+  },
   async headers() {
     return [
       {
@@ -22,14 +26,14 @@ const nextConfig = {
         // needs the page to be cross-origin isolated. Only the workbench pages
         // get these headers: they load nothing from other origins, and the
         // rest of the site keeps its embeds and previews.
-        source: '/:area(r|playground)/:path*',
+        source: '/:area(r|playground|fyxable)/:path*',
         headers: [
           { key: 'Cross-Origin-Opener-Policy', value: 'same-origin' },
           { key: 'Cross-Origin-Embedder-Policy', value: 'require-corp' },
         ],
       },
       {
-        source: '/playground',
+        source: '/fyxable',
         headers: [
           { key: 'Cross-Origin-Opener-Policy', value: 'same-origin' },
           { key: 'Cross-Origin-Embedder-Policy', value: 'require-corp' },

@@ -1,6 +1,6 @@
 import { AllProvidersFailedError, ContextTooLargeError, type ModelRouter } from '@agentic/core';
 import { EVIDENCE_RULES, buildEvidenceBlock, checkCitations, excerpt, extractTerms, isSecretFile, rankHits, redactSecrets, roleOf } from '@agentic/project-brain';
-import { getTrialRouter, providerLabel, routerForKey } from '@/lib/ai';
+import { getTrialRouter, providerLabel, routerFromRequest } from '@/lib/ai';
 import { refundTrial, trialStatus, useTrial } from '@/lib/trial';
 import { fail, isResponse, readBody, requireBrain } from '@/lib/http';
 import type { Brain } from '@/lib/store';
@@ -61,16 +61,15 @@ export async function POST(request: Request) {
     if (!question) return fail('Ask a question about this repository.');
 
     // Who pays for this question: the visitor's own key, or one of the site's free trial questions.
-    const ownProvider = request.headers.get('x-brain-provider');
-    const ownKey = request.headers.get('x-brain-key');
+    const own = routerFromRequest(request);
     let router: ModelRouter | undefined;
     let access: { mode: 'own'; provider: string } | { mode: 'trial'; remaining: number; limit: number };
     let setCookie: string | undefined;
     let trialVisitor: string | undefined;
-    if (ownProvider && ownKey) {
-        router = routerForKey(ownProvider, ownKey);
+    if (own) {
+        router = own.router;
         if (!router) return fail('That key does not look right. Paste the whole key, and pick the provider it came from.', 400, { badKey: true });
-        access = { mode: 'own', provider: providerLabel(ownProvider) };
+        access = { mode: 'own', provider: providerLabel(own.provider ?? '') };
     } else {
         router = await getTrialRouter();
         if (!router) return fail('Add your own free AI key to ask questions. It takes about a minute.', 402, { needKey: true, reason: 'no-server-key' });
@@ -90,7 +89,7 @@ export async function POST(request: Request) {
         access = { mode: 'trial', remaining: trial.remaining - 1, limit: trial.limit };
     }
     /** Provider errors can quote the request; make sure a visitor's key never comes back in one. */
-    const scrub = (text: string) => (ownKey ? text.split(ownKey).join('[your key]') : text);
+    const scrub = (text: string) => (own?.keys ?? []).reduce((t, key) => t.split(key).join('[your key]'), text);
 
     const meta = brain.analysis.meta;
     const { excerpts } = gatherEvidence(brain, question);

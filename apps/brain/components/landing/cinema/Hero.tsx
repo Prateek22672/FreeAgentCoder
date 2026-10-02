@@ -91,7 +91,7 @@ export function Hero({ trust }: { trust?: Trust }) {
                                         </span>
                                     </InstallLink>
                                     <a
-                                        href="/playground"
+                                        href="/fyxable"
                                         className="group inline-flex items-center gap-2 rounded-[14px] border border-white/15 bg-white/10 px-5 text-[14.5px] font-medium text-white backdrop-blur transition-colors hover:bg-white/20"
                                     >
                                         <span>

@@ -1,6 +1,6 @@
 import 'server-only';
 import type { ModelRouter } from '@agentic/core';
-import { getTrialRouter, providerLabel, routerForKey } from './ai';
+import { getTrialRouter, providerLabel, routerFromRequest } from './ai';
 import { fail } from './http';
 import { refundTrial, trialStatus, useTrial } from './trial';
 
@@ -21,14 +21,12 @@ export type Access =
     | { response: Response };
 
 export async function resolveAccess(request: Request, noun = 'questions'): Promise<Access> {
-    const ownProvider = request.headers.get('x-brain-provider');
-    const ownKey = request.headers.get('x-brain-key');
-    const scrub = (text: string) => (ownKey ? text.split(ownKey).join('[your key]') : text);
+    const own = routerFromRequest(request);
+    const scrub = (text: string) => (own?.keys ?? []).reduce((t, key) => t.split(key).join('[your key]'), text);
 
-    if (ownProvider && ownKey) {
-        const router = routerForKey(ownProvider, ownKey);
-        if (!router) return { response: fail('That key does not look right. Paste the whole key, and pick the provider it came from.', 400, { badKey: true }) };
-        return { router, mode: { mode: 'own', provider: providerLabel(ownProvider) }, refund: () => {}, scrub };
+    if (own) {
+        if (!own.router) return { response: fail('That key does not look right. Paste the whole key, and pick the provider it came from.', 400, { badKey: true }) };
+        return { router: own.router, mode: { mode: 'own', provider: providerLabel(own.provider ?? '') }, refund: () => {}, scrub };
     }
 
     const router = await getTrialRouter();

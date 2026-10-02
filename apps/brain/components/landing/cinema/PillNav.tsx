@@ -5,7 +5,7 @@ import { Logo } from '@/components/Logo';
 import { GITHUB } from '@/lib/site';
 
 const LINKS = [
-    { href: '/playground', label: 'Playground' },
+    { href: '/fyxable', label: 'Fyxable' },
     { href: '#brain', label: 'Read a repo' },
     { href: '#work', label: 'What it does' },
     { href: '#guides', label: 'Guides' },
@@ -66,11 +66,11 @@ export function PillNav() {
                         {link.label}
                     </a>
                 ))}
-                <a href="/playground" className="px-2.5 py-1.5 sm:hidden">
-                    Playground
+                <a href="/fyxable" className="px-2.5 py-1.5 sm:hidden">
+                    Fyxable
                 </a>
                 <a
-                    href="/playground"
+                    href="/fyxable"
                     className={`ml-1 rounded-full px-4 py-2 font-medium transition-colors duration-500 ${light ? 'bg-zinc-950 text-white' : 'bg-white text-zinc-950'}`}
                 >
                     Get started

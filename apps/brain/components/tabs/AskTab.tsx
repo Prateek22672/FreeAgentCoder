@@ -2,7 +2,7 @@
 
 import type { GroundedAnswer } from '@agentic/project-brain';
 import { useEffect, useRef, useState } from 'react';
-import { useOwnKey } from '@/lib/keys';
+import { ownKeyHeaders, useOwnKey } from '@/lib/keys';
 import type { AskEvent } from '@/lib/types';
 import type { TabProps } from '@/lib/client';
 import { KeyPanel } from '../KeyPanel';
@@ -24,7 +24,7 @@ export function AskTab({ data, known, open, reanalyze, prefill, prefillKey }: Ta
     const [turns, setTurns] = useState<Turn[]>([]);
     const [busy, setBusy] = useState(false);
     const abort = useRef<AbortController | undefined>(undefined);
-    const { own } = useOwnKey();
+    const { own, keys } = useOwnKey();
     // undefined until loaded; null when the site has no free trial.
     const [trial, setTrial] = useState<{ limit: number; remaining: number; closed?: boolean } | null>();
     const [showKeys, setShowKeys] = useState(false);
@@ -55,7 +55,7 @@ export function AskTab({ data, known, open, reanalyze, prefill, prefillKey }: Ta
             fetch('/api/ask', {
                 method: 'POST',
                 // Your own key, if you saved one: used for this request only, never stored by the server.
-                headers: { 'Content-Type': 'application/json', ...(own ? { 'X-Brain-Provider': own.provider, 'X-Brain-Key': own.key } : {}) },
+                headers: { 'Content-Type': 'application/json', ...ownKeyHeaders(keys) },
                 body: JSON.stringify({ id, question }),
                 signal: controller.signal,
             });

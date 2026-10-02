@@ -84,8 +84,8 @@ export function AgentDemo({ width, frozen = false }: { width: string; frozen?: b
             return;
         }
         setGoing(true);
-        // A real page load: the Playground needs its own isolation headers to run the app.
-        window.location.assign(`/playground?ask=${encodeURIComponent(ask.slice(0, 400))}`);
+        // A real page load: Fyxable needs its own isolation headers to run the app.
+        window.location.assign(`/fyxable?ask=${encodeURIComponent(ask.slice(0, 400))}`);
     };
 
     const typing = !engaged && t >= TYPE_FROM && t < SENT;
@@ -278,7 +278,7 @@ export function AgentDemo({ width, frozen = false }: { width: string; frozen?: b
                             <span className="size-[1.6cqw] rounded-full bg-[#4ade80]" /> 5 keys active
                         </span>
                         <span>{tokens} tokens today</span>
-                        <span className="ml-auto">{engaged ? (going ? 'Opening the Playground…' : 'Enter builds it, live') : `Context ${done ? '9' : sent ? '7' : '2'}%`}</span>
+                        <span className="ml-auto">{engaged ? (going ? 'Opening Fyxable…' : 'Enter builds it, live') : `Context ${done ? '9' : sent ? '7' : '2'}%`}</span>
                     </div>
                 </div>
             </div>

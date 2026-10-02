@@ -20,10 +20,10 @@ interface Card {
 const CARDS: Card[] = [
     { chip: 'Project Brain', corner: 'freeagentcoder', title: '', body: '', look: 'cine-look-chrome', dark: true, href: '#brain' },
     { chip: 'Specialists', corner: 'debug · refactor', title: 'Reproduce first, then fix', body: 'The right method for each kind of task, not one prompt for all.', look: 'cine-look-teal', href: '/free-ai-coding-agent-vscode' },
-    { chip: 'Starters', corner: 'playground', title: 'Start from a running app', body: 'React, plain HTML or a Node API, live in your browser in a minute.', look: 'cine-look-moss', href: '/playground' },
+    { chip: 'Starters', corner: 'fyxable', title: 'Start from a running app', body: 'React, plain HTML or a Node API, live in your browser in a minute.', look: 'cine-look-moss', href: '/fyxable' },
     { chip: 'Impact', corner: 'before code', title: 'See what a change breaks', body: 'Every file it reaches, and a risk level, before an edit is made.', look: 'cine-look-plum', href: '#brain' },
     { chip: 'Free keys', corner: 'no card', title: 'Know what each key gives', body: 'Gemini, Groq, Mistral and OpenRouter, with honest limits.', look: 'cine-look-ice', dark: true, href: '/free-ai-api-limits' },
-    { chip: 'Live', corner: 'playground', title: 'Watch it build', body: 'Changes land in the files and appear in the running preview.', look: 'cine-look-magenta', href: '/playground' },
+    { chip: 'Live', corner: 'fyxable', title: 'Watch it build', body: 'Changes land in the files and appear in the running preview.', look: 'cine-look-magenta', href: '/fyxable' },
 ];
 
 const WORDS = 'Understand before you change · Built in your editor · Free for everyone · ';
@@ -105,8 +105,8 @@ export function Carousel() {
                     ))}
                 </div>
                 <div className="absolute inset-x-0 bottom-[6%] z-40 flex justify-center">
-                    <a href="/playground" className="group inline-flex items-center gap-2 rounded-[12px] bg-zinc-950 px-6 py-3.5 text-[14.5px] font-medium text-white shadow-[0_14px_40px_-12px_rgb(0_0_0/0.6)] transition-transform hover:scale-[1.03]">
-                        Open the Playground <span className="transition-transform group-hover:translate-x-0.5"><Arrow size={14} /></span>
+                    <a href="/fyxable" className="group inline-flex items-center gap-2 rounded-[12px] bg-zinc-950 px-6 py-3.5 text-[14.5px] font-medium text-white shadow-[0_14px_40px_-12px_rgb(0_0_0/0.6)] transition-transform hover:scale-[1.03]">
+                        Open Fyxable <span className="transition-transform group-hover:translate-x-0.5"><Arrow size={14} /></span>
                     </a>
                 </div>
             </div>

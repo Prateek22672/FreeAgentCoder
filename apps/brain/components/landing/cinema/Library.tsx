@@ -16,7 +16,7 @@ interface Tile {
 }
 
 const TILES: Tile[] = [
-    { label: 'Playground', x: 12, y: -26, z: -250, w: 360, ratio: 1.35, look: 'cine-tile-holo' },
+    { label: 'Fyxable', x: 12, y: -26, z: -250, w: 360, ratio: 1.35, look: 'cine-tile-holo' },
     { label: 'Impact', x: -12, y: 30, z: -120, w: 330, ratio: 1.45, look: 'cine-look-chrome' },
     { label: 'Search', x: -44, y: -36, z: -700, w: 170, ratio: 0.75, look: 'cine-tile-violet' },
     { label: 'Architecture', x: -30, y: -2, z: -420, w: 190, ratio: 0.72, look: 'cine-tile-red' },
@@ -87,7 +87,7 @@ export function Library() {
                     </p>
                     <div className="mt-7 flex flex-wrap justify-center gap-3">
                         <a
-                            href="/playground"
+                            href="/fyxable"
                             className="inline-flex items-center gap-2 rounded-[12px] bg-white px-5 py-3 text-[14.5px] font-medium text-zinc-950 shadow-[0_14px_40px_-12px_rgb(0_0_0/0.6)] transition-transform hover:scale-[1.03]"
                         >
                             Start building <Arrow size={14} />

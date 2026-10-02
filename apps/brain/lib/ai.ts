@@ -40,6 +40,47 @@ export type OwnKeyProvider = (typeof OWN_KEY_PROVIDERS)[number];
  * A one-off chain for a visitor's own key, sent with the request. The key is
  * used for this request only: never stored, cached or logged.
  */
+/**
+ * A one-off chain for a visitor's own keys, sent with the request: every key,
+ * in the order that suits each provider, so a key at its limit hands over to
+ * the next. Used for this request only: never stored, cached or logged.
+ */
+export function routerForKeys(list: [string, string][]): ModelRouter | undefined {
+    const entries = list
+        .filter(([provider, key]) => (OWN_KEY_PROVIDERS as readonly string[]).includes(provider) && /^[\x21-\x7e]{16,256}$/.test(key) && PRESETS[provider])
+        .sort((a, b) => ORDER.indexOf(a[0]) - ORDER.indexOf(b[0]))
+        .slice(0, 6)
+        .map(([provider, key]) => {
+            const preset = PRESETS[provider]!;
+            return {
+                provider: createProvider(preset, { apiKey: key, maxOutputTokens: 4_096 }),
+                model: preset.defaultModel,
+                contextWindow: preset.contextWindow,
+                maxRequestTokens: preset.maxRequestTokens,
+                prefer: preset.prefer,
+                label: `your ${preset.label} key`,
+            };
+        });
+    return entries.length ? new ModelRouter(entries) : undefined;
+}
+
+/** Reads the visitor's keys from a request: the list when sent, else the single key. */
+export function routerFromRequest(request: Request): { router?: ModelRouter; provider?: string; keys: string[] } | undefined {
+    const many = request.headers.get('x-brain-keys');
+    if (many) {
+        try {
+            const list = (JSON.parse(many) as unknown[]).filter((x): x is [string, string] => Array.isArray(x) && typeof x[0] === 'string' && typeof x[1] === 'string');
+            return { router: routerForKeys(list), provider: list[0]?.[0], keys: list.map((x) => x[1]) };
+        } catch {
+            return { keys: [] };
+        }
+    }
+    const provider = request.headers.get('x-brain-provider');
+    const key = request.headers.get('x-brain-key');
+    if (provider && key) return { router: routerForKey(provider, key), provider, keys: [key] };
+    return undefined;
+}
+
 export function routerForKey(provider: string, key: string): ModelRouter | undefined {
     if (!(OWN_KEY_PROVIDERS as readonly string[]).includes(provider)) return undefined;
     if (!/^[\x21-\x7e]{16,256}$/.test(key)) return undefined;

@@ -11,7 +11,8 @@ import { Button, cx } from './ui';
  * links, so nobody opens a second account's worth of signups for nothing.
  */
 export function KeyPanel({ reason, onSaved }: { reason?: string; onSaved?: () => void }) {
-    const { own, save, clear } = useOwnKey();
+    const { keys, save, remove } = useOwnKey();
+    const [adding, setAdding] = useState(false);
     const [provider, setProvider] = useState<KeyProvider['id']>('gemini');
     const [key, setKey] = useState('');
     const [shown, setShown] = useState(false);
@@ -32,21 +33,36 @@ export function KeyPanel({ reason, onSaved }: { reason?: string; onSaved?: () =>
         }
         save({ provider, key: trimmed });
         setKey('');
+        setAdding(false);
         onSaved?.();
     };
 
-    if (own) {
-        const p = providerById(own.provider);
+    if (keys.length && !adding) {
+        const used = new Set(keys.map((k) => k.provider));
+        const next = KEY_PROVIDERS.find((p) => !used.has(p.id));
         return (
-            <div className="flex flex-wrap items-center gap-3 rounded-lg border border-ok/30 bg-ok/10 px-4 py-3 text-sm">
-                <Icon name="check" size={16} className="text-ok" />
-                <span className="text-fg">
-                    Using your {p?.label} key <span className="font-mono text-muted">{maskKey(own.key)}</span>
-                </span>
-                <span className="text-faint">Kept in this browser only.</span>
-                <button type="button" onClick={clear} className="ml-auto text-[13px] text-muted underline underline-offset-4 hover:text-fg">
-                    Remove
-                </button>
+            <div className="rounded-lg border border-ok/30 bg-ok/10 px-4 py-3 text-sm">
+                <p className="flex items-center gap-2 text-fg">
+                    <Icon name="check" size={16} className="text-ok" />
+                    {keys.length === 1 ? 'Using your own key.' : `Using your ${keys.length} keys. When one reaches its limit, the next takes over.`}
+                    <span className="text-faint">Kept in this browser only.</span>
+                </p>
+                <ul className="mt-2 space-y-1">
+                    {keys.map((k) => (
+                        <li key={k.key} className="flex items-center gap-3 text-[13px]">
+                            <span className="text-fg">{providerById(k.provider)?.label ?? k.provider}</span>
+                            <span className="font-mono text-muted">{maskKey(k.key)}</span>
+                            <button type="button" onClick={() => remove(k)} className="ml-auto text-[12px] text-muted underline underline-offset-4 hover:text-fg">
+                                Remove
+                            </button>
+                        </li>
+                    ))}
+                </ul>
+                {next && keys.length < 6 && (
+                    <button type="button" onClick={() => setAdding(true)} className="mt-2 text-[13px] text-accent underline underline-offset-4">
+                        Add a {next.label} key too: its free limit adds to yours
+                    </button>
+                )}
             </div>
         );
     }

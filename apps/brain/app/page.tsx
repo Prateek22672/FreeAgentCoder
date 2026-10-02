@@ -64,7 +64,7 @@ const FOOTER: { title: string; links: { label: string; href: string; external?: 
     {
         title: 'Product',
         links: [
-            { label: 'Playground', href: '/playground' },
+            { label: 'Fyxable', href: '/fyxable' },
             { label: 'Read a repo', href: '#brain' },
             { label: 'Install in VS Code', href: VSCODE_INSTALL },
             { label: 'Questions', href: '#faq' },
@@ -184,7 +184,7 @@ export default async function Home() {
                                 A playground in your browser and an agent in your editor, both on keys you own. Ship something today.
                             </p>
                             <a
-                                href="/playground"
+                                href="/fyxable"
                                 className="group mt-8 inline-flex w-fit items-center gap-2 rounded-[12px] bg-white px-5 py-3 text-[14.5px] font-medium text-zinc-950 shadow-[0_14px_40px_-12px_rgb(0_0_0/0.5)] transition-transform hover:scale-[1.03]"
                             >
                                 Get started <span className="transition-transform group-hover:translate-x-0.5"><Arrow size={14} /></span>

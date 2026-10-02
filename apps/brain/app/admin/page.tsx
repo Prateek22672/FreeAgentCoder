@@ -155,7 +155,7 @@ export default async function AdminPage() {
                         {SPECIALIST_INFO.some((i) => specialists[i.id].model) ? `; preferred models set for ${SPECIALIST_INFO.filter((i) => specialists[i.id].model).map((i) => i.name).join(', ')}` : ''}.
                     </li>
                     <li>
-                        <span className="text-fg">On this site:</span> Ask and the Playground use the visitor&rsquo;s own key when they have one; otherwise a free
+                        <span className="text-fg">On this site:</span> Ask and Fyxable use the visitor&rsquo;s own key when they have one; otherwise a free
                         request, tried in this order —{' '}
                         {pool.filter((k) => k.enabled && !k.benched).length || configuredProviders().length
                             ? [
@@ -166,7 +166,7 @@ export default async function AdminPage() {
                         .
                     </li>
                     <li>
-                        <span className="text-fg">Running code:</span> never on this server. Run and the Playground boot a Node runtime inside the visitor&rsquo;s own
+                        <span className="text-fg">Running code:</span> never on this server. Run and Fyxable boot a Node runtime inside the visitor&rsquo;s own
                         browser tab.
                     </li>
                 </ol>
