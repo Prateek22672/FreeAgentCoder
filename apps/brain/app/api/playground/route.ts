@@ -13,7 +13,40 @@ export const maxDuration = 60;
  */
 
 const MAX_PROJECT_CHARS = 300_000;
+/** An imported repository can be bigger than one request; only the part that matters is sent. */
+const MAX_UPLOAD_CHARS = 3_000_000;
 const MAX_HISTORY = 8;
+
+const words = (text: string) => new Set(text.toLowerCase().split(/[^a-z0-9]+/).filter((w) => w.length > 2));
+const fileBlock = (list: [string, string][]) => list.map(([path, content]) => `<file path="${path}">\n${content}\n</file>`).join('\n');
+
+/**
+ * The project as the model sees it. A small project is sent whole. A larger
+ * one is sent as its full list of paths, plus whole files chosen for this
+ * request: the manifest and entry points first, then the files whose path or
+ * text shares the most words with the request, until the budget is used.
+ */
+function projectContext(files: Record<string, string>, ask: string): string {
+    const all = Object.entries(files);
+    if (all.reduce((sum, [, content]) => sum + content.length, 0) <= MAX_PROJECT_CHARS) return fileBlock(all);
+    const want = words(ask);
+    const score = ([path, content]: [string, string]) => {
+        if (/(^|\/)(package\.json|index\.html|vite\.config\.\w+|main\.\w+|App\.\w+)$/.test(path)) return 1_000;
+        const inPath = [...words(path)].filter((w) => want.has(w)).length * 20;
+        const head = content.slice(0, 20_000).toLowerCase();
+        return inPath + [...want].filter((w) => head.includes(w)).length;
+    };
+    const chosen: [string, string][] = [];
+    let used = 0;
+    for (const entry of [...all].sort((a, b) => score(b) - score(a))) {
+        if (used + entry[1].length > MAX_PROJECT_CHARS * 0.85) continue;
+        chosen.push(entry);
+        used += entry[1].length;
+    }
+    const shown = new Set(chosen.map(([path]) => path));
+    const others = all.filter(([path]) => !shown.has(path)).map(([path]) => path);
+    return `${fileBlock(chosen)}\n\nOther files in the project, not shown. Never return a file you have not seen; if you need one, say which in the message:\n${others.join('\n')}`;
+}
 
 const SYSTEM = `You are the agent in FreeAgentCoder's playground: a small web project that runs in the user's browser with Node, npm and Vite.
 
@@ -43,16 +76,14 @@ export async function POST(request: Request): Promise<Response> {
     for (const [path, content] of Object.entries(body?.files ?? {})) {
         if (!SAFE_PATH.test(path) || typeof content !== 'string') continue;
         total += content.length;
-        if (total > MAX_PROJECT_CHARS) return fail('This project is too large for the playground. Download it and continue in VS Code.', 413);
+        if (total > MAX_UPLOAD_CHARS) return fail('This project is too large for Fyxable. Export it to GitHub and continue in VS Code with the free extension.', 413);
         files[path] = content;
     }
 
     const access = await resolveAccess(request, 'requests');
     if ('response' in access) return access.response;
 
-    const project = Object.entries(files)
-        .map(([path, content]) => `<file path="${path}">\n${content}\n</file>`)
-        .join('\n');
+    const project = projectContext(files, ask);
     const history = (body?.history ?? [])
         .slice(-MAX_HISTORY)
         .filter((m) => (m.role === 'user' || m.role === 'assistant') && typeof m.content === 'string')

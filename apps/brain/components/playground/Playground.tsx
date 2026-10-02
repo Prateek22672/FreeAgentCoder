@@ -88,15 +88,47 @@ function Editor({ value, onChange }: { value: string; onChange: (next: string) =
     );
 }
 
-function Start({ onPick }: { onPick: (starter: string, request?: string) => void }) {
+interface Imported {
+    name: string;
+    files: Record<string, string>;
+    left: number;
+    map: { stack: string[]; packageManager?: string; layers: { label: string; files: number; examples: string[] }[]; important: string[]; runnable: boolean };
+}
+
+/** What Project Brain found, said as the agent's first message about an imported project. */
+function describeImport(r: Imported): string {
+    const lines = [`Imported ${r.name}: ${Object.keys(r.files).length} files${r.left ? ` (${r.left} large or generated files left out)` : ''}.`];
+    if (r.map.stack.length) lines.push(`Built with ${r.map.stack.join(', ')}${r.map.packageManager ? `, using ${r.map.packageManager}` : ''}.`);
+    if (r.map.layers.length) lines.push(`Layers: ${r.map.layers.map((l) => `${l.label} (${l.files} files)`).join(', ')}.`);
+    if (r.map.important.length) lines.push(`Start reading at ${r.map.important.slice(0, 4).join(', ')}.`);
+    lines.push(r.map.runnable ? 'Press Run to start it here, or tell me what to change.' : 'It has no package.json at the root, so it cannot run in the browser, but I can still change it.');
+    return lines.join('\n');
+}
+
+function Start({ onPick, onImport }: { onPick: (starter: string, request?: string) => void; onImport: (imported: Imported) => void }) {
     const [idea, setIdea] = useState('');
+    const [repo, setRepo] = useState('');
+    const [importing, setImporting] = useState<{ busy?: boolean; error?: string }>({});
+    const importRepo = async () => {
+        const spec = repo.trim();
+        if (!spec) return;
+        setImporting({ busy: true });
+        try {
+            const response = await fetch('/api/import', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ repo: spec }) });
+            const data = (await response.json()) as Imported & { error?: string };
+            if (!response.ok) throw new Error(data.error ?? 'Could not import that repository.');
+            onImport(data);
+        } catch (error) {
+            setImporting({ error: (error as Error).message });
+        }
+    };
     return (
         <div className="mx-auto w-full max-w-3xl px-4 py-16">
             <p className="text-[12px] font-semibold uppercase tracking-wider text-accent">Fyxable · by Free Agent Coder</p>
             <h1 className="mt-2 font-display text-4xl font-semibold tracking-tight text-fg">Build something from nothing.</h1>
             <p className="mt-3 max-w-xl text-[15px] leading-relaxed text-muted">
-                Describe it, and the agent writes it. Edit anything, and see it running — all in this tab. No GitHub and no sign-in; the project stays in your
-                browser until you download it.
+                Describe it, and the agent writes it, or bring a project from GitHub. See it running in this tab. No sign-up and no credits: it runs on
+                your own free keys, and the project stays in your browser until you export it.
             </p>
             <form
                 onSubmit={(e) => {
@@ -116,6 +148,39 @@ function Start({ onPick }: { onPick: (starter: string, request?: string) => void
                 <button type="submit" className="h-11 shrink-0 rounded-md bg-accent px-5 text-[14px] font-semibold text-accent-fg hover:brightness-110">
                     Build it
                 </button>
+            </form>
+            <form
+                onSubmit={(e) => {
+                    e.preventDefault();
+                    void importRepo();
+                }}
+                className="mt-4 rounded-xl border border-line bg-panel p-3"
+            >
+                <div className="flex gap-2">
+                    <input
+                        value={repo}
+                        onChange={(e) => setRepo(e.target.value)}
+                        placeholder="Or import from GitHub: owner/repo or a github.com link"
+                        aria-label="GitHub repository to import"
+                        className="h-11 min-w-0 flex-1 rounded-md bg-transparent px-2 font-mono text-[14px] text-fg outline-none placeholder:font-sans placeholder:text-faint"
+                    />
+                    <button
+                        type="submit"
+                        disabled={importing.busy || !repo.trim()}
+                        className="h-11 shrink-0 rounded-md border border-line-strong px-4 text-[14px] font-semibold text-fg hover:border-accent disabled:opacity-50"
+                    >
+                        {importing.busy ? 'Reading…' : 'Import'}
+                    </button>
+                </div>
+                <p className="mt-1.5 px-2 text-[12px] text-faint">
+                    {importing.error ? (
+                        <span className="text-bad">{importing.error}</span>
+                    ) : importing.busy ? (
+                        'Reading and mapping the repository with Project Brain, a few seconds…'
+                    ) : (
+                        'Keep building a project made in Lovable, Bolt or v0, or any public repository, for free. It is mapped first, so the agent knows how it is built.'
+                    )}
+                </p>
             </form>
             <p className="mt-10 text-[12px] font-semibold uppercase tracking-wider text-faint">Or start from</p>
             <div className="mt-3 grid gap-3 sm:grid-cols-2">
@@ -277,6 +342,15 @@ export function Playground() {
                         pendingRequest.current = request;
                         setTurns([]);
                         setProject({ name: request ? request.slice(0, 40) : starter.name, files: { ...starter.files } });
+                    }}
+                    onImport={(imported) => {
+                        const paths = Object.keys(imported.files);
+                        setTurns([{ role: 'assistant', content: describeImport(imported), model: 'Project Brain' }]);
+                        setProject({
+                            name: imported.name,
+                            files: imported.files,
+                            active: imported.map.important.find((p) => p in imported.files) ?? paths.find((p) => /README/i.test(p)) ?? paths[0],
+                        });
                     }}
                 />
             </div>
