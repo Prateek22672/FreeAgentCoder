@@ -268,31 +268,58 @@
 @media (prefers-reduced-motion: reduce) { .fx-step, .fx-step > *, .fx-leave, .fx-arrive, .fx-arrive [data-panel] { animation: none; } }
 
 /* The typed hero headline's caret: a thin bar the height of the letters, blinking. */
-.typed-caret { display: inline-block; width: .06em; height: .78em; margin-bottom: -.04em; background: #d97757; border-radius: 1px; vertical-align: baseline; animation: typed-blink 1s steps(1) infinite; }
+.typed-letter { animation: typed-letter .22s cubic-bezier(.16, 1, .3, 1) both; }
+@keyframes typed-letter { from { opacity: 0; filter: blur(.08em); } to { opacity: 1; filter: none; } }
+/* Zero width, so the caret never moves the text; the bar itself hangs just right of the newest letter. */
+.typed-caret-slot { position: relative; display: inline-block; width: 0; height: .78em; vertical-align: baseline; }
+.typed-caret { position: absolute; left: .05em; bottom: -.04em; width: .06em; height: .78em; background: #d97757; border-radius: 1px; }
 @keyframes typed-blink { 50% { opacity: 0; } }
 @media (prefers-reduced-motion: reduce) { .typed-caret { display: none; } }
 
-/* Splash: code is written, folds into the mark, the mark locks, the page opens. */
-.splash { position: fixed; inset: 0; z-index: 200; display: grid; place-items: center; background: #070708; color: #f4f4f5; transition: opacity .6s cubic-bezier(.7, 0, .84, 0), transform .65s cubic-bezier(.7, 0, .84, 0), filter .6s; }
-.splash-stage { position: relative; display: grid; place-items: center; width: min(560px, 86vw); height: 260px; }
-.splash-code { position: absolute; margin: 0; font: 500 clamp(13px, 1.6vw, 17px)/1.9 ui-monospace, 'SF Mono', Menlo, Consolas, monospace; color: #d4d4d8; transition: transform .5s cubic-bezier(.7, 0, .3, 1), opacity .45s, filter .45s; }
+/* Splash: one CSS timeline. --fold, --lock, --open and --end are set on .splash; each letter has its own --at. */
+.splash { display: none; }
+html[data-splash='on'] .splash { position: fixed; inset: 0; z-index: 200; display: grid; place-items: center; overflow: hidden; background: #070708; color: #f4f4f5; animation: splash-out .8s cubic-bezier(.7, 0, .84, 0) var(--open) both; }
+html[data-splash='on'] body { overflow: hidden; }
+html.splash-skip .splash { animation-duration: .45s !important; animation-delay: 0s !important; }
+.splash-glow { position: absolute; width: 70vmax; height: 70vmax; border-radius: 50%; background: radial-gradient(circle, rgba(217, 119, 87, .16), rgba(217, 119, 87, .04) 40%, transparent 65%); animation: splash-glow 1.4s cubic-bezier(.16, 1, .3, 1) both, splash-glow-lock 1.2s cubic-bezier(.16, 1, .3, 1) var(--lock) both; }
+.splash-stage { position: relative; display: grid; place-items: center; width: min(560px, 88vw); height: 300px; perspective: 900px; }
+.splash-window { position: absolute; width: 100%; border: 1px solid rgba(255, 255, 255, .09); border-radius: 16px; background: linear-gradient(180deg, rgba(255, 255, 255, .055), rgba(255, 255, 255, .02)); box-shadow: 0 40px 80px -30px rgba(0, 0, 0, .8), inset 0 1px 0 rgba(255, 255, 255, .06); transform-origin: 50% 50%; will-change: transform, opacity, filter;
+    animation: splash-window-in .9s cubic-bezier(.16, 1, .3, 1) .05s both, splash-fold .75s cubic-bezier(.7, 0, .3, 1) var(--fold) forwards; }
+.splash-bar { display: flex; align-items: center; gap: 6px; padding: 11px 14px; border-bottom: 1px solid rgba(255, 255, 255, .06); font: 500 11.5px ui-monospace, 'SF Mono', Menlo, Consolas, monospace; color: #71717a; }
+.splash-bar i { width: 9px; height: 9px; border-radius: 50%; background: rgba(255, 255, 255, .12); }
+.splash-bar span { margin-left: 8px; }
+.splash-code { margin: 0; padding: 18px 20px 22px; font: 500 clamp(13px, 1.7vw, 17px)/1.95 ui-monospace, 'SF Mono', Menlo, Consolas, monospace; color: #e4e4e7; }
 .splash-line { display: block; white-space: pre; }
 .splash-ln { display: inline-block; width: 2.2em; color: #52525b; }
-.splash-caret { display: inline-block; width: .55em; height: 1.05em; margin-bottom: -.2em; margin-left: .05em; background: #d97757; }
-.splash-mark { position: absolute; color: #d97757; opacity: 0; fill: currentColor; }
-.splash-a, .splash-b, .splash-c { transform-box: fill-box; transform-origin: center; transition: transform .55s cubic-bezier(.16, 1, .3, 1), opacity .4s; }
-.splash-a { transform: translate(-60%, -40%) rotate(-12deg) scale(.6); opacity: 0; }
-.splash-b { transform: translate(60%, 40%) rotate(12deg) scale(.6); opacity: 0; }
-.splash-c { transform: scale(0); opacity: 0; transition-delay: .18s; }
-.splash-word { position: absolute; bottom: 8px; margin: 0; font-weight: 600; letter-spacing: -.01em; opacity: 0; transform: translateY(8px); transition: opacity .5s .15s, transform .5s .15s cubic-bezier(.16, 1, .3, 1); }
-.splash-fold .splash-code, .splash-lock .splash-code, .splash-open .splash-code { transform: scale(.25); opacity: 0; filter: blur(6px); }
-.splash-fold .splash-mark, .splash-lock .splash-mark, .splash-open .splash-mark { opacity: 1; }
-.splash-fold .splash-a, .splash-fold .splash-b { opacity: 1; }
-.splash-lock .splash-a, .splash-lock .splash-b, .splash-open .splash-a, .splash-open .splash-b { transform: none; opacity: 1; }
-.splash-lock .splash-c, .splash-open .splash-c { transform: none; opacity: 1; }
-.splash-lock .splash-word, .splash-open .splash-word { opacity: 1; transform: none; }
-.splash-open { opacity: 0; transform: scale(1.12); filter: blur(10px); pointer-events: none; }
-html[data-splash='on'] body { overflow: hidden; }
+/* Each letter appears at its time; the caret is drawn just after the newest one, and stays blinking after the last. */
+.splash-k { position: relative; opacity: 0; animation: splash-key .14s ease-out var(--at) forwards; }
+.splash-k::after { content: ''; position: absolute; top: .18em; bottom: .14em; left: 100%; width: .55em; margin-left: .04em; background: #d97757; border-radius: 2px; opacity: 0; animation: splash-caret var(--next) linear var(--at); }
+.splash-k-last::after { animation: splash-caret-blink 1s steps(1) var(--at) infinite; }
+.splash-mark { position: absolute; color: #d97757; fill: currentColor; filter: drop-shadow(0 0 0 rgba(217, 119, 87, 0)); animation: splash-mark-glow 1.2s ease-out var(--lock) both; }
+.splash-a, .splash-b, .splash-c { transform-box: fill-box; transform-origin: center; opacity: 0; }
+.splash-a { animation: splash-a .8s cubic-bezier(.16, 1, .3, 1) calc(var(--fold) + .3s) both; }
+.splash-b { animation: splash-b .8s cubic-bezier(.16, 1, .3, 1) calc(var(--fold) + .38s) both; }
+.splash-c { animation: splash-c .55s cubic-bezier(.34, 1.56, .64, 1) var(--lock) both; }
+.splash-word { position: absolute; bottom: -14px; display: grid; justify-items: center; gap: 4px; opacity: 0; animation: splash-word .8s cubic-bezier(.16, 1, .3, 1) calc(var(--lock) + .15s) both; }
+.splash-word p { margin: 0; font-size: 19px; font-weight: 600; letter-spacing: -.01em; }
+.splash-word span { font-size: 12.5px; color: #71717a; }
+.splash-progress { position: absolute; left: 50%; bottom: 44px; width: 140px; height: 2px; margin-left: -70px; border-radius: 2px; background: rgba(255, 255, 255, .08); overflow: hidden; }
+.splash-progress::after { content: ''; position: absolute; inset: 0; background: #d97757; transform: scaleX(0); transform-origin: left; animation: splash-progress var(--open) linear both; }
+
+@keyframes splash-key { from { opacity: 0; filter: blur(3px); } to { opacity: 1; filter: none; } }
+@keyframes splash-caret { 0%, 100% { opacity: 1; } }
+@keyframes splash-caret-blink { 0%, 49% { opacity: 1; } 50%, 100% { opacity: 0; } }
+@keyframes splash-window-in { from { opacity: 0; transform: translateY(24px) rotateX(18deg) scale(.94); filter: blur(6px); } to { opacity: 1; transform: none; filter: none; } }
+@keyframes splash-fold { to { opacity: 0; transform: rotateX(-24deg) scale(.22); filter: blur(8px); } }
+@keyframes splash-a { from { opacity: 0; transform: translate(-140%, -90%) rotate(-28deg) scale(.5); } to { opacity: 1; transform: none; } }
+@keyframes splash-b { from { opacity: 0; transform: translate(140%, 90%) rotate(28deg) scale(.5); } to { opacity: 1; transform: none; } }
+@keyframes splash-c { from { opacity: 0; transform: scale(0) rotate(-90deg); } to { opacity: 1; transform: none; } }
+@keyframes splash-mark-glow { 0% { filter: drop-shadow(0 0 0 rgba(217, 119, 87, 0)); } 35% { filter: drop-shadow(0 0 28px rgba(217, 119, 87, .75)); } 100% { filter: drop-shadow(0 0 12px rgba(217, 119, 87, .3)); } }
+@keyframes splash-word { from { opacity: 0; transform: translateY(14px); filter: blur(4px); } to { opacity: 1; transform: none; filter: none; } }
+@keyframes splash-glow { from { opacity: 0; transform: scale(.6); } to { opacity: 1; transform: none; } }
+@keyframes splash-glow-lock { 0% { transform: scale(1); } 40% { transform: scale(1.18); } 100% { transform: scale(1.05); } }
+@keyframes splash-progress { to { transform: scaleX(1); } }
+@keyframes splash-out { to { opacity: 0; transform: scale(1.08); filter: blur(10px); visibility: hidden; } }
 
 /* Floating "Get started": zooms up from the bottom once the hero has gone by, and follows. */
 .float-start { position: fixed; left: 50%; bottom: max(18px, env(safe-area-inset-bottom)); z-index: 60; transform: translate(-50%, 140%) scale(.6); opacity: 0; filter: blur(6px); pointer-events: none; transition: transform .55s cubic-bezier(.16, 1, .3, 1), opacity .4s, filter .4s; }
@@ -309,3 +336,22 @@ html[data-splash='on'] body { overflow: hidden; }
 .float-start-item strong { font-size: 14px; font-weight: 600; }
 .float-start-item span { font-size: 12.5px; color: rgb(255 255 255 / .55); }
 @media (prefers-reduced-motion: reduce) { .float-start, .float-start-menu { transition: opacity .2s; animation: none; filter: none; } }
+
+/* TiltStage: a card that leans toward the pointer, layers floating in front (data-depth), and a light that follows. */
+.tilt-scene { perspective: 1500px; }
+.tilt-card { position: relative; transform: rotateX(var(--tilt-x, 0deg)) rotateY(var(--tilt-y, 0deg)); transform-style: preserve-3d; will-change: transform; }
+.tilt-card .tilt-3d { transform-style: preserve-3d; }
+.tilt-card [data-depth='1'] { transform: translateZ(26px); }
+.tilt-card [data-depth='2'] { transform: translateZ(54px); }
+.tilt-glare { position: absolute; inset: 0; z-index: 1; border-radius: inherit; pointer-events: none; background: radial-gradient(520px circle at var(--glow-x, 50%) var(--glow-y, 50%), rgba(255, 255, 255, .7), rgba(255, 255, 255, 0) 55%); opacity: calc(var(--glow, 0) * .55); mix-blend-mode: soft-light; }
+.flip-wait { opacity: 0; transform: perspective(700px) rotateX(-75deg) translateY(14px); transform-origin: 50% 100%; transition: transform .8s cubic-bezier(.16, 1, .3, 1), opacity .5s ease-out; }
+.flip-wait.flip-in { opacity: 1; transform: none; }
+/* A repository chip being dragged: lifted, leaning with its motion. */
+.repo-chip { touch-action: none; cursor: grab; }
+.repo-chip[data-dragging] { position: relative; z-index: 30; cursor: grabbing; box-shadow: 0 18px 36px -12px rgba(0, 0, 0, .45); transition: none !important; }
+.repo-chip.chip-return { transition: transform .5s cubic-bezier(.34, 1.56, .64, 1), box-shadow .3s; }
+.repo-drop { transition: box-shadow .25s, transform .25s cubic-bezier(.16, 1, .3, 1), border-color .25s; }
+.repo-drop[data-over] { border-color: #d97757; box-shadow: 0 0 0 4px rgba(217, 119, 87, .25), 0 30px 60px -30px rgba(0, 0, 0, .7); transform: scale(1.015); }
+.repo-drop.repo-filled { animation: repo-filled .6s cubic-bezier(.16, 1, .3, 1); }
+@keyframes repo-filled { 0% { transform: scale(1.03); } 100% { transform: none; } }
+@media (prefers-reduced-motion: reduce) { .tilt-card { transform: none; } .flip-wait { opacity: 1; transform: none; } }

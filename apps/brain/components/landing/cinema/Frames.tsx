@@ -8,7 +8,8 @@ import { InstallLink } from '@/components/InstallLink';
  *
  * - Splash: a coding agent writes three lines of code, the lines fold into
  *   the two halves of our mark, the mark locks, and the page opens. Once per
- *   visit, about two seconds, skipped for reduced motion.
+ *   visit, under five seconds (a click or a key skips it), never with
+ *   reduced motion.
  * - ScrollFrames: every section marked data-frame arrives in 3D (tilted back,
  *   slightly small and dim) and settles flat as it reaches the screen, then
  *   recedes as it leaves. Pinned scenes are left alone; they have their own.
@@ -19,92 +20,116 @@ import { InstallLink } from '@/components/InstallLink';
 
 const CODE = ['const agent = read(repo);', 'agent.plan(task).build();', 'verify(); // ship it'];
 
-/** Decided once per page load, so a remount (React runs effects twice in development) cannot skip it. */
-let splashDecision: boolean | undefined;
 /**
- * Shown when someone arrives from outside the site; not when they come from
- * another page of it or go back to it, so it plays once per visit without
- * storing anything.
+ * The whole splash is one CSS timeline (seconds from the start), so it plays
+ * smoothly even while the page behind it is still loading: every letter,
+ * the fold and the lock are compositor animations started by the browser,
+ * not by React.
  */
-function shouldSplash(): boolean {
-    if (splashDecision !== undefined) return splashDecision;
-    const nav = performance.getEntriesByType('navigation')[0] as PerformanceNavigationTiming | undefined;
-    let internal = false;
-    try {
-        internal = !!document.referrer && new URL(document.referrer).origin === location.origin;
-    } catch {}
-    splashDecision = !internal && nav?.type !== 'back_forward' && !window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    return splashDecision;
-}
+const START = 0.35;
+const KEY = 0.028;
+const LINE_PAUSE = 0.22;
+const TYPED_END = CODE.reduce((t, line) => t + line.length * KEY + LINE_PAUSE, START);
+const FOLD = TYPED_END + 0.25;
+const LOCK = FOLD + 0.75;
+const OPEN = LOCK + 1.0;
+const END = OPEN + 0.8;
+
+/**
+ * Decided before the first paint by a tiny inline script, so the splash is
+ * either there from the very first frame or never drawn at all: shown when
+ * someone arrives from outside the site, not when they come from another of
+ * its pages or go back to it, and never with reduced motion.
+ */
+const DECIDE = `(function(){try{var d=document.documentElement,r=document.referrer,n=performance.getEntriesByType('navigation')[0];var inside=r&&new URL(r).origin===location.origin;if(!inside&&!(n&&n.type==='back_forward')&&!matchMedia('(prefers-reduced-motion: reduce)').matches)d.dataset.splash='on';}catch(e){}})();`;
+
+const vars = (v: Record<string, number>) => Object.fromEntries(Object.entries(v).map(([k, n]) => [`--${k}`, `${n.toFixed(3)}s`])) as React.CSSProperties;
 
 export function Splash() {
-    const [stage, setStage] = useState<'hidden' | 'type' | 'fold' | 'lock' | 'open'>('type');
-    const [typed, setTyped] = useState(0);
+    const [gone, setGone] = useState(false);
 
     useEffect(() => {
-        if (!shouldSplash()) {
-            setStage('hidden');
+        const root = document.documentElement;
+        if (root.dataset.splash !== 'on') {
+            setGone(true);
             window.dispatchEvent(new Event('splash:done'));
             return;
         }
-        document.documentElement.dataset.splash = 'on';
-        const total = CODE.join('').length;
-        const timers: number[] = [];
-        let count = 0;
-        const typeNext = () => {
-            count = Math.min(total, count + 2);
-            setTyped(count);
-            if (count < total) timers.push(window.setTimeout(typeNext, 16));
-            else timers.push(window.setTimeout(() => setStage('fold'), 220));
+        let finished = false;
+        const finish = () => {
+            if (finished) return;
+            finished = true;
+            delete root.dataset.splash;
+            setGone(true);
+            window.dispatchEvent(new Event('splash:done'));
         };
-        timers.push(window.setTimeout(typeNext, 200));
-        return () => timers.forEach(clearTimeout);
+        // Click or a key skips straight to the page.
+        const skip = () => root.classList.add('splash-skip');
+        // The animation began with the first paint, not when this code loaded: end on its clock.
+        const timer = window.setTimeout(finish, Math.max(0, END * 1000 - performance.now()));
+        const onEnd = (event: AnimationEvent) => event.animationName === 'splash-out' && finish();
+        window.addEventListener('pointerdown', skip, { once: true });
+        window.addEventListener('keydown', skip, { once: true });
+        window.addEventListener('animationend', onEnd);
+        return () => {
+            clearTimeout(timer);
+            window.removeEventListener('pointerdown', skip);
+            window.removeEventListener('keydown', skip);
+            window.removeEventListener('animationend', onEnd);
+        };
     }, []);
 
-    useEffect(() => {
-        const next: Partial<Record<typeof stage, [typeof stage, number]>> = { fold: ['lock', 520], lock: ['open', 620] };
-        const step = next[stage];
-        if (step) {
-            const timer = window.setTimeout(() => setStage(step[0]), step[1]);
-            return () => clearTimeout(timer);
-        }
-        if (stage === 'open') {
-            const timer = window.setTimeout(() => {
-                setStage('hidden');
-                delete document.documentElement.dataset.splash;
-                window.dispatchEvent(new Event('splash:done'));
-            }, 650);
-            return () => clearTimeout(timer);
-        }
-    }, [stage]);
-
-    if (stage === 'hidden') return null;
-    let left = typed;
+    if (gone) return null;
+    let t = START;
     return (
-        <div className={`splash splash-${stage}`} aria-hidden>
-            <div className="splash-stage">
-                <pre className="splash-code">
-                    {CODE.map((line, i) => {
-                        const shown = line.slice(0, Math.max(0, left));
-                        left -= line.length;
-                        return (
-                            <span key={i} className="splash-line" style={{ '--i': i } as React.CSSProperties}>
-                                <span className="splash-ln">{i + 1}</span>
-                                {shown}
-                                {shown.length > 0 && shown.length < line.length && <i className="splash-caret" />}
-                            </span>
-                        );
-                    })}
-                </pre>
-                {/* The mark, in its three parts: the two brackets close in, then the centre locks. */}
-                <svg className="splash-mark" viewBox="0 0 24 24" width="120" height="120">
-                    <path className="splash-a" d="M3 3h13v4H7v9H3z" />
-                    <path className="splash-b" d="M21 21H8v-4h9V8h4z" />
-                    <path className="splash-c" d="M10 10h4v4h-4z" />
-                </svg>
-                <p className="splash-word">FreeAgentCoder</p>
+        <>
+            <script dangerouslySetInnerHTML={{ __html: DECIDE }} />
+            <div className="splash" aria-hidden style={vars({ fold: FOLD, lock: LOCK, open: OPEN, end: END })}>
+                <div className="splash-glow" />
+                <div className="splash-stage">
+                    <div className="splash-window">
+                        <div className="splash-bar">
+                            <i />
+                            <i />
+                            <i />
+                            <span>agent.ts</span>
+                        </div>
+                        <pre className="splash-code">
+                            {CODE.map((line, i) => {
+                                const chars = Array.from(line).map((char, j) => {
+                                    const at = t;
+                                    t += KEY;
+                                    const last = i === CODE.length - 1 && j === line.length - 1;
+                                    return (
+                                        <span key={j} className={last ? 'splash-k splash-k-last' : 'splash-k'} style={vars({ at, next: KEY })}>
+                                            {char}
+                                        </span>
+                                    );
+                                });
+                                t += LINE_PAUSE;
+                                return (
+                                    <span key={i} className="splash-line">
+                                        <span className="splash-ln">{i + 1}</span>
+                                        {chars}
+                                    </span>
+                                );
+                            })}
+                        </pre>
+                    </div>
+                    {/* The mark, in its three parts: the two brackets close in, then the centre locks. */}
+                    <svg className="splash-mark" viewBox="0 0 24 24" width="112" height="112">
+                        <path className="splash-a" d="M3 3h13v4H7v9H3z" />
+                        <path className="splash-b" d="M21 21H8v-4h9V8h4z" />
+                        <path className="splash-c" d="M10 10h4v4h-4z" />
+                    </svg>
+                    <div className="splash-word">
+                        <p>FreeAgentCoder</p>
+                        <span>reads your code, then builds</span>
+                    </div>
+                </div>
+                <div className="splash-progress" />
             </div>
-        </div>
+        </>
     );
 }
 

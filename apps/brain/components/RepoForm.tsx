@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { parseRepoSpec } from '@/lib/repoSpec';
 
 /**
@@ -27,6 +27,61 @@ export function RepoForm({ examples }: { examples: string[] }) {
   const [error, setError] = useState<string>();
 
   const [opening, setOpening] = useState<string>();
+  const box = useRef<HTMLDivElement>(null);
+  const taskInput = useRef<HTMLInputElement>(null);
+  const [over, setOver] = useState(false);
+
+  // A chip can be picked up and dropped on the box to fill it in; a plain click still opens it.
+  const dragChip = (example: string) => (event: React.PointerEvent<HTMLButtonElement>) => {
+    if (event.button !== 0 || event.pointerType === 'touch') return;
+    const chip = event.currentTarget;
+    const start = { x: event.clientX, y: event.clientY };
+    let dragging = false;
+    let inside = false;
+    let lastX = start.x;
+    let lean = 0;
+    const move = (e: PointerEvent) => {
+      const dx = e.clientX - start.x;
+      const dy = e.clientY - start.y;
+      if (!dragging) {
+        if (Math.hypot(dx, dy) < 6) return;
+        dragging = true;
+        chip.setPointerCapture(e.pointerId);
+        chip.classList.remove('chip-return');
+        chip.dataset.dragging = '';
+      }
+      // It leans the way it is moving, like something held by one corner.
+      lean += (Math.max(-18, Math.min(18, (e.clientX - lastX) * 1.4)) - lean) * 0.3;
+      lastX = e.clientX;
+      chip.style.transform = `translate(${dx}px, ${dy}px) rotate(${lean.toFixed(1)}deg) scale(1.08)`;
+      const r = box.current?.getBoundingClientRect();
+      const now = !!r && e.clientX >= r.left && e.clientX <= r.right && e.clientY >= r.top && e.clientY <= r.bottom;
+      if (now !== inside) {
+        inside = now;
+        setOver(now);
+      }
+    };
+    const up = () => {
+      window.removeEventListener('pointermove', move);
+      if (!dragging) return;
+      chip.dataset.dropped = '';
+      window.setTimeout(() => delete chip.dataset.dropped, 0);
+      delete chip.dataset.dragging;
+      chip.classList.add('chip-return');
+      chip.style.transform = '';
+      setOver(false);
+      if (inside) {
+        setValue(example);
+        setError(undefined);
+        box.current?.classList.remove('repo-filled');
+        void box.current?.offsetWidth;
+        box.current?.classList.add('repo-filled');
+        taskInput.current?.focus({ preventScroll: true });
+      }
+    };
+    window.addEventListener('pointermove', move);
+    window.addEventListener('pointerup', up, { once: true });
+  };
   const go = (input: string) => {
     const path = toPath(input, task);
     if (!path) return setError('Enter a repository as owner/name, or paste its github.com URL.');
@@ -38,6 +93,7 @@ export function RepoForm({ examples }: { examples: string[] }) {
 
   return (
     <form
+      className="tilt-3d"
       onSubmit={(e) => {
         e.preventDefault();
         go(value);
@@ -45,7 +101,12 @@ export function RepoForm({ examples }: { examples: string[] }) {
     >
       {/* No autofocus: the form sits far down the landing page, and focusing
           it on load would scroll straight past the hero. */}
-      <div className="rounded-[18px] border border-black/30 bg-[#161616] p-2 shadow-[0_30px_60px_-30px_rgb(0_0_0/0.7)] transition-colors focus-within:border-[#d97757]">
+      <div
+        ref={box}
+        data-depth="2"
+        data-over={over ? '' : undefined}
+        className="repo-drop rounded-[18px] border border-black/30 bg-[#161616] p-2 shadow-[0_30px_60px_-30px_rgb(0_0_0/0.7)] focus-within:border-[#d97757]"
+      >
         <div className="flex items-center gap-2.5 pl-3">
           <svg viewBox="0 0 16 16" width={18} height={18} className="shrink-0 text-white/50" fill="currentColor" aria-hidden>
             <path d="M8 .2a8 8 0 0 0-2.5 15.6c.4 0 .5-.2.5-.4v-1.5c-2.2.5-2.7-1-2.7-1-.4-.9-.9-1.2-.9-1.2-.7-.5.1-.5.1-.5.8.1 1.2.8 1.2.8.7 1.3 1.9.9 2.3.7.1-.5.3-.9.5-1.1-1.8-.2-3.6-.9-3.6-4 0-.9.3-1.6.8-2.1-.1-.2-.4-1 .1-2.1 0 0 .7-.2 2.2.8a7.6 7.6 0 0 1 4 0c1.5-1 2.2-.8 2.2-.8.4 1.1.2 1.9.1 2.1.5.6.8 1.3.8 2.1 0 3.1-1.9 3.8-3.6 4 .3.3.6.8.6 1.5v2.2c0 .2.1.5.6.4A8 8 0 0 0 8 .2Z" />
@@ -79,6 +140,7 @@ export function RepoForm({ examples }: { examples: string[] }) {
           </button>
         </div>
         <input
+          ref={taskInput}
           value={task}
           onChange={(e) => setTask(e.target.value)}
           placeholder="Optional: what should change?"
@@ -94,13 +156,22 @@ export function RepoForm({ examples }: { examples: string[] }) {
           </p>
         ) : (
           <>
-            {examples.length > 0 && <span className="text-[13px] text-zinc-600">Try a real one:</span>}
+            {examples.length > 0 && <span className="text-[13px] text-zinc-600">Try a real one, or drag it in:</span>}
             {examples.map((example) => (
               <button
                 key={example}
                 type="button"
-                onClick={() => go(example)}
-                className="rounded-full border border-black/10 bg-white/70 px-3 py-1 font-mono text-[12.5px] text-zinc-800 shadow-sm transition-colors hover:border-[#d97757] hover:bg-white"
+                onPointerDown={dragChip(example)}
+                onClick={(e) => {
+                  // The click that ends a drag is not a click on the chip.
+                  if (e.currentTarget.dataset.dropped !== undefined) {
+                    delete e.currentTarget.dataset.dropped;
+                    return;
+                  }
+                  go(example);
+                }}
+                title="Click to open, or drag onto the box"
+                className="repo-chip rounded-full border border-black/10 bg-white/70 px-3 py-1 font-mono text-[12.5px] text-zinc-800 shadow-sm transition-colors hover:border-[#d97757] hover:bg-white"
               >
                 {example}
               </button>

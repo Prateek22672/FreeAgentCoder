@@ -19,6 +19,7 @@ export function TypedHeadline({ lines, className, lineClassNames = [], speed = 5
 }) {
     const total = lines.reduce((n, line) => n + line.length, 0);
     const [typed, setTyped] = useState(0);
+    const [started, setStarted] = useState(false);
     const [done, setDone] = useState(false);
 
     useEffect(() => {
@@ -41,7 +42,10 @@ export function TypedHeadline({ lines, className, lineClassNames = [], speed = 5
             timer = window.setTimeout(tick, ends.includes(count) ? linePause : speed * (0.7 + Math.random() * 0.6));
         };
         // Wait for the splash, when there is one, so the typing is seen.
-        const begin = () => (timer = window.setTimeout(tick, startDelay));
+        const begin = () => {
+            setStarted(true);
+            timer = window.setTimeout(tick, startDelay);
+        };
         if (document.documentElement.dataset.splash === 'on') window.addEventListener('splash:done', begin, { once: true });
         else begin();
         return () => {
@@ -50,21 +54,29 @@ export function TypedHeadline({ lines, className, lineClassNames = [], speed = 5
         };
     }, [lines, total, speed, startDelay, linePause]);
 
+    // The caret sits on the line being typed, right after its newest letter; letters not yet typed keep their place, unseen.
+    const caretLine = started && !done ? lines.findIndex((_, i) => typed < lines.slice(0, i + 1).reduce((n, l) => n + l.length, 0) || i === lines.length - 1) : -1;
     let offset = 0;
     return (
         <h1 className={className} aria-label={lines.join(' ')}>
             {lines.map((line, i) => {
                 const start = offset;
                 offset += line.length;
-                const caretHere = !done && (typed < offset || i === lines.length - 1) && typed >= start;
+                const shown = Math.max(0, Math.min(line.length, typed - start));
+                const letters = Array.from(line);
                 return (
                     <span key={i} className={`block ${lineClassNames[i] ?? ''}`} aria-hidden>
-                        {Array.from(line).map((char, j) => (
-                            <span key={j} style={{ opacity: start + j < typed ? 1 : 0 }}>
+                        {letters.slice(0, shown).map((char, j) => (
+                            <span key={j} className="typed-letter">
                                 {char}
                             </span>
                         ))}
-                        {caretHere && <span className="typed-caret" style={{ marginLeft: typed === start ? 0 : '0.04em' }} />}
+                        {caretLine === i && (
+                            <span className="typed-caret-slot">
+                                <span className="typed-caret" />
+                            </span>
+                        )}
+                        <span className="invisible">{letters.slice(shown).join('')}</span>
                     </span>
                 );
             })}

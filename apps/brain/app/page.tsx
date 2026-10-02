@@ -9,6 +9,7 @@ import { marketplaceStats } from '@/lib/marketplace';
 import { PillNav } from '@/components/landing/cinema/PillNav';
 import { PanelFlight } from '@/components/landing/cinema/PanelFlight';
 import { FloatingStart, ScrollFrames, Splash } from '@/components/landing/cinema/Frames';
+import { TiltStage } from '@/components/landing/cinema/TiltStage';
 import { RepoForm } from '@/components/RepoForm';
 import { RepoPreview } from '@/components/landing/cinema/RepoPreview';
 import { StructuredData, brainApp, extensionApp, faqPage, graph, organization, website } from '@/components/StructuredData';
@@ -113,22 +114,24 @@ export default async function Home() {
                         <p className="cine-display mt-5 max-w-3xl text-[clamp(2.2rem,5vw,3.8rem)] font-medium leading-[1.02] tracking-[-0.035em] text-white">
                             See how any repository is built <span className="text-white/40">before you change it.</span>
                         </p>
-                        <div className="silver-card mt-10 rounded-[28px] px-4 py-8 sm:px-10 sm:py-12">
-                            <div className="mx-auto max-w-3xl">
-                                <RepoForm examples={EXAMPLES} />
-                            </div>
-                            <ol className="mx-auto mt-8 grid max-w-4xl grid-cols-2 gap-x-6 gap-y-3 text-[13.5px] text-zinc-700 md:grid-cols-4">
-                                {STEPS.map((step, i) => (
-                                    <li key={step.title} className="flex items-center gap-2.5">
-                                        <span className="flex size-6 shrink-0 items-center justify-center rounded-full bg-zinc-900 font-mono text-[11px] text-white">{i + 1}</span>
-                                        {step.title}
-                                    </li>
-                                ))}
-                            </ol>
-                            <div className="mx-auto mt-10 max-w-5xl">
-                                <p className="mb-3 text-center text-[12.5px] text-zinc-600">What you get back, in about 3 seconds</p>
-                                <RepoPreview />
-                            </div>
+                        <div className="mt-10">
+                            <TiltStage className="silver-card rounded-[28px] px-4 py-8 sm:px-10 sm:py-12">
+                                <div className="tilt-3d mx-auto max-w-3xl">
+                                    <RepoForm examples={EXAMPLES} />
+                                </div>
+                                <ol className="tilt-3d mx-auto mt-8 grid max-w-4xl grid-cols-2 gap-x-6 gap-y-3 text-[13.5px] text-zinc-700 md:grid-cols-4" data-depth="1">
+                                    {STEPS.map((step, i) => (
+                                        <li key={step.title} data-flip className="flex items-center gap-2.5">
+                                            <span className="flex size-6 shrink-0 items-center justify-center rounded-full bg-zinc-900 font-mono text-[11px] text-white">{i + 1}</span>
+                                            {step.title}
+                                        </li>
+                                    ))}
+                                </ol>
+                                <div className="mx-auto mt-10 max-w-5xl" data-flip>
+                                    <p className="mb-3 text-center text-[12.5px] text-zinc-600">What you get back, in about 3 seconds</p>
+                                    <RepoPreview />
+                                </div>
+                            </TiltStage>
                         </div>
                     </section>
 
