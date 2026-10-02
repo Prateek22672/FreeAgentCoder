@@ -9,6 +9,7 @@ import * as vscode from 'vscode';
  */
 
 const SEEN = 'freeagentcoder.lastVersion';
+const INSTALLED = 'freeagentcoder.installedAt';
 const TOLD_LATEST = 'freeagentcoder.toldLatest';
 const EXTENSION_ID = 'PrateekKoratala.freeagentcoder';
 
@@ -16,7 +17,39 @@ const EXTENSION_ID = 'PrateekKoratala.freeagentcoder';
 const WHATS_NEW: Record<string, string> = {
     '0.4.0':
         'FreeAgentCoder 0.4.0: Fyx does everyday chores (zip, git, install, run your project) in seconds with zero tokens, tasks work with no key on the free trial, and the free keys that work are listed plainly.',
+    '0.4.2':
+        'FreeAgentCoder 0.4.2: small builds stay small (a browser game is plain HTML, not a framework set-up), web pages are run in a hidden browser before they are called done, a preview opens when a task ends, and a task pauses at 500K tokens before it can use up your day.',
 };
+
+/**
+ * Whether this is a new install: the first ever, or a reinstall. An update
+ * is not: it has its own "what is new" note.
+ *
+ * `installedAt` is when the extension's folder was created, which changes
+ * with every install; `previousVersion` is the version last run here.
+ */
+export function installKind(installedAt: number, seenInstalledAt: number | undefined, version: string, previousVersion: string | undefined): 'new' | 'update' | 'same' {
+    if (seenInstalledAt === installedAt) {
+        return 'same';
+    }
+    return previousVersion && previousVersion !== version ? 'update' : 'new';
+}
+
+/** Notes this install, and says whether it is a new one. Call before showWhatsNew, which records the version. */
+export async function noteInstall(context: vscode.ExtensionContext): Promise<'new' | 'update' | 'same'> {
+    // Read now, before anything is awaited: showWhatsNew overwrites the version as soon as the controller starts.
+    const previousVersion = context.globalState.get<string>(SEEN);
+    const seenInstalledAt = context.globalState.get<number>(INSTALLED);
+    let installedAt = 0;
+    try {
+        installedAt = Math.round((await vscode.workspace.fs.stat(context.extensionUri)).ctime);
+    } catch {
+        return 'same';
+    }
+    const kind = installKind(installedAt, seenInstalledAt, String(context.extension.packageJSON.version ?? ''), previousVersion);
+    await context.globalState.update(INSTALLED, installedAt);
+    return kind;
+}
 
 /** True when version a is newer than b ("0.4.1" > "0.4.0"). */
 export function isNewer(a: string, b: string): boolean {

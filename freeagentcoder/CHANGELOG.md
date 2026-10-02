@@ -17,6 +17,8 @@
 
 ### Changed
 
+- **Settings are easier to move around.** A clear **Back** and **Done** at the top (Esc works too), the sections as a rail of icons down the left instead of a strip that scrolled sideways, and on the API Keys page your own keys come first, with the explanations after them.
+- **Installing opens FreeAgentCoder.** After an install or a reinstall the panel and the Get started guide open on their own, instead of nothing appearing until you found the side bar.
 - **Long tasks cost less.** Old command output and file contents the agent no longer needs are dropped from the conversation much earlier, so each step of a long task resends less. The most recent work is always kept in full.
 
 ## 0.4.1 — Test lab

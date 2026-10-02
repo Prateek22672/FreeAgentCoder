@@ -1,9 +1,12 @@
 import * as vscode from 'vscode';
 import { Controller } from './controller';
 import { readHandoff } from './handoff/task';
+import { noteInstall } from './updates';
 import { ChatViewProvider } from './webview/chatView';
 
 export function activate(context: vscode.ExtensionContext): void {
+    // Read before the controller records this version as seen.
+    const install = noteInstall(context);
     const controller = new Controller(context);
     const view = new ChatViewProvider(context.extensionUri, controller);
 
@@ -44,6 +47,15 @@ export function activate(context: vscode.ExtensionContext): void {
     );
 
     controller.init().catch((error) => console.error('FreeAgentCoder: could not migrate saved keys', error));
+
+    // A new install (or a reinstall) opens the panel and the guide, so there is something to see and a first step to take.
+    void install.then(async (kind) => {
+        if (kind !== 'new') {
+            return;
+        }
+        await view.show({ type: 'focusInput' }).then(undefined, () => undefined);
+        await vscode.commands.executeCommand('workbench.action.openWalkthrough', `${context.extension.id}#getStarted`, false).then(undefined, () => undefined);
+    });
 }
 
 export function deactivate(): void {}

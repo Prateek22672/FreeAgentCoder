@@ -31,7 +31,7 @@ const TABS: [SettingsSection, string, IconName][] = [
     ['health', 'Health', 'health'],
     ['memory', 'Memory', 'brain'],
     ['history', 'History', 'history'],
-    ['model', 'Model', 'layers'],
+    ['model', 'Model', 'spark'],
     ['permissions', 'Permissions', 'shield'],
     ['logs', 'Logs', 'pulse'],
 ];
@@ -613,13 +613,20 @@ export class SettingsPanel {
     constructor(private readonly options: { close: () => void; toast: (message: string, level: 'info' | 'error') => void }) {
         const make = (id: SettingsSection, ...children: HTMLElement[]) => {
             const content = h('div', { class: 'section-content' }, ...children);
-            const label = TABS.find(([tab]) => tab === id)?.[1] ?? id;
-            const el = h('section', { class: 'settings-section', attrs: { role: 'tabpanel' } }, h('h2', { text: label }), h('p', { class: 'section-desc', text: DESCRIPTIONS[id] }), content);
+            const [, label, iconName] = TABS.find(([tab]) => tab === id)!;
+            const el = h(
+                'section',
+                { class: 'settings-section', attrs: { role: 'tabpanel', 'aria-label': label } },
+                h('h2', { class: 'section-head' }, icon(iconName), h('span', { text: label })),
+                h('p', { class: 'section-desc', text: DESCRIPTIONS[id] }),
+                content,
+            );
             return { el, content };
         };
         this.sections = {
             overview: make('overview'),
-            keys: make('keys', trustCard(), this.keySummary, button('Add API key', 'primary block', () => this.form.open(), 'plus'), this.form.el, this.keyGroups),
+            // Your keys come first; what is free and how keys are kept come after them.
+            keys: make('keys', this.keySummary, button('Add API key', 'primary block', () => this.form.open(), 'plus'), this.form.el, this.keyGroups, trustCard()),
             plans: make('plans', this.plansBody),
             usage: make('usage'),
             health: make('health'),
@@ -637,11 +644,18 @@ export class SettingsPanel {
         this.historySearch.addEventListener('input', () => this.renderHistoryList());
         this.scroller.append(...Object.values(this.sections).map((s) => s.el));
         this.scroller.addEventListener('click', handleContentClick);
+        const back = h('button', { class: 'settings-back', title: 'Back to chat (Esc)', attrs: { type: 'button' } }, icon('back'), h('span', { text: 'Back' }));
+        back.addEventListener('click', options.close);
         this.el.append(
-            h('div', { class: 'settings-header' }, iconButton('back', 'Back to chat', options.close), h('span', { class: 'settings-title', text: 'Settings' })),
-            this.nav,
-            this.scroller,
+            h('div', { class: 'settings-header' }, back, h('span', { class: 'settings-title', text: 'Settings' }), button('Done', 'primary small', options.close, undefined, 'Back to chat (Esc)')),
+            h('div', { class: 'settings-body' }, this.nav, this.scroller),
         );
+        this.el.addEventListener('keydown', (event) => {
+            // Escape leaves settings, unless a field is being typed in or a form is open to cancel first.
+            if (event.key === 'Escape' && !(event.target as HTMLElement).closest('input, select, textarea')) {
+                options.close();
+            }
+        });
         this.setActive('overview');
     }
 
@@ -769,10 +783,14 @@ export class SettingsPanel {
                 const count = id === 'logs' ? (this.logsState?.stats.unresolved ?? 0) : 0;
                 const chip = h(
                     'button',
-                    { class: `nav-chip${this.active === id ? ' active' : ''}`, attrs: { type: 'button', role: 'tab', 'aria-selected': String(this.active === id) } },
+                    {
+                        class: `nav-chip${this.active === id ? ' active' : ''}`,
+                        title: count ? `${label}: ${count} not recovered today` : label,
+                        attrs: { type: 'button', role: 'tab', 'aria-selected': String(this.active === id), 'aria-label': label },
+                    },
                     icon(iconName),
-                    h('span', { text: label }),
-                    count ? h('span', { class: 'nav-count', text: String(count), title: `${count} not recovered today` }) : null,
+                    h('span', { class: 'nav-label', text: label }),
+                    count ? h('span', { class: 'nav-count', text: String(count) }) : null,
                 );
                 chip.addEventListener('click', () => this.setActive(id));
                 return chip;
@@ -817,7 +835,6 @@ export class SettingsPanel {
                 ),
             );
         }
-        groups.push(freeKeysCard());
         for (const provider of data.providers) {
             const providerKeys = keys.filter((k) => k.provider === provider.id);
             if (!providerKeys.length) {
@@ -840,15 +857,16 @@ export class SettingsPanel {
             );
         }
 
-        // The setup guide leads while there are free providers left to add, and moves below the keys once there are a few.
+        // With no key yet the setup guide leads; once there are keys they come first, and the guide follows.
         const guide = setupGuide(data, (provider) => this.form.open(provider));
         if (guide) {
-            if (setupCount(data) < 2) {
-                groups.unshift(guide);
-            } else {
+            if (keys.length) {
                 groups.push(guide);
+            } else {
+                groups.splice(1, 0, guide);
             }
         }
+        groups.push(freeKeysCard());
         this.keyGroups.replaceChildren(...groups);
     }
 

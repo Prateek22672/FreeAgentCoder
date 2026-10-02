@@ -62,6 +62,7 @@
     "Other"
   ],
   "activationEvents": [
+    "onStartupFinished",
     "onUri"
   ],
   "main": "./dist/extension.js",

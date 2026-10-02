@@ -544,16 +544,29 @@ select.input { background: var(--vscode-dropdown-background, var(--vscode-input-
 .toast.error .icon { color: var(--bad); }
 
 /* Settings */
-.settings-header { display: flex; align-items: center; gap: 6px; padding: 7px 8px 0; }
-.settings-title { font-weight: 600; }
-.settings-nav { display: flex; gap: 4px; padding: 8px 12px; overflow-x: auto; border-bottom: 1px solid var(--border-soft); }
-.nav-chip { padding: 2px 10px; border: 1px solid var(--border-soft); border-radius: 999px; background: transparent; color: var(--muted); font-size: 11.5px; white-space: nowrap; cursor: pointer; }
-.nav-chip:hover { border-color: var(--focus); color: var(--fg); }
-.settings-scroll { flex: 1; min-height: 0; padding: 0 12px 28px; overflow-y: auto; }
-.settings-section { padding: 16px 0 12px; border-bottom: 1px solid var(--border-soft); }
-.settings-section:last-child { border-bottom: 0; }
-.settings-section h2 { margin: 0; font-size: 13px; font-weight: 600; }
-.section-desc { margin: 2px 0 10px; color: var(--muted); font-size: 12px; }
+/* A header with the way back, a rail of sections down the left, and one section at a time beside it. */
+.settings-header { display: flex; align-items: center; gap: 8px; padding: 8px 10px 8px 6px; border-bottom: 1px solid var(--border-soft); }
+.settings-back { display: inline-flex; align-items: center; gap: 3px; padding: 3px 8px 3px 4px; border: 0; border-radius: var(--radius-sm); background: transparent; color: var(--muted); font-size: 12px; cursor: pointer; }
+.settings-back:hover { background: var(--vscode-toolbar-hoverBackground); color: var(--fg); }
+.settings-back .icon { width: 15px; height: 15px; }
+.settings-title { flex: 1; font-size: 14px; font-weight: 600; }
+.settings-header .btn { min-height: 24px; padding: 2px 12px; font-size: 12px; }
+.settings-body { display: flex; flex: 1; min-height: 0; }
+.settings-nav { display: flex; flex: none; flex-direction: column; width: 44px; padding: 6px 0; overflow-y: auto; border-right: 1px solid var(--border-soft); scrollbar-width: none; }
+.settings-nav::-webkit-scrollbar { display: none; }
+.nav-chip { position: relative; display: flex; flex: none; align-items: center; gap: 9px; height: 36px; padding: 0 14px; border: 0; background: transparent; color: var(--muted); font-size: 12.5px; white-space: nowrap; cursor: pointer; }
+.nav-chip:hover { background: var(--surface-2); color: var(--fg); }
+.nav-chip .nav-label { display: none; }
+.settings-scroll { flex: 1; min-width: 0; min-height: 0; padding: 0 14px 28px; overflow-y: auto; }
+.settings-section { padding: 14px 0 12px; }
+.section-head { display: flex; align-items: center; gap: 8px; margin: 0; font-size: 14px; font-weight: 600; }
+.section-head .icon { width: 15px; height: 15px; color: var(--muted); }
+.section-desc { margin: 4px 0 14px; color: var(--muted); font-size: 12px; line-height: 1.45; }
+/* A wide panel has room for the names beside the icons. */
+@media (min-width: 520px) {
+    .settings-nav { width: 164px; padding: 8px 0; }
+    .nav-chip .nav-label { display: inline; }
+}
 .section-content { display: flex; flex-direction: column; gap: 10px; }
 .subhead { margin-top: 4px; color: var(--muted); font-size: 10.5px; font-weight: 600; letter-spacing: 0.4px; text-transform: uppercase; }
 
@@ -693,10 +706,9 @@ select.input { background: var(--vscode-dropdown-background, var(--vscode-input-
 .checks-note { margin: 0; padding: 6px 10px 8px; color: var(--muted); font-size: 11px; }
 
 /* Settings tabs */
-.nav-chip { display: inline-flex; align-items: center; gap: 5px; }
-.nav-chip .icon { width: 13px; height: 13px; }
-.nav-chip.active { border-color: var(--focus); background: color-mix(in srgb, var(--focus) 12%, transparent); color: var(--fg); }
-.nav-count { min-width: 16px; padding: 0 5px; border-radius: 999px; background: var(--bad); color: #fff; font-size: 10px; line-height: 15px; text-align: center; }
+.nav-chip .icon { flex: none; width: 16px; height: 16px; }
+.nav-chip.active { background: var(--surface-3); color: var(--fg); box-shadow: inset 2px 0 0 var(--accent); }
+.nav-count { position: absolute; top: 4px; left: 24px; min-width: 14px; padding: 0 4px; border-radius: 999px; background: var(--bad); color: #fff; font-size: 9.5px; line-height: 14px; text-align: center; }
 .settings-section[hidden] { display: none; }
 
 .switch-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px; border: 1px solid var(--border-soft); border-radius: var(--radius); background: var(--surface-2); }
