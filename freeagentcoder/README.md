@@ -48,7 +48,7 @@ It is a free alternative to paid AI coding assistants: no subscription, no per-s
 ## Quick start
 
 1. **Install.** A **Get started** guide opens by itself and shows you where everything is.
-2. **Find it in the right side bar.** FreeAgentCoder opens next to your code, like a pair programmer. Open it any time with **FreeAgentCoder: Open Chat** from the Command Palette (`Ctrl+Shift+P`).
+2. **Find it, always on screen.** Click the **FreeAgentCoder icon on the left bar**, the **FreeAgentCoder button at the top right** of any editor (it opens the chat as a tab, which VS Code reopens after a restart), or **FreeAgentCoder** at the bottom right of the status bar.
 3. **Try it straight away.** With no key yet, your first tasks run on the **free trial**, a daily allowance on our keys.
 4. **Add free keys** when you want more. Settings → API Keys lists a direct link for each free provider. The best setup is **one key from each provider**:
    - Google Gemini: https://aistudio.google.com/apikey

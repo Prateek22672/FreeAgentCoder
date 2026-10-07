@@ -234,15 +234,15 @@
       {
         "id": "getStarted",
         "title": "Get started with FreeAgentCoder",
-        "description": "A free AI coding agent in the right side bar. Three steps and you're coding.",
+        "description": "A free AI coding agent, always one click away on the left bar. Three steps and you are coding.",
         "steps": [
           {
             "id": "open",
-            "title": "Find FreeAgentCoder in the right side bar",
-            "description": "FreeAgentCoder opens in the **right side bar**, next to your code. Click below to open it. Later, run **FreeAgentCoder: Open Chat** from the Command Palette (Ctrl+Shift+P) or use the layout button at the top right to show the side bar.\n[Open FreeAgentCoder](command:freeagentcoder.open)",
+            "title": "Find FreeAgentCoder: it is always on screen",
+            "description": "FreeAgentCoder has three places that are always there, so you never need the Command Palette:\n1. Its **icon on the left bar**: click it for the chat.\n2. The **FreeAgentCoder button at the top right** of any editor: opens the chat as a tab beside your code. VS Code reopens it when you start again.\n3. **FreeAgentCoder at the bottom right**, in the status bar.\n[Open FreeAgentCoder](command:freeagentcoder.open)",
             "media": {
               "svg": "media/walkthrough/where.svg",
-              "altText": "The VS Code window with FreeAgentCoder in the right side bar"
+              "altText": "The VS Code window with the FreeAgentCoder icon on the left bar, its button at the top right of the editor and its item in the status bar"
             },
             "completionEvents": [
               "onView:freeagentcoder.chat"

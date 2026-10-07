@@ -71,13 +71,33 @@ export function activate(context: vscode.ExtensionContext): void {
 
     controller.init().catch((error) => console.error('FreeAgentCoder: could not migrate saved keys', error));
 
-    // A new install (or a reinstall) opens the panel and the guide, so there is something to see and a first step to take.
+    // Always on screen, bottom right, like the other agents: one click opens the chat wherever it was last.
+    const status = vscode.window.createStatusBarItem('freeagentcoder.status', vscode.StatusBarAlignment.Right, 100);
+    status.name = 'FreeAgentCoder';
+    status.text = '$(hubot) FreeAgentCoder';
+    status.tooltip = 'Open the FreeAgentCoder chat';
+    status.command = 'freeagentcoder.open';
+    status.show();
+    context.subscriptions.push(status);
+
+    // A new install (or a reinstall) opens the chat on the left, where its icon is, and says where to find it from now on,
+    // so nobody is left wondering whether it installed.
     void install.then(async (kind) => {
         if (kind !== 'new') {
             return;
         }
-        await view.show({ type: 'focusInput' }).then(undefined, () => undefined);
+        await vscode.commands.executeCommand(`${ChatViewProvider.leftViewType}.focus`).then(undefined, () => undefined);
         await vscode.commands.executeCommand('workbench.action.openWalkthrough', `${context.extension.id}#getStarted`, false).then(undefined, () => undefined);
+        const choice = await vscode.window.showInformationMessage(
+            'FreeAgentCoder is installed. Find it any time on the left bar, with the button at the top right of any editor, or at the bottom right.',
+            'Open the chat',
+            'Open in a tab',
+        );
+        if (choice === 'Open the chat') {
+            await vscode.commands.executeCommand(`${ChatViewProvider.leftViewType}.focus`);
+        } else if (choice === 'Open in a tab') {
+            view.openInEditor();
+        }
     });
 }
 

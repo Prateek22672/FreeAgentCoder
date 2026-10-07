@@ -7,6 +7,8 @@
 - **FreeAgentCoder on the left activity bar.** Its icon is always there, so the chat is one click away even when the right sidebar is closed.
 - **Open in a tab.** The FreeAgentCoder button at the top right of every editor opens the chat as an editor tab beside your code. Drag it wherever you like; **VS Code reopens it after a restart**, exactly where it was.
 - The left view, the right sidebar and the tab all show the same live chat, so you can switch between them mid-task.
+- **FreeAgentCoder in the status bar**, bottom right: one click opens the chat.
+- **No doubt that it installed.** A new install opens the chat on the left and says where FreeAgentCoder lives from now on; the Get Started guide shows all three places instead of the Command Palette.
 
 ## 0.5.0 — It sees what your editor sees
 
