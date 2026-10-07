@@ -21,6 +21,8 @@ const WHATS_NEW: Record<string, string> = {
         'FreeAgentCoder 0.4.2: small builds stay small (a browser game is plain HTML, not a framework set-up), web pages are run in a hidden browser before they are called done, a preview opens when a task ends, and a task pauses at 500K tokens before it can use up your day.',
     '0.5.0':
         'FreeAgentCoder 0.5.0: edits come back with the errors your editor finds, so they are fixed at once; Fix with FreeAgentCoder on any error; @-mention files in the chat; and small builds stay small, with web pages run in a hidden browser before they are called done.',
+    '0.5.1':
+        'FreeAgentCoder 0.5.1: find it on the left activity bar, or open it as a tab with the button at the top right of any editor. The tab comes back after a restart.',
 };
 
 /**

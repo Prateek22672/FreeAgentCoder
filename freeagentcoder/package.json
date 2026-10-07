@@ -2,7 +2,7 @@
   "name": "freeagentcoder",
   "displayName": "Free Agent Coder: Free AI Coding Agent & Chat, Copilot & Cursor Alternative",
   "description": "Free AI coding agent and chat for VS Code, a free alternative to Copilot, Cursor, Cline, Windsurf, Codex and Claude Code. Plans, edits, runs and tests your code on free Gemini, Groq or OpenRouter keys, or your own Claude or OpenAI key, and fixes the errors your editor reports. Fyx does everyday chores with zero tokens. No subscription, open source.",
-  "version": "0.5.0",
+  "version": "0.5.1",
   "publisher": "PrateekKoratala",
   "license": "MIT",
   "icon": "media/icon.png",
@@ -63,7 +63,8 @@
   ],
   "activationEvents": [
     "onStartupFinished",
-    "onUri"
+    "onUri",
+    "onWebviewPanel:freeagentcoder.panel"
   ],
   "main": "./dist/extension.js",
   "contributes": {
@@ -127,6 +128,15 @@
         "command": "freeagentcoder.askAboutSelection",
         "title": "Ask FreeAgentCoder About This",
         "category": "FreeAgentCoder"
+      },
+      {
+        "command": "freeagentcoder.openInEditor",
+        "title": "Open in a Tab",
+        "category": "FreeAgentCoder",
+        "icon": {
+          "light": "media/icon-accent.svg",
+          "dark": "media/icon-accent.svg"
+        }
       }
     ],
     "configuration": {
@@ -195,6 +205,13 @@
           "title": "FreeAgentCoder",
           "icon": "media/icon.svg"
         }
+      ],
+      "activitybar": [
+        {
+          "id": "freeagentcoder-left",
+          "title": "FreeAgentCoder",
+          "icon": "media/icon.svg"
+        }
       ]
     },
     "views": {
@@ -203,6 +220,13 @@
           "type": "webview",
           "id": "freeagentcoder.chat",
           "name": "FreeAgentCoder"
+        }
+      ],
+      "freeagentcoder-left": [
+        {
+          "type": "webview",
+          "id": "freeagentcoder.sidebar",
+          "name": "Chat"
         }
       ]
     },
@@ -274,6 +298,12 @@
           "command": "freeagentcoder.askAboutSelection",
           "when": "editorHasSelection",
           "group": "freeagentcoder@1"
+        }
+      ],
+      "editor/title": [
+        {
+          "command": "freeagentcoder.openInEditor",
+          "group": "navigation@100"
         }
       ]
     }

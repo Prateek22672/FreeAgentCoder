@@ -16,6 +16,12 @@ export function activate(context: vscode.ExtensionContext): void {
         vscode.window.registerWebviewViewProvider(ChatViewProvider.viewType, view, {
             webviewOptions: { retainContextWhenHidden: true },
         }),
+        vscode.window.registerWebviewViewProvider(ChatViewProvider.leftViewType, view, {
+            webviewOptions: { retainContextWhenHidden: true },
+        }),
+        // Brings back the chat tab that was open when VS Code closed.
+        vscode.window.registerWebviewPanelSerializer(ChatViewProvider.panelType, view),
+        vscode.commands.registerCommand('freeagentcoder.openInEditor', () => view.openInEditor()),
         vscode.commands.registerCommand('freeagentcoder.open', () => view.show({ type: 'focusInput' })),
         vscode.commands.registerCommand('freeagentcoder.newChat', async () => {
             await controller.handle({ type: 'newChat' });
