@@ -1,6 +1,6 @@
 {
   "name": "freeagentcoder",
-  "displayName": "Free Agent Coder: Free AI Coding Agent & Chat, Copilot & Cursor Alternative",
+  "displayName": "Free Agent Coder: Free AI Coding Agent, Claude Code, Copilot & Cursor Alternative",
   "description": "Free AI coding agent and chat for VS Code, a free alternative to Copilot, Cursor, Cline, Windsurf, Codex and Claude Code. Plans, edits, runs and tests your code on free Gemini, Groq or OpenRouter keys, or your own Claude or OpenAI key, and fixes the errors your editor reports. Fyx does everyday chores with zero tokens. No subscription, open source.",
   "version": "0.5.1",
   "publisher": "PrateekKoratala",
