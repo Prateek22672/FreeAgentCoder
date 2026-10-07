@@ -914,3 +914,8 @@ select.input { background: var(--vscode-dropdown-background, var(--vscode-input-
 .free-keys .keys-list.ok li::before { content: '✓ '; color: var(--ok); }
 .free-keys .keys-list.no li::before { content: '✕ '; color: var(--warn); }
 .free-keys .keys-warning { display: flex; gap: 6px; align-items: flex-start; margin-top: 12px; padding: 8px; border-radius: 6px; background: color-mix(in srgb, var(--warn) 10%, transparent); font-size: 12px; line-height: 1.45; }
+
+/* Opened as a wide editor tab: keep the conversation and the input at a readable width, centred. */
+@media (min-width: 900px) {
+    .scroller > .welcome, .scroller > .transcript, .composer-wrap { width: 100%; max-width: 860px; margin-inline: auto; }
+}
