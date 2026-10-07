@@ -22,7 +22,7 @@ const WHATS_NEW: Record<string, string> = {
     '0.5.0':
         'FreeAgentCoder 0.5.0: edits come back with the errors your editor finds, so they are fixed at once; Fix with FreeAgentCoder on any error; @-mention files in the chat; and small builds stay small, with web pages run in a hidden browser before they are called done.',
     '0.5.1':
-        'FreeAgentCoder 0.5.1: find it on the left activity bar, or open it as a tab with the button at the top right of any editor. The tab comes back after a restart.',
+        'FreeAgentCoder 0.5.1: now always on screen (left bar, a button at the top right of any editor, and the status bar), and the tab comes back after a restart. Also new: edits come back with your editor’s errors, Fix with FreeAgentCoder on any error, and @-mention files. Your keys, chats and settings are kept.',
 };
 
 /**

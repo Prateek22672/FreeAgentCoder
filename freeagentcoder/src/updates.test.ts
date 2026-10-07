@@ -13,6 +13,11 @@ describe('installKind', () => {
         expect(installKind(1_000, 1_000, '0.4.2', '0.4.2')).toBe('same');
         expect(installKind(1_000, 1_000, '0.4.2', '0.4.1')).toBe('same');
     });
+
+    it('treats an update from 0.4.0, which never recorded its install time, as an update', () => {
+        // 0.4.0 stored only the version it last ran; the install time arrived in 0.4.2.
+        expect(installKind(5_000, undefined, '0.5.1', '0.4.0')).toBe('update');
+    });
 });
 
 describe('isNewer', () => {
