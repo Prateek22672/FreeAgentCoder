@@ -21,8 +21,8 @@ const WHATS_NEW: Record<string, string> = {
         'FreeAgentCoder 0.4.2: small builds stay small (a browser game is plain HTML, not a framework set-up), web pages are run in a hidden browser before they are called done, a preview opens when a task ends, and a task pauses at 500K tokens before it can use up your day.',
     '0.5.0':
         'FreeAgentCoder 0.5.0: edits come back with the errors your editor finds, so they are fixed at once; Fix with FreeAgentCoder on any error; @-mention files in the chat; and small builds stay small, with web pages run in a hidden browser before they are called done.',
-    '0.5.2':
-        'FreeAgentCoder 0.5.2: all your Gemini models are used before work moves to weaker ones, a repeated error goes to your strongest model, edits by line number fail far less, and Settings → Learning shows what it has learned. Your keys, chats and settings are kept.',
+    '0.6.0':
+        'FreeAgentCoder 0.6.0: complex tasks start from proven structures and design references, check library docs instead of guessing, use every Gemini model on your key (and free NVIDIA models), fix repeated errors on your strongest model, and pause far less. See Settings → Learning. Your keys, chats and settings are kept.',
     '0.5.1':
         'FreeAgentCoder 0.5.1: now always on screen (left bar, a button at the top right of any editor, and the status bar), and the tab comes back after a restart. Also new: edits come back with your editor’s errors, Fix with FreeAgentCoder on any error, and @-mention files. Your keys, chats and settings are kept.',
 };

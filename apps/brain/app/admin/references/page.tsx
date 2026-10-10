@@ -48,12 +48,12 @@ export default async function ReferencesPage() {
 
             <section className="mt-8 grid gap-3">
                 {list.map((r) => (
-                    <details key={r.id} className={`rounded-lg border border-line bg-panel p-4 ${r.enabled ? '' : 'opacity-60'}`}>
+                    <details key={r.id} className={`min-w-0 overflow-hidden rounded-lg border border-line bg-panel p-4 ${r.enabled ? '' : 'opacity-60'}`}>
                         <summary className="flex cursor-pointer flex-wrap items-baseline gap-x-3 gap-y-1">
                             <span className="rounded bg-panel-2 px-1.5 py-0.5 text-[11px] uppercase tracking-wide text-muted">{KIND[r.kind]}</span>
                             <span className="text-[14px] font-semibold">{r.name}</span>
                             <span className="text-[12px] text-faint">{r.enabled ? `${r.points.length} rules` : 'off'}</span>
-                            <span className="truncate text-[12px] text-faint">{r.tags.join(', ')}</span>
+                            <span className="block w-full truncate text-[12px] text-faint">{r.tags.join(', ')}</span>
                         </summary>
                         <form action={saveReferenceAction} className="mt-3 grid gap-2">
                             <input type="hidden" name="id" value={r.id} />

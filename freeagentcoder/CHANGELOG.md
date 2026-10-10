@@ -1,9 +1,12 @@
 # Changelog
 
-## 0.5.2 — Fewer wasted steps, fewer pauses
+## 0.6.0 — Knows more, wastes less
 
 ### Added
 
+- **A reference library.** Complex tasks now start from how strong solutions of that kind are built: blueprints (an ASP.NET Core CRM with central audit and per-user data, role-based backends) and design references (the visual systems of real sites). The library is kept on our site, grows from the admin page, and is downloaded once a day; matching happens on your computer, so nothing about your request is sent.
+- **Current library documentation.** A new library_docs tool looks up up-to-date documentation and examples for any library (from Context7), sending only the library name and the topic. The agent checks an API before guessing, and when a library rejects a call.
+- **A code map for existing projects.** The first step of a complex task lists the files the rest of the project uses most, with their main definitions, so the agent opens the right files first instead of exploring.
 - **Settings → Learning** replaces Memory. It shows what FreeAgentCoder has learned from your tasks (lessons from your corrections and chores Fyx now does itself), how much it saved, and your corrections week by week, so you can see whether each task goes better than the last. Forget anything with one click.
 - **Edits by line number.** The agent can now replace lines 40-55 instead of retyping the old text exactly, which removes most "old_string was not found" retries. Numbers are only trusted while they still point where they did.
 - **NVIDIA as a free provider.** A free key from build.nvidia.com adds DeepSeek V4 Pro, Nemotron 3 Ultra and Kimi K3 for complex tasks (right after Gemini) and gpt-oss for quick ones. Keys starting nvapi- are recognised when pasted.
