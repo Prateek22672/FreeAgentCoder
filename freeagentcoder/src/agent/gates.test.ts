@@ -77,3 +77,21 @@ describe('Continue', () => {
         expect(classifyTask('Continue where you left off.', 'deep').tier).toBe('deep');
     });
 });
+
+describe('the documents playbook', () => {
+    it('is chosen for a request to make slides or a PDF', () => {
+        const nepal = 'i need a small ppt for presenting this so min 10 slides, 12 slides total on Nepal floods 2026, keep images and flow charts and causes, a pdf';
+        expect(choosePlaybooks(nepal, 'deep', new Set()).map((p) => p.id)).toEqual(['documents']);
+        expect(choosePlaybooks('generate a pdf report of our sales data', 'deep', new Set()).map((p) => p.id)).toEqual(['documents']);
+    });
+
+    it('is not chosen for an app that happens to export PDFs', () => {
+        expect(choosePlaybooks('build a web app that exports invoices as pdf', 'deep', new Set()).map((p) => p.id)).not.toContain('documents');
+    });
+
+    it('carries the colour and path rules that broke real builds', () => {
+        const brief = buildBrief(choosePlaybooks('create a presentation on climate change', 'deep', new Set()), false, 'x');
+        expect(brief).toContain('RGBColor.from_string');
+        expect(brief).toContain('os.path.dirname(os.path.abspath(__file__))');
+    });
+});

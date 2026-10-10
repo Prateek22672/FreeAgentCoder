@@ -257,6 +257,42 @@ const ML: Playbook = {
     ],
 };
 
+/**
+ * Slides, PDFs, Word and Excel files made by a script. The guide holds the
+ * mistakes that cost real tasks most: colour formats that differ between
+ * python-pptx and matplotlib, paths that only work from one folder, and
+ * converters that are rarely installed.
+ */
+const DOCUMENTS: Playbook = {
+    id: 'documents',
+    name: 'Documents and presentations',
+    request: /\b(?:pptx?|power\s*point|slides?|slide\s*deck|presentation|pdf|docx|word\s+(?:doc|document|file)|xlsx|spreadsheet|excel\s+(?:file|sheet|report)|report|infographic|poster|brochure|handout)\b/i,
+    projectFiles: [],
+    toolchains: ['python'],
+    manifests: ['*.py'],
+    guide: [
+        'One build script (build_<name>.py) makes every output: the figures, the deck or document, and the PDF. After any change, run the script again; never edit an output by hand.',
+        'Paths from the script itself: HERE = os.path.dirname(os.path.abspath(__file__)), and every figure and output joined to HERE, so it runs from any folder. Write each figure to the exact name the slide code reads.',
+        'Colours: keep the palette as hex strings ("1B2A33"). python-pptx takes RGBColor.from_string("1B2A33") (or three 0-255 ints); matplotlib takes "#1B2A33". Never pass an RGBColor or a 0-255 tuple to matplotlib. Write one helper for each and use them everywhere.',
+        'Slides: widescreen 13.333 x 7.5 in, one helper per layout (title, bullets, image with caption, two columns), at most 6 short bullets, text 18 pt or larger, nothing outside the slide. Exactly the number of slides asked for.',
+        'Charts and diagrams with matplotlib (Agg backend), 200 dpi PNGs, labelled axes, one idea per figure. Flowcharts as boxes and arrows drawn with matplotlib patches.',
+        'PDF: build it in the same script (matplotlib PdfPages, or reportlab drawing the same pages). Do not try LibreOffice, unoconv or PowerPoint automation unless inspect_environment found them.',
+        'Facts about real events: use what you know with care, round figures and mark them "approx.", never present an invented precise number as fact, and end with a sources or notes slide.',
+        'Write text files with encoding="utf-8". Check the result in the same run: reopen each output (Presentation(path), the PDF page count) and print one line per slide or page with its title.',
+    ],
+    gates: [
+        {
+            id: 'build',
+            label: 'Build script run',
+            command: 'python build_<name>.py',
+            matches: /\bpython3?\b[^|;&]*\.py\b/,
+            required: 'always',
+        },
+    ],
+    security: ['No personal data or API keys in the document or the script.'],
+    release: ['The script, its outputs and a short README on how to rebuild them.'],
+};
+
 const GENERAL: Playbook = {
     id: 'general',
     name: 'Project',
@@ -302,6 +338,9 @@ const GENERAL: Playbook = {
 
 export const PLAYBOOKS: Playbook[] = [FLUTTER, ML, PYTHON_API, NODE_API, WEB];
 
+/** Asking for a document to be made, in any wording: "i need a ppt…", "generate a pdf…". */
+const DOCUMENT_INTENT = /\b(?:need|want|make|create|generate|build|prepare|produce|write|design|give\s+me)\b/i;
+
 const BUILD_INTENT =
     /\b(?:build|create|make|develop|scaffold|generate|set\s*up|write|design|clone|train|fine-?tune)\b[\s\S]{0,80}?\b(?:app|application|website|site|web\s*app|project|api|backend|server|service|game|extension|bot|dashboard|platform|pipeline|model|tool|cli)\b/i;
 const CHANGE_INTENT = /\b(?:fix|debug|refactor|upgrade|migrate|implement|add|integrate|optimi[sz]e|improve)\b/i;
@@ -318,6 +357,9 @@ export function releaseIntent(prompt: string): boolean {
 export function choosePlaybooks(prompt: string, tier: Tier, rootFiles: ReadonlySet<string>): Playbook[] {
     if (tier !== 'deep') {
         return [];
+    }
+    if (DOCUMENTS.request.test(prompt) && DOCUMENT_INTENT.test(prompt) && !BUILD_INTENT.test(prompt)) {
+        return [DOCUMENTS];
     }
     const build = BUILD_INTENT.test(prompt) || RELEASE_INTENT.test(prompt);
     if (!build && !CHANGE_INTENT.test(prompt)) {
