@@ -38,7 +38,23 @@ export async function saveTaskAction(_state: LabFormState | undefined, form: For
         files[path] = text;
     }
     if (Object.values(files).reduce((s, f) => s + f.length, 0) > MAX_FILES_TOTAL) return { error: 'The files add up to over 900 KB. Keep test projects small.' };
-    const task: LabTask = { id, title, category, prompts, files, expect: String(form.get('expect') ?? '').trim().slice(0, 1000) };
+    const checklist = String(form.get('checklist') ?? '')
+        .split('\n')
+        .map((line) => line.trim())
+        .filter(Boolean)
+        .slice(0, 40)
+        .map((line) => line.slice(0, 200));
+    const task: LabTask = {
+        id,
+        title,
+        category,
+        prompts,
+        files,
+        expect: String(form.get('expect') ?? '').trim().slice(0, 1000),
+        ...(checklist.length ? { checklist } : {}),
+        // The benchmark is set in code; editing a task keeps it.
+        ...(existing?.benchmark ? { benchmark: existing.benchmark } : {}),
+    };
     await writeTasks(existing ? tasks.map((t) => (t.id === id ? task : t)) : [...tasks, task]);
     revalidatePath('/admin/lab');
     return { saved: true };
@@ -65,6 +81,10 @@ export async function rateAction(form: FormData): Promise<void> {
         understood: clamp(form.get('understood')),
         quality: clamp(form.get('quality')),
         notes: String(form.get('notes') ?? '').slice(0, 2000),
+        passed: form
+            .getAll('passed')
+            .map((v) => Math.floor(Number(v)))
+            .filter((n) => Number.isInteger(n) && n >= 0 && n < 100),
     });
     revalidatePath('/admin/lab');
 }

@@ -37,6 +37,10 @@ export function TaskForm({ task }: { task?: LabTask }) {
                 <span className={label}>What a good result looks like</span>
                 <textarea name="expect" rows={2} defaultValue={task?.expect} className={`${field} mt-1`} />
             </div>
+            <div>
+                <span className={label}>Acceptance steps — one per line; ticked when rating a run to score it</span>
+                <textarea name="checklist" rows={4} defaultValue={task?.checklist?.join('\n')} className={`${field} mt-1`} />
+            </div>
             <div className="grid gap-2 sm:grid-cols-2 sm:items-end">
                 <div>
                     <span className={label}>Starter files (text, up to 200 KB each)</span>

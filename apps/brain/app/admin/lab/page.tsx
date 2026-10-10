@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 import { isSignedIn } from '@/lib/admin';
-import { labToken, listResults, readResult, readTasks, report } from '@/lib/lab';
+import { labToken, listResults, readResult, readTasks, report, scorecard } from '@/lib/lab';
 import { deleteResultAction, deleteTaskAction, rateAction, restoreDefaultsAction } from './actions';
 import { TaskForm } from './task-form';
 
@@ -24,6 +24,8 @@ export default async function LabPage({ searchParams }: { searchParams: Promise<
     const [tasks, results] = await Promise.all([readTasks(), listResults()]);
     const open = run ? await readResult(run) : undefined;
     const rows = report(results);
+    const scores = scorecard(tasks, results);
+    const openTask = open ? tasks.find((t) => t.id === open.taskId) : undefined;
 
     return (
         <main className="mx-auto w-full max-w-6xl px-4 py-10 text-fg">
@@ -42,6 +44,52 @@ export default async function LabPage({ searchParams }: { searchParams: Promise<
                     Put this in VS Code settings as <code className="font-mono text-fg">freeagentcoder.labToken</code>. It changes if the admin password or key secret changes.
                 </p>
                 <code className="mt-2 block select-all break-all rounded bg-bg px-3 py-2 font-mono text-fg">{labToken() ?? 'Set ADMIN_PASSWORD first.'}</code>
+            </section>
+
+            <section className="mt-8">
+                <h2 className="mb-1 text-xs font-semibold uppercase tracking-wide text-muted">Scorecard: acceptance steps passed, against the benchmark</h2>
+                <p className="mb-3 text-[12.5px] text-muted">Tick the steps a run passed when you rate it. The goal: never below the benchmark.</p>
+                <div className="overflow-x-auto rounded-lg border border-line">
+                    <table className="w-full text-[13px] tabular-nums">
+                        <thead className="bg-panel text-left text-[11px] uppercase tracking-wide text-muted">
+                            <tr>
+                                {['Task', 'Benchmark', 'Latest', 'Best', 'Runs', 'Latest run'].map((h) => (
+                                    <th key={h} className="px-3 py-2">
+                                        {h}
+                                    </th>
+                                ))}
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {scores.map((r) => {
+                                const target = r.benchmark ? Math.round((r.benchmark.passed / r.steps) * 100) : null;
+                                const tone = (v: number | null) => (v === null || target === null ? '' : v >= target ? 'text-ok' : 'text-bad');
+                                return (
+                                    <tr key={r.taskId} className="border-t border-line align-top text-muted">
+                                        <td className="px-3 py-2 text-fg">{r.title}</td>
+                                        <td className="px-3 py-2">
+                                            {r.benchmark ? (
+                                                <span title={r.benchmark.note}>
+                                                    {target}% · {r.benchmark.by}
+                                                </span>
+                                            ) : (
+                                                '—'
+                                            )}
+                                        </td>
+                                        <td className={`px-3 py-2 font-semibold ${tone(r.latest)}`}>{r.latest === null ? 'not rated' : `${r.latest}%`}</td>
+                                        <td className={`px-3 py-2 ${tone(r.best)}`}>{r.best === null ? '—' : `${r.best}%`}</td>
+                                        <td className="px-3 py-2">{r.runs}</td>
+                                        <td className="px-3 py-2">
+                                            {r.latestMinutes === null
+                                                ? 'none yet'
+                                                : `${r.latestMinutes} min · ${(r.latestTokens ?? 0).toLocaleString('en-US')} tokens · ${r.latestPauses} pause${r.latestPauses === 1 ? '' : 's'} · ${r.latestExtension}`}
+                                        </td>
+                                    </tr>
+                                );
+                            })}
+                        </tbody>
+                    </table>
+                </div>
             </section>
 
             <section className="mt-8">
@@ -165,6 +213,19 @@ export default async function LabPage({ searchParams }: { searchParams: Promise<
                     </details>
                     <form action={rateAction} className="grid gap-3 sm:grid-cols-[120px_120px_1fr_auto] sm:items-end">
                         <input type="hidden" name="id" value={open.id} />
+                        {openTask?.checklist?.length ? (
+                            <fieldset className="grid gap-1.5 sm:col-span-4">
+                                <legend className="mb-1 text-[12px] font-semibold text-fg">
+                                    Acceptance steps this run passed{openTask.benchmark ? ` (benchmark: ${openTask.benchmark.passed} of ${openTask.checklist.length}, ${openTask.benchmark.by})` : ''}
+                                </legend>
+                                {openTask.checklist.map((step, i) => (
+                                    <label key={i} className="flex items-start gap-2 text-[13px] text-muted">
+                                        <input type="checkbox" name="passed" value={i} defaultChecked={open.rating?.passed?.includes(i)} className="mt-0.5" />
+                                        <span>{step}</span>
+                                    </label>
+                                ))}
+                            </fieldset>
+                        ) : null}
                         {(['understood', 'quality'] as const).map((k) => (
                             <label key={k} className="text-[12px] text-muted">
                                 {k === 'understood' ? 'Understood /5' : 'Quality /5'}
