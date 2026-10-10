@@ -36,6 +36,7 @@ export const PUBLISHED_LIMITS: Record<string, string> = {
     gemini: 'Google no longer publishes free-tier limits; AI Studio shows this key\'s',
     groq: 'Free tier: 1,000 requests a day, 30 a minute, 200,000 tokens a day',
     openrouter: 'Free models: 20 a minute; 50 a day, or 1,000 a day after $10 of credits',
+    nvidia: 'Free developer key: about 40 requests a minute per model, no daily figure published (NVIDIA calls it a trial service)',
     mistral: 'Shown only in your Mistral account, under API > Limits',
     cerebras: 'Paid: the $5 trial needs a card and expires after 30 days',
     openai: 'Paid: set by your account\'s usage tier',

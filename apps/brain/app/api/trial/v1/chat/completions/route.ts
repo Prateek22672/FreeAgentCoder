@@ -18,13 +18,14 @@ export const maxDuration = 60;
 const MODELS: Record<string, { fast: string; deep: string }> = {
     gemini: { fast: 'gemini-3.5-flash-lite', deep: 'gemini-3.8-flash' },
     groq: { fast: 'openai/gpt-oss-120b', deep: 'openai/gpt-oss-120b' },
+    nvidia: { fast: 'openai/gpt-oss-120b', deep: 'moonshotai/kimi-k3' },
     mistral: { fast: 'mistral-small-latest', deep: 'mistral-medium-latest' },
     openrouter: { fast: 'openrouter/free', deep: 'openrouter/free' },
     openai: { fast: 'gpt-5-mini', deep: 'gpt-5' },
 };
 const ORDER = {
-    fast: ['groq', 'gemini', 'openrouter', 'mistral', 'openai'],
-    deep: ['gemini', 'openrouter', 'mistral', 'groq', 'openai'],
+    fast: ['groq', 'gemini', 'nvidia', 'openrouter', 'mistral', 'openai'],
+    deep: ['gemini', 'nvidia', 'mistral', 'groq', 'openrouter', 'openai'],
 };
 const MAX_BODY = 2_000_000;
 const MAX_OUTPUT = 8_192;
