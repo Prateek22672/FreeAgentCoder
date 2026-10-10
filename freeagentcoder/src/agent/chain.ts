@@ -130,6 +130,8 @@ export class ChainBuilder {
             maxRequestTokens: preset.maxRequestTokens,
             prefer: preset.prefer,
             label: key.label,
+            // Any free model at all: kept for when nothing better can answer.
+            fallback: model === 'openrouter/free',
         };
         this.cache.set(cacheKey, entry);
         return entry;

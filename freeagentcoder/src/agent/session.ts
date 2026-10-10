@@ -372,7 +372,7 @@ export class AgentSession implements vscode.Disposable {
                         type: 'notice',
                         turnId: turn.id,
                         level: 'warn',
-                        message: `Paused: this task has used ${compactNumber(agent.usage.inputTokens + agent.usage.outputTokens - turn.tokensAtStart)} tokens, the most one task may use before asking you. Nothing is lost. Press Continue to carry on, or change the limit in Settings (freeagentcoder.taskTokenLimit).`,
+                        message: `Paused after ${compactNumber(agent.usage.inputTokens + agent.usage.outputTokens - turn.tokensAtStart)} tokens to check with you. Nothing is lost. Press Continue to carry on, or say what to do differently. (A task still making progress runs on to twice the limit before pausing; the limit is freeagentcoder.taskTokenLimit.)`,
                     });
                 }
                 if (reason !== 'error' || outcome.error === undefined) {

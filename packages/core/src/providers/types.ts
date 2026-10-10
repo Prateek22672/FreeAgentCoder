@@ -9,6 +9,8 @@ export interface ChatRequest {
   temperature?: number;
   /** How hard a reasoning model should think. Sent only to providers that take it. */
   effort?: 'low' | 'medium' | 'high';
+  /** Router only: this step fixes a repeated error, so wait for a strong model rather than use a fallback. */
+  strong?: boolean;
 }
 
 export type StreamEvent =

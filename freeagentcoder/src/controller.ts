@@ -1,3 +1,4 @@
+import { asksForSomethingNew } from './agent/intent';
 import { mkdir, readdir, readFile, writeFile } from 'node:fs/promises';
 import { LabRecorder } from './lab/recorder';
 import * as path from 'node:path';
@@ -623,7 +624,7 @@ export class Controller implements vscode.Disposable {
         if (this.features.codeSearch && !followUp && !test && this.session.indexedFiles !== 0) {
             const hits = (await this.relevantFiles(cwd, prompt)).slice(0, tier === 'fast' ? 4 : 8);
             if (hits.length) {
-                agentPrompt += `\n\n## Likely relevant files\nFound by a local search of this project for the words in the request. Read them before changing anything; not all of them may matter.\n${hits
+                agentPrompt += `\n\n## Likely relevant files\nFound by a local search of this project for the words in the request. Read one only if it is clearly part of what the request is about.\n${hits
                     .map((hit) => `- ${hit.path}:${hit.start}-${hit.end} (${hit.matched.join(', ')})`)
                     .join('\n')}`;
                 notes.push(
@@ -1098,7 +1099,8 @@ export class Controller implements vscode.Disposable {
 
     private async relevantFiles(cwd: string, prompt: string): Promise<SearchHit[]> {
         const terms = new Set(tokenize(prompt)).size;
-        if (!terms) {
+        // Making something new: files that share its words (an old build script, a guide) are coincidence, and reading them costs steps.
+        if (!terms || asksForSomethingNew(prompt)) {
             return [];
         }
         try {
@@ -1898,3 +1900,4 @@ export class Controller implements vscode.Disposable {
         );
     }
 }
+

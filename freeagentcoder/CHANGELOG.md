@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.5.2 — Fewer wasted steps, fewer pauses
+
+### Improved
+
+- **A repeated error gets fixed at its cause.** When the same error comes back (even with other steps in between), the next steps go to the strongest model you have, with an instruction to find the root cause and fix every place it comes from, instead of patching one line at a time. If it still comes back five times, the task stops instead of burning tokens.
+- **Stronger models first on big tasks.** OpenRouter's free router, which hands each request to whichever free model is idle, is now the last resort for every task, after Groq and Cohere.
+- **Fewer pauses.** A task that is still changing files or running commands successfully carries on past the token limit, up to twice it, instead of stopping halfway. Tasks that are only going round in circles still pause.
+- **No more stalls over optional tools.** A Python project no longer stops to ask about uv or poetry: it uses them if installed and python -m venv otherwise.
+- **Python on Windows prints any character.** Scripts that print arrows or emoji no longer crash with UnicodeEncodeError.
+- **New projects start clean.** A request to make something new no longer attaches unrelated files from the folder that happen to share its words.
+
 ## 0.5.1 — Always where you left it
 
 ### Added

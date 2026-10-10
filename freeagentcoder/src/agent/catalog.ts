@@ -9,8 +9,11 @@ export const KEY_PROVIDERS = ['gemini', 'groq', 'openrouter', 'mistral', 'cohere
 
 /** Fast first: Groq answers in a second or two, and small requests fit its free tier. Cohere last: 1,000 calls a month. */
 const FAST_ORDER = ['groq', 'gemini', 'mistral', 'openrouter', 'cohere', 'trial'];
-/** Strongest first: Gemini's 1M-token context carries long, multi-file work. */
-const DEEP_ORDER = ['gemini', 'mistral', 'openrouter', 'cohere', 'groq', 'trial'];
+/**
+ * Strongest first: Gemini's 1M-token context carries long, multi-file work. OpenRouter's free router comes last:
+ * it hands each request to whichever free model is idle, and those repeat the same mistakes on real builds.
+ */
+const DEEP_ORDER = ['gemini', 'mistral', 'groq', 'cohere', 'openrouter', 'trial'];
 /** Paid keys are only routed automatically when no free key is active. */
 const PAID_ORDER = ['anthropic', 'openai'];
 

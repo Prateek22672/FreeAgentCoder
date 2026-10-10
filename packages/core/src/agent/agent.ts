@@ -120,6 +120,15 @@ const MAX_NUDGES = 3;
 /** The same calls this many times in a row: warned at the first number, stopped at the second. */
 const REPEAT_WARN = 3;
 const REPEAT_STOP = 5;
+/** The same error, however many steps apart: diagnosis on a strong model at the first number, a stop at the second. */
+const SAME_ERROR_DIAGNOSE = 2;
+const SAME_ERROR_STOP = 5;
+/** Steps sent to a strong model after an error repeats. */
+const STRONG_STEPS = 2;
+/** Past the task token limit, a task that changed files or ran something successfully this recently runs on, up to this multiple. */
+const PROGRESS_WINDOW = 3;
+const BUDGET_STRETCH = 2;
+const PROGRESS_TOOLS = new Set(['write_file', 'edit_file', 'run_command']);
 /** Steps in a row where every call failed: guidance at the first, a stop at the second. */
 const FAILED_STEPS_GUIDE = 3;
 const FAILED_STEPS_STOP = 6;
@@ -155,6 +164,24 @@ export function announcesAction(text: string): boolean {
   if (!last || last.endsWith('?') || /let me know/i.test(last)) return false;
   if (/:\s*$/.test(last)) return true;
   return /\b(let me|i[’']ll|i will|i am going to|i[’']m going to|now i[’']ll|next,? i[’']ll)\b[^.?!]*[.:]?\s*$/i.test(last);
+}
+
+/**
+ * What an error is, without what changes between attempts (line numbers,
+ * values, paths), so the same mistake is recognised when it comes back after
+ * other steps. For command output it is the exception line, last in a traceback.
+ */
+export function errorSignature(tool: string, content: string): string {
+  const lines = content.split('\n').map((l) => l.trim()).filter(Boolean);
+  const named = [...lines].reverse().find((l) => /^[\w.]*(Error|Exception)\b|\berror(\[\w+\])?:/i.test(l));
+  const line = named ?? lines.find((l) => !/^exit\b/i.test(l)) ?? '';
+  const normal = line
+    .replace(/(["'`]).*?\1/g, '…')
+    .replace(/[A-Za-z]:[\\/]\S*|(?:\/[\w.-]+){2,}/g, '<path>')
+    .replace(/\d+/g, '#')
+    .replace(/\s+/g, ' ')
+    .slice(0, 160);
+  return `${tool}: ${normal}`;
 }
 
 function errorText(err: unknown): string {
@@ -271,6 +298,11 @@ export class Agent {
     let planChecked = false;
     let forcedCompaction = false;
     let futile = 0;
+    const errorsSeen = new Map<string, number>();
+    let strongSteps = 0;
+    let overBudget = false;
+    /** The last step that changed a file or ran a command successfully. */
+    let lastProgress = 0;
 
     for (let step = 1; ; step++) {
       if (step > maxSteps) {
@@ -281,9 +313,20 @@ export class Agent {
         yield { type: 'done', reason: 'aborted', steps: step - 1 };
         return;
       }
-      if (this.maxTurnTokens > 0 && this.usage.inputTokens + this.usage.outputTokens - usedAtStart >= this.maxTurnTokens) {
-        yield { type: 'done', reason: 'budget', steps: step - 1 };
-        return;
+      const used = this.usage.inputTokens + this.usage.outputTokens - usedAtStart;
+      if (this.maxTurnTokens > 0 && used >= this.maxTurnTokens * (overBudget ? BUDGET_STRETCH : 1)) {
+        // A task still landing changes is let run on once, up to a hard ceiling; one going round in circles stops here.
+        const looping = [...errorsSeen.values()].some((n) => n >= SAME_ERROR_DIAGNOSE);
+        if (!overBudget && lastProgress > 0 && step - lastProgress <= PROGRESS_WINDOW && !looping) {
+          overBudget = true;
+          yield {
+            type: 'notice',
+            message: `This task has used ${Math.round(used / 1000)}K tokens and is still making progress, so it carries on (up to ${Math.round((this.maxTurnTokens * BUDGET_STRETCH) / 1000)}K).`,
+          };
+        } else {
+          yield { type: 'done', reason: 'budget', steps: step - 1 };
+          return;
+        }
       }
       if (yield* this.manageContext(signal)) {
         // Summarized, and still at the limit: nothing more can be dropped.
@@ -300,7 +343,16 @@ export class Agent {
       let partial = '';
       let reported = false;
       try {
-        const stream = this.router.stream({ system: this.systemPrompt, messages: requestView(this.messages), tools: this.turnSchemas, signal, effort: this.turnEffort });
+        const strong = strongSteps > 0;
+        if (strong) strongSteps--;
+        const stream = this.router.stream({
+          system: this.systemPrompt,
+          messages: requestView(this.messages),
+          tools: this.turnSchemas,
+          signal,
+          effort: strong ? 'high' : this.turnEffort,
+          strong,
+        });
         let next = await stream.next();
         while (!next.done) {
           const ev = next.value;
@@ -415,6 +467,7 @@ export class Agent {
       nudges = 0;
       let failed = 0;
       let lastError = '';
+      let repeated: { signature: string; count: number } | undefined;
       for (let i = 0; i < calls.length; i++) {
         if (signal.aborted) {
           for (const skipped of calls.slice(i)) {
@@ -425,9 +478,14 @@ export class Agent {
         }
         const call = calls[i]!;
         const result = yield* this.execute(call, signal, message.stop === 'max_tokens');
+        if (!result.isError && PROGRESS_TOOLS.has(call.name)) lastProgress = step;
         if (result.isError) {
           failed++;
           lastError = `${call.name}: ${result.content.split('\n')[0]!.slice(0, 200)}`;
+          const signature = errorSignature(call.name, result.content);
+          const count = (errorsSeen.get(signature) ?? 0) + 1;
+          errorsSeen.set(signature, count);
+          if (!repeated || count > repeated.count) repeated = { signature, count };
         }
         this.messages.push({
           role: 'tool',
@@ -436,6 +494,25 @@ export class Agent {
           content: truncateMiddle(result.content, MAX_RESULT_CHARS),
           ...(result.isError ? { isError: true } : {}),
         });
+      }
+
+      if (repeated && repeated.count >= SAME_ERROR_STOP) {
+        yield {
+          type: 'error',
+          message: `Stopped: the same error came back ${repeated.count} times (${repeated.signature}). More attempts would not help. Nothing is lost; say what to try, or press Continue for one more go.`,
+        };
+        yield { type: 'done', reason: 'error', steps: step };
+        return;
+      }
+      if (repeated && repeated.count === SAME_ERROR_DIAGNOSE) {
+        // The same mistake twice means the fix is aimed at a symptom: one step of diagnosis on the best model available costs less than more guesses.
+        strongSteps = STRONG_STEPS;
+        this.messages.push({
+          role: 'user',
+          synthetic: true,
+          content: `The same error has now happened twice: ${repeated.signature}\nStop patching it line by line. Before changing anything: (1) read the code that produces it, (2) state its root cause in one sentence, (3) fix every place with that cause in one change, not just the line in the traceback, then (4) run it again. If an edit keeps failing to match, rewrite the file with write_file.`,
+        });
+        yield { type: 'notice', message: 'The same error came back, so the next steps go to the strongest model available to find its cause.' };
       }
 
       // Polling a background process is meant to repeat.

@@ -108,7 +108,8 @@ describe('stopping a stuck model', () => {
   });
 
   it('guides after three failed steps and stops after six', async () => {
-    const miss = (n: number) => call('read_file', { path: `missing${n}.ts` });
+    const names = ['alpha', 'bravo', 'charlie', 'delta', 'echo', 'foxtrot'];
+    const miss = (n: number) => call('read_file', { path: `${names[n - 1]}.ts` });
     const { agent, provider } = setup([miss(1), miss(2), miss(3), miss(4), miss(5), miss(6), say('never')]);
     const events = await collect(agent.run('read them'));
     expect(sent(provider, 3)).toContain('The last 3 steps all failed');

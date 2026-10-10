@@ -66,6 +66,9 @@ function commandEnv(): NodeJS.ProcessEnv {
     FORCE_COLOR: '0',
     npm_config_yes: 'true',
     PYTHONUNBUFFERED: '1',
+    // Windows consoles default Python to cp1252, so printing "→" or an emoji crashes the script.
+    PYTHONIOENCODING: 'utf-8',
+    PYTHONUTF8: '1',
   };
 }
 

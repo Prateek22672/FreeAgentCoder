@@ -146,7 +146,7 @@ describe('a task through the session', async () => {
         const task = start([call('list_dir', {}), say('never reached')], { tokenLimit: 1 });
         await task.run();
         expect(task.end()).toMatchObject({ reason: 'budget', steps: 1 });
-        expect(task.notices().some((n) => n.startsWith('Paused: this task has used'))).toBe(true);
+        expect(task.notices().some((n) => n.startsWith('Paused after '))).toBe(true);
         expect(task.provider.remaining).toBe(1);
     });
 });

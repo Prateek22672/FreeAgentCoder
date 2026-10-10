@@ -29,6 +29,8 @@ export interface RouterEntry {
   temperature?: number;
   /** Shown in notices when several entries share a model, e.g. one entry per API key. */
   label?: string;
+  /** A weak last resort (e.g. a free router that picks any model): used after every other model. */
+  fallback?: boolean;
 }
 
 export type RouterEvent =
@@ -230,8 +232,11 @@ export class ModelRouter {
     if (!fitting.length) throw new ContextTooLargeError(estimate, this.largestBudget());
 
     const failures: { ref: string; error: ProviderError }[] = [];
-    // Models cooling down go last; if they're all cooling, wait for the soonest.
-    const order = [...fitting].sort((a, b) => (this.cooling(a) ? 1 : 0) - (this.cooling(b) ? 1 : 0));
+    // Ready models first, weak fallbacks after strong ones; cooling models last, waiting for the soonest.
+    // A step fixing a repeated error instead waits for a strong model that is cooling before any fallback.
+    const rank = (e: RouterEntry) =>
+      req.strong ? (e.fallback ? 2 : 0) + (this.cooling(e) ? 1 : 0) : (this.cooling(e) ? 2 : 0) + (e.fallback ? 1 : 0);
+    const order = [...fitting].sort((a, b) => rank(a) - rank(b));
 
     for (let i = 0; i < order.length; i++) {
       const entry = order[i]!;

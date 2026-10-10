@@ -192,9 +192,9 @@ const PYTHON_API: Playbook = {
     name: 'Python backend',
     request: /\b(?:fastapi|django|flask|python\s+(?:api|backend|server|web\s*app))\b/i,
     projectFiles: ['manage.py'],
-    toolchains: ['python', 'uv', 'poetry'],
+    toolchains: ['python'],
     guide: [
-        'Work in a virtual environment (uv, poetry or python -m venv .venv) and pin dependencies.',
+        'Work in a virtual environment: uv if it is installed, otherwise python -m venv .venv, which always works. Never stop to ask about uv or poetry. Pin dependencies.',
         'Structure: app/ (routers or views, models, schemas, services) and tests/; settings from environment variables.',
         'Validate input with pydantic or forms and return proper status codes.',
         'Check it runs: start uvicorn or `manage.py runserver` with background=true, then fetch_url a health or home URL.',
@@ -225,7 +225,7 @@ const ML: Playbook = {
     request:
         /\b(?:machine\s+learning|deep\s+learning|ml\s+(?:model|pipeline|project|app)|neural\s+net\w*|train(?:ing)?\s+(?:a\s+)?model|fine-?tun\w*|pytorch|tensorflow|keras|scikit-learn|sklearn|hugging\s*face|transformers)\b/i,
     projectFiles: [],
-    toolchains: ['python', 'uv', 'conda'],
+    toolchains: ['python'],
     guide: [
         'Structure: src/ (data.py, model.py, train.py, evaluate.py), configs/, notebooks/; data/ and models/ git-ignored.',
         'Reproducible: fixed seeds, pinned versions, hyperparameters in a config file or CLI arguments rather than hard-coded.',
@@ -351,7 +351,7 @@ export function buildBrief(playbooks: Playbook[], release: boolean, request: str
         '',
         '## How to work',
         toolchains.length
-            ? `1. Preflight: call inspect_environment with ${JSON.stringify(toolchains)}. If a required tool is missing, stop and tell the user exactly what to install and where to get it. Ask before installing SDKs, running system package managers, or changing PATH or shell profiles.`
+            ? `1. Preflight: call inspect_environment with ${JSON.stringify(toolchains)}. If one of these is missing, stop and tell the user exactly what to install and where to get it. Optional extras (uv, poetry, conda, a linter) are not a reason to stop: use what is installed. Ask before installing SDKs, running system package managers, or changing PATH or shell profiles.`
             : '1. Preflight: only when the work needs an installed toolchain (a compiler, an SDK, a package manager), call inspect_environment for it; if it is missing, stop and tell the user what to install. Plain HTML, CSS and JavaScript need none: skip this step.',
         '2. Plan with todo_write: a few concrete steps that end with the checks below. Send the plan in the same reply as your first actions, never as a reply of its own.',
         '3. Work in few, full replies: every reply resends the whole conversation, so put all the tool calls that do not depend on each other in one reply. Write each file complete in a single write_file, and create the files of a small project together. After each milestone, run the matching gate and fix what it reports.',
