@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 
 vi.mock('vscode', () => ({ workspace: { getConfiguration: () => ({ get: () => true }) } }));
 
-const { enabledSpecialists, parseConfig } = await import('./remoteConfig');
+const { enabledSpecialists, parseConfig, parseReferences } = await import('./remoteConfig');
 
 describe('specialist settings from the admin page', () => {
     it('keeps valid overrides', () => {
@@ -34,5 +34,18 @@ describe('specialist settings from the admin page', () => {
         const enabled = enabledSpecialists(parseConfig({ specialists: { design: { enabled: false } } }));
         expect(enabled.has('design')).toBe(false);
         expect(enabled.has('fix')).toBe(true);
+    });
+});
+
+describe('the reference library download', () => {
+    it('keeps valid entries and drops malformed ones', () => {
+        const parsed = parseReferences([
+            { id: 'crm', kind: 'blueprint', name: 'CRM', tags: ['crm', 'asp.net'], points: ['Audit in SaveChangesAsync.'] },
+            { id: 'bad', kind: 'script', name: 'x', tags: ['x'], points: ['run this'] },
+            { id: 'empty', kind: 'design', name: 'No rules', tags: ['a'], points: [] },
+            'not an object',
+        ]);
+        expect(parsed.map((r) => r.id)).toEqual(['crm']);
+        expect(parseReferences({ not: 'a list' })).toEqual([]);
     });
 });

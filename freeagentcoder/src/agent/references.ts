@@ -1,3 +1,6 @@
+import { bestMatches } from '@agentic/core';
+import type { RemoteReference } from './remoteConfig';
+
 /**
  * Know-how the agent looks up instead of rediscovering: how strong solutions
  * to a kind of project are put together (blueprints), and how to work when the
@@ -68,14 +71,51 @@ export const SPEC_METHOD = [
     '6. Finish with EXPLAIN.md: the request flow, a requirement → file → how table, and a demo script. Say plainly anything not done.',
 ].join('\n');
 
-/** The block added to the task: the spec method when it applies, and the blueprints that fit. */
-export function referenceBlock(prompt: string, documentText = ''): string {
+const DESIGN_REQUEST = /\b(?:website|web\s*site|landing|home\s*page|portfolio|dashboard|ui|ux|design|redesign|frontend|front-end|interface|theme|layout)\b/i;
+
+export interface Matched {
+    blueprints: { name: string; points: string[] }[];
+    designs: { name: string; points: string[] }[];
+}
+
+/**
+ * The library entries that fit: the downloaded ones first, the built-in
+ * blueprints when none of those fit. A design reference only for work on how
+ * something looks.
+ */
+export function matchLibrary(text: string, library: RemoteReference[] = []): Matched {
+    const remote = bestMatches(
+        library.filter((r) => r.kind !== 'design'),
+        text,
+        (r) => r,
+        2,
+    );
+    const blueprints = remote.length ? remote : blueprintsFor(text);
+    const designs = DESIGN_REQUEST.test(text)
+        ? bestMatches(
+              library.filter((r) => r.kind === 'design'),
+              text,
+              (r) => r,
+              1,
+          )
+        : [];
+    return { blueprints, designs };
+}
+
+/** The block added to the task: the spec method when it applies, and the references that fit. */
+export function referenceBlock(prompt: string, documentText = '', library: RemoteReference[] = []): string {
     const parts: string[] = [];
     if (isSpec(prompt, documentText)) {
         parts.push(SPEC_METHOD);
     }
-    for (const blueprint of blueprintsFor(`${prompt}\n${documentText}`)) {
+    const matched = matchLibrary(`${prompt}\n${documentText}`, library);
+    for (const blueprint of matched.blueprints) {
         parts.push(`How strong solutions of this kind are built (${blueprint.name}):\n${blueprint.points.map((p) => `- ${p}`).join('\n')}`);
+    }
+    for (const design of matched.designs) {
+        parts.push(
+            `A design reference to learn from, not to copy (${design.name}). Adapt its level of craft to this brief:\n${design.points.map((p) => `- ${p}`).join('\n')}`,
+        );
     }
     return parts.length ? `<reference source="FreeAgentCoder">\n${parts.join('\n\n')}\n</reference>` : '';
 }

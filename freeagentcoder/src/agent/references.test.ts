@@ -25,3 +25,21 @@ describe('references', () => {
         expect(blueprintsFor('build an inventory system with role-based access in FastAPI').map((b) => b.id)).toEqual(['api-backend']);
     });
 });
+
+describe('the downloaded library', () => {
+    const library = [
+        { id: 'crm', kind: 'blueprint' as const, name: 'ASP.NET Core Identity CRM Pattern', tags: ['asp.net core 8', 'crm', 'identity', 'role based access control', 'audit logging'], points: ['Audit inside SaveChangesAsync.'] },
+        { id: 'parking', kind: 'design' as const, name: 'Dark Industrial Smart Parking Interface', tags: ['smart parking', 'dark mode', 'realtime dashboard'], points: ['Monochrome surfaces with one signal colour.'] },
+    ];
+
+    it('uses a downloaded blueprint before the built-in ones', () => {
+        const block = referenceBlock('build a CRM with Identity, role based access control and audit logging in ASP.NET', '', library);
+        expect(block).toContain('Audit inside SaveChangesAsync.');
+        expect(block).not.toContain('override SaveChangesAsync, read ChangeTracker');
+    });
+
+    it('adds a design reference only to work on how something looks', () => {
+        expect(referenceBlock('design a dark smart parking dashboard', '', library)).toContain('learn from, not to copy');
+        expect(referenceBlock('fix the smart parking slot count bug', '', library)).toBe('');
+    });
+});

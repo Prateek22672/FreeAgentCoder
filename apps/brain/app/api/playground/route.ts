@@ -1,7 +1,8 @@
 import { resolveAccess } from '@/lib/access';
 import { fail, readBody } from '@/lib/http';
-import { readBrief } from '@/lib/brief';
+import { briefText, readBrief } from '@/lib/brief';
 import { buildSystem, kitChanges, projectContext } from '@/lib/playgroundPrompt';
+import { matchReferences, readReferences } from '@/lib/references';
 import { parseEdit, SAFE_PATH } from '@/lib/playgroundEdits';
 
 export const runtime = 'nodejs';
@@ -47,7 +48,15 @@ export async function POST(request: Request): Promise<Response> {
     const kit = kitChanges(brief, files);
     Object.assign(files, kit);
     const project = projectContext(files, ask);
-    const system = buildSystem(brief, ask, files);
+    let system = buildSystem(brief, ask, files);
+    // A new site or app also learns from the closest design reference in the library.
+    if (brief && (brief.goal === 'website' || brief.goal === 'app')) {
+        const [design] = matchReferences(await readReferences(), `${briefText(brief)}\n${ask}`, 'design', 1);
+        if (design) {
+            const rules = design.points.map((p) => `- ${p}`).join('\n');
+            system += `\n\nA design reference to learn from, not to copy (${design.name}). Bring the same level of craft to this brief:\n${rules}`;
+        }
+    }
     const history = (body?.history ?? [])
         .slice(-MAX_HISTORY)
         .filter((m) => (m.role === 'user' || m.role === 'assistant') && typeof m.content === 'string')

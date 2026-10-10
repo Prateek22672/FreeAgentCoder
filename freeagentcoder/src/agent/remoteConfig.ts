@@ -25,6 +25,7 @@ export interface SpecialistOverride {
 export type SpecialistConfig = Partial<Record<SpecialistId, SpecialistOverride>>;
 
 const STATE = 'freeagentcoder.specialistConfig';
+const REFERENCES = 'freeagentcoder.references';
 const FETCHED = 'freeagentcoder.specialistConfigFetched';
 const EVERY_MS = 24 * 60 * 60 * 1000;
 /** A known provider, then a model id with no URL-like parts. */
@@ -53,6 +54,39 @@ export function parseConfig(raw: unknown): SpecialistConfig {
     return config;
 }
 
+/** One entry of the reference library, as the site publishes it. */
+export interface RemoteReference {
+    id: string;
+    kind: 'blueprint' | 'design' | 'docs';
+    name: string;
+    tags: string[];
+    points: string[];
+}
+
+const MAX_REFERENCES = 300;
+const strip = (value: unknown, max: number) =>
+    typeof value === 'string' ? value.replace(/[\u0000-\u0008\u000B-\u001F\u007F]/g, ' ').replace(/\s+/g, ' ').trim().slice(0, max) : '';
+
+/** The same strict checks as the site: this text reaches the agent's instructions. */
+export function parseReferences(raw: unknown): RemoteReference[] {
+    if (!Array.isArray(raw)) {
+        return [];
+    }
+    const out: RemoteReference[] = [];
+    for (const entry of raw.slice(0, MAX_REFERENCES)) {
+        const r = (entry ?? {}) as Record<string, unknown>;
+        const kind = r.kind === 'blueprint' || r.kind === 'design' || r.kind === 'docs' ? r.kind : undefined;
+        const id = strip(r.id, 60).replace(/[^\w-]/g, '');
+        const name = strip(r.name, 120);
+        const tags = (Array.isArray(r.tags) ? r.tags : []).map((t) => strip(t, 40).toLowerCase()).filter((t) => t.length >= 2).slice(0, 24);
+        const points = (Array.isArray(r.points) ? r.points : []).map((p) => strip(p, 400)).filter((p) => p.length >= 8).slice(0, 12);
+        if (kind && id && name && tags.length && points.length) {
+            out.push({ id, kind, name, tags, points });
+        }
+    }
+    return out;
+}
+
 /** The ids the admin has left on; every specialist when nothing is configured. */
 export function enabledSpecialists(config: SpecialistConfig): Set<string> {
     return new Set(SPECIALISTS.filter((s) => config[s.id]?.enabled !== false).map((s) => s.id));
@@ -61,8 +95,16 @@ export function enabledSpecialists(config: SpecialistConfig): Set<string> {
 export class RemoteConfig {
     private config: SpecialistConfig;
 
+    private library: RemoteReference[];
+
     constructor(private readonly context: vscode.ExtensionContext) {
         this.config = parseConfig({ specialists: context.globalState.get(STATE) });
+        this.library = parseReferences(context.globalState.get(REFERENCES));
+    }
+
+    /** The reference library from the last download; matched to tasks on this machine. */
+    get references(): RemoteReference[] {
+        return this.library;
     }
 
     get current(): SpecialistConfig {
@@ -92,6 +134,12 @@ export class RemoteConfig {
                     const parsed = parseConfig(body);
                     this.config = parsed;
                     await this.context.globalState.update(STATE, parsed);
+                    const library = parseReferences((body as { references?: unknown }).references);
+                    // An empty or missing list (an older site) keeps the last good library.
+                    if (library.length) {
+                        this.library = library;
+                        await this.context.globalState.update(REFERENCES, library);
+                    }
                 }
                 await this.context.globalState.update(FETCHED, Date.now());
             } catch {

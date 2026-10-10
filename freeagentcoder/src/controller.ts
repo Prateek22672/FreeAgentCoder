@@ -1,5 +1,6 @@
 import { asksForSomethingNew } from './agent/intent';
-import { blueprintsFor, isSpec, referenceBlock } from './agent/references';
+import { isSpec, matchLibrary, referenceBlock } from './agent/references';
+import type { RemoteReference } from './agent/remoteConfig';
 import { mkdir, readdir, readFile, writeFile } from 'node:fs/promises';
 import { LabRecorder } from './lab/recorder';
 import * as path from 'node:path';
@@ -655,10 +656,10 @@ export class Controller implements vscode.Disposable {
         // Complex work gets the know-how that fits it: the spec method for a requirements document, and the blueprints for its kind of project.
         const withReferences = tier === 'deep' && !followUp && !test;
         if (withReferences && !attachments.length) {
-            const reference = referenceBlock(prompt);
+            const reference = referenceBlock(prompt, '', this.remoteConfig.references);
             if (reference) {
                 agentPrompt += `\n\n${reference}`;
-                notes.push(referenceNote(prompt));
+                notes.push(referenceNote(prompt, '', this.remoteConfig.references));
             }
         }
 
@@ -694,9 +695,10 @@ export class Controller implements vscode.Disposable {
                 if (prepared.imageSource) {
                     this.telemetry.imageRead(prepared.imageSource === 'local' ? 'locally' : 'model');
                 }
-                const reference = withReferences ? referenceBlock(prompt, prepared.block) : '';
+                const library = this.remoteConfig.references;
+                const reference = withReferences ? referenceBlock(prompt, prepared.block, library) : '';
                 if (reference) {
-                    this.post({ type: 'notice', turnId, level: 'info', message: referenceNote(prompt, prepared.block) });
+                    this.post({ type: 'notice', turnId, level: 'info', message: referenceNote(prompt, prepared.block, library) });
                 }
                 const withDocument = prepared.block ? `${base}\n\n${prepared.block}` : base;
                 return { agentPrompt: reference ? `${withDocument}\n\n${reference}` : withDocument, images: prepared.images };
@@ -1953,8 +1955,9 @@ export class Controller implements vscode.Disposable {
 }
 
 /** What the user is told the task was given. */
-function referenceNote(prompt: string, documentText = ''): string {
-    const names = blueprintsFor(`${prompt}\n${documentText}`).map((b) => b.name.replace(/ \(.*\)$/, ''));
+function referenceNote(prompt: string, documentText: string, library: RemoteReference[]): string {
+    const matched = matchLibrary(`${prompt}\n${documentText}`, library);
+    const names = [...matched.blueprints, ...matched.designs].map((b) => b.name.replace(/ \(.*\)$/, ''));
     const spec = isSpec(prompt, documentText) ? 'Working from the requirements: a checklist first, and every acceptance step checked at the end' : '';
     return `${[spec, names.length ? `Following the proven structure for: ${names.join(', ')}` : ''].filter(Boolean).join('. ')}.`;
 }

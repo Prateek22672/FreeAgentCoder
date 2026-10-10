@@ -1,4 +1,5 @@
 export * from './types';
+export { bestMatches, matchScore, MATCH_THRESHOLD, words } from './util/match';
 export { Agent, announcesAction, errorSignature, tooSmallMessage, type AgentEvent, type AgentOptions, type RunOptions } from './agent/agent';
 export {
   PermissionPolicy,
