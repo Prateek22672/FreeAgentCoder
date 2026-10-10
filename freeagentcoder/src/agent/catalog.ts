@@ -31,8 +31,8 @@ const TIER_MODELS: Record<string, Record<Tier, string[]>> = {
     },
     // Big open models on NVIDIA's free developer tier: strong at long, tool-heavy builds.
     nvidia: {
-        fast: ['openai/gpt-oss-120b', 'nvidia/nemotron-3-super-120b-a12b'],
-        deep: ['deepseek-ai/deepseek-v4-pro', 'nvidia/nemotron-3-ultra-550b-a55b', 'moonshotai/kimi-k3'],
+        fast: ['z-ai/glm-5.3-flash', 'deepseek-ai/deepseek-v4.1-flash'],
+        deep: ['moonshotai/kimi-k3', 'nvidia/nemotron-3-ultra-550b-a55b', 'z-ai/glm-5.3'],
     },
     mistral: { fast: ['mistral-small-latest'], deep: ['mistral-medium-latest'] },
     cohere: { fast: ['command-a-plus-05-2026'], deep: ['command-a-plus-05-2026'] },

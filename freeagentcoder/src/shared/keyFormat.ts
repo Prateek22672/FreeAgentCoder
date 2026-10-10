@@ -27,7 +27,7 @@ export function detectProvider(secret: string): string | undefined {
 export const RECOMMENDED_SETUP: { id: string; goodFor: string }[] = [
     { id: 'gemini', goodFor: 'Complex builds and big projects: a 1M-token context' },
     { id: 'groq', goodFor: 'Very fast answers and small edits' },
-    { id: 'nvidia', goodFor: 'Big open models (DeepSeek, Nemotron, Kimi) for complex builds' },
+    { id: 'nvidia', goodFor: 'Big open models (Kimi, Nemotron, GLM) for complex builds' },
     { id: 'openrouter', goodFor: 'Free models from several makers behind one key' },
     { id: 'cohere', goodFor: 'Optional: 1,000 calls a month, for personal use only' },
 ];
@@ -38,7 +38,7 @@ export const KEY_STEPS: Record<string, string[]> = {
     groq: ['Sign in with Google or GitHub.', 'Click "Create API Key" and name it.', 'Copy it straight away — it starts with gsk_ and is shown only once.'],
     cohere: ['Sign up; no card is asked for.', 'Your trial key is on the API Keys page. Copy it.', 'Trial keys allow 1,000 calls a month and are for personal, non-commercial use.'],
     mistral: ['Sign in, then choose the free "Experiment" plan and verify your phone number. Without that plan, Mistral keys are refused.', 'Open API Keys, create one, and copy it.'],
-    nvidia: ['Sign in or create a free NVIDIA developer account; no card is asked for.', 'Open API Keys and click "Generate API Key".', 'Copy it — it starts with nvapi-.'],
+    nvidia: ['Sign in or create a free NVIDIA developer account; no card is asked for.', 'Open any model page (for example Kimi K3) and click "Get API Key", then "Generate Key".', 'Copy it — it starts with nvapi-. Other NVIDIA keys (such as NGC registry keys) do not work here.'],
     openrouter: ['Sign in with Google or GitHub.', 'Click "Create Key" and copy it — it starts with sk-or-v1-.'],
     openai: ['Open API keys in your OpenAI account.', 'Create a new secret key and copy it — it is shown only once.'],
     anthropic: ['Open API keys in the Anthropic console.', 'Create a key and copy it — it starts with sk-ant-.'],
