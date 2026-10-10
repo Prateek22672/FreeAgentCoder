@@ -1,4 +1,5 @@
-import { poolTargets, recordPoolCall, type PoolTarget } from '@/lib/keypool';
+import { poolTargets, recordPoolCall, restPoolKey, restSeconds, type PoolTarget } from '@/lib/keypool';
+import { MODELS, plan } from '@/lib/trialPlan';
 import { addressFrom, allowance, charge, installFrom, note, readExtTrialSettings } from '@/lib/extTrial';
 
 export const runtime = 'nodejs';
@@ -14,34 +15,12 @@ export const maxDuration = 60;
  * Nothing is stored but counts: the request and the answer pass through.
  */
 
-/** The model each provider runs for a fast or a deep step. */
-const MODELS: Record<string, { fast: string; deep: string }> = {
-    gemini: { fast: 'gemini-3.5-flash-lite', deep: 'gemini-3.8-flash' },
-    groq: { fast: 'openai/gpt-oss-120b', deep: 'openai/gpt-oss-120b' },
-    nvidia: { fast: 'nvidia/nemotron-3-super-120b-a12b', deep: 'nvidia/nemotron-3-ultra-550b-a55b' },
-    mistral: { fast: 'mistral-small-latest', deep: 'mistral-medium-latest' },
-    openrouter: { fast: 'openrouter/free', deep: 'openrouter/free' },
-    openai: { fast: 'gpt-5-mini', deep: 'gpt-5' },
-};
-const ORDER = {
-    fast: ['groq', 'gemini', 'nvidia', 'openrouter', 'mistral', 'openai'],
-    deep: ['gemini', 'nvidia', 'mistral', 'groq', 'openrouter', 'openai'],
-};
 const MAX_BODY = 2_000_000;
 const MAX_OUTPUT = 8_192;
-const MAX_ATTEMPTS = 4;
+const MAX_ATTEMPTS = 6;
 
 function error(message: string, status: number, code: string): Response {
     return new Response(JSON.stringify({ error: { message, code, type: code } }), { status, headers: { 'content-type': 'application/json' } });
-}
-
-/** Keys in the order to try: by provider for the tier, least used first, and only those whose free tier takes a request this size. */
-function plan(targets: PoolTarget[], tier: 'fast' | 'deep', size: number): PoolTarget[] {
-    return ORDER[tier].flatMap((provider) =>
-        targets
-            .filter((t) => t.provider === provider && MODELS[provider] && size <= Math.min(t.maxRequestTokens ?? Infinity, t.contextWindow * 0.9))
-            .sort((a, b) => a.usedToday - b.usedToday),
-    );
 }
 
 /** The request as this provider wants it: its own model, its own output-limit field, and no Gemini-only fields elsewhere. */
@@ -118,6 +97,9 @@ export async function POST(request: Request): Promise<Response> {
             const detail = (await upstream.text().catch(() => '')).slice(0, 300);
             if (retryable(upstream.status, detail)) {
                 void recordPoolCall(target.id, false);
+                if (upstream.status === 429 || /rate limit|quota/i.test(detail)) {
+                    void restPoolKey(target.id, restSeconds(upstream.headers.get('retry-after'), detail));
+                }
                 last = { status: upstream.status, text: detail };
                 continue;
             }

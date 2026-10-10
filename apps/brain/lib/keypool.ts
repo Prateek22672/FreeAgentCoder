@@ -291,10 +291,14 @@ export async function poolTargets(): Promise<PoolTarget[]> {
     }
     const [pool, counts] = await Promise.all([readPool(), store.counts(`pb:keyuse:${today()}`)]);
     const usable = pool.filter((k) => k.enabled && k.health?.state !== 'invalid');
-    const benched = await store.getMany(usable.map((k) => `pb:keybench:${k.id}`));
+    const [benched, resting] = await Promise.all([
+        store.getMany(usable.map((k) => `pb:keybench:${k.id}`)),
+        store.getMany(usable.map((k) => `pb:keyrest:${k.id}`)),
+    ]);
     const targets: PoolTarget[] = [];
     usable.forEach((k, i) => {
-        if (benched[i] !== null) return;
+        // Benched after failing again and again; resting after its provider said it is out of requests for now.
+        if (benched[i] !== null || resting[i]) return;
         const preset = PRESETS[k.provider];
         const apiKey = decrypt(k.cipher);
         if (!preset || preset.kind !== 'openai' || !apiKey) return;
@@ -309,7 +313,8 @@ export async function poolTargets(): Promise<PoolTarget[]> {
             maxTokensParam: preset.maxTokensParam ?? 'max_tokens',
             headers: preset.headers ?? {},
             thoughtSignatures: Boolean(preset.thoughtSignatures),
-            usedToday: counts[`${k.id}:ok`] ?? 0,
+            // Failures count too: a key that keeps failing should not look fresh and be tried first.
+            usedToday: (counts[`${k.id}:ok`] ?? 0) + (counts[`${k.id}:fail`] ?? 0) * 3,
         });
     });
     return targets;
@@ -318,4 +323,29 @@ export async function poolTargets(): Promise<PoolTarget[]> {
 /** Counts one call made with a pool key outside the router, with the same benching rules. */
 export function recordPoolCall(id: string, ok: boolean): Promise<void> {
     return record(id, ok);
+}
+
+/**
+ * How long a key that answered "rate limited" should rest: what the provider
+ * said (Retry-After), until the next UTC day for a daily quota, otherwise a
+ * minute. Capped at a day.
+ */
+export function restSeconds(retryAfter: string | null, message: string, now = Date.now()): number {
+    const said = Number(retryAfter);
+    if (Number.isFinite(said) && said > 0) return Math.min(86_400, Math.ceil(said));
+    if (/per\s*day|daily|requests?\s+per\s+day|RPD|quota exceeded|exceeded your current quota|free-models-per-day/i.test(message)) {
+        const midnight = new Date(now);
+        midnight.setUTCHours(24, 5, 0, 0);
+        return Math.max(60, Math.ceil((midnight.getTime() - now) / 1000));
+    }
+    return 60;
+}
+
+/** Sets a rate-limited key aside so the next requests go straight to keys that can answer. */
+export async function restPoolKey(id: string, seconds: number): Promise<void> {
+    try {
+        await store.put(`pb:keyrest:${id}`, '1', Math.max(10, Math.min(86_400, Math.round(seconds))));
+    } catch {
+        // Never worth failing an answer over.
+    }
 }
