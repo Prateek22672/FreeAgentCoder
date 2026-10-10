@@ -18,7 +18,7 @@ export const maxDuration = 60;
 const MODELS: Record<string, { fast: string; deep: string }> = {
     gemini: { fast: 'gemini-3.5-flash-lite', deep: 'gemini-3.8-flash' },
     groq: { fast: 'openai/gpt-oss-120b', deep: 'openai/gpt-oss-120b' },
-    nvidia: { fast: 'z-ai/glm-5.3-flash', deep: 'moonshotai/kimi-k3' },
+    nvidia: { fast: 'nvidia/nemotron-3-super-120b-a12b', deep: 'nvidia/nemotron-3-ultra-550b-a55b' },
     mistral: { fast: 'mistral-small-latest', deep: 'mistral-medium-latest' },
     openrouter: { fast: 'openrouter/free', deep: 'openrouter/free' },
     openai: { fast: 'gpt-5-mini', deep: 'gpt-5' },
