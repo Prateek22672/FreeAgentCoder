@@ -17,17 +17,25 @@ const DEEP_ORDER = ['gemini', 'mistral', 'groq', 'cohere', 'openrouter', 'trial'
 /** Paid keys are only routed automatically when no free key is active. */
 const PAID_ORDER = ['anthropic', 'openai'];
 
-const TIER_MODELS: Record<string, Record<Tier, string>> = {
-    groq: { fast: 'openai/gpt-oss-120b', deep: 'openai/gpt-oss-120b' },
-    cerebras: { fast: 'gpt-oss-120b', deep: 'gpt-oss-120b' },
-    gemini: { fast: 'gemini-3.5-flash-lite', deep: 'gemini-3.8-flash' },
-    mistral: { fast: 'mistral-small-latest', deep: 'mistral-medium-latest' },
-    cohere: { fast: 'command-a-plus-05-2026', deep: 'command-a-plus-05-2026' },
+/**
+ * Models per provider and tier, best first. Free limits are per model, so when
+ * one is busy or out of quota the same key carries on with the next before the
+ * work moves to another provider.
+ */
+const TIER_MODELS: Record<string, Record<Tier, string[]>> = {
+    groq: { fast: ['openai/gpt-oss-120b', 'qwen/qwen3.8-27b'], deep: ['openai/gpt-oss-120b', 'qwen/qwen3.8-27b'] },
+    cerebras: { fast: ['gpt-oss-120b'], deep: ['gpt-oss-120b'] },
+    gemini: {
+        fast: ['gemini-3.5-flash-lite', 'gemini-3.1-flash-lite', 'gemini-2.5-flash-lite'],
+        deep: ['gemini-3.8-flash', 'gemini-3.7-flash', 'gemini-3.6-flash', 'gemini-3.5-flash', 'gemini-2.5-flash'],
+    },
+    mistral: { fast: ['mistral-small-latest'], deep: ['mistral-medium-latest'] },
+    cohere: { fast: ['command-a-plus-05-2026'], deep: ['command-a-plus-05-2026'] },
     // The free trial picks the real model on the server; it only needs to know the tier.
-    trial: { fast: 'fast', deep: 'deep' },
-    openrouter: { fast: 'openrouter/free', deep: 'openrouter/free' },
-    openai: { fast: 'gpt-5-mini', deep: 'gpt-5' },
-    anthropic: { fast: 'claude-haiku-4-5', deep: 'claude-sonnet-5' },
+    trial: { fast: ['fast'], deep: ['deep'] },
+    openrouter: { fast: ['openrouter/free'], deep: ['openrouter/free'] },
+    openai: { fast: ['gpt-5-mini'], deep: ['gpt-5'] },
+    anthropic: { fast: ['claude-haiku-4-5'], deep: ['claude-sonnet-5'] },
 };
 
 const SHORT_LABELS: Record<string, string> = {
@@ -110,10 +118,15 @@ export function planRoute<K extends KeyRef>(
     }
 
     const steps: RouteStep<K>[] = [];
-    const add = (provider: string, model: string) => {
+    const addOne = (provider: string, model: string) => {
         const list = byProvider.get(provider);
         if (list?.length && model && !steps.some((s) => s.provider === provider && s.model === model)) {
             steps.push({ provider, model, keys: list });
+        }
+    };
+    const add = (provider: string, models: string | string[]) => {
+        for (const model of typeof models === 'string' ? [models] : models) {
+            addOne(provider, model);
         }
     };
 

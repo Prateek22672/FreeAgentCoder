@@ -130,12 +130,17 @@ export class OpenAICompatProvider implements Provider {
       .filter(Boolean);
   }
 
+  /** Cleared for good if this server rejects stream_options. */
+  private streamUsage = true;
+
   buildBody(req: ChatRequest): Record<string, unknown> {
     const body: Record<string, unknown> = {
       model: req.model,
       messages: this.toMessages(req),
       stream: true,
     };
+    // Gemini (and other OpenAI-compatible servers) report token usage on a stream only when asked.
+    if (this.streamUsage) body.stream_options = { include_usage: true };
     if (req.tools.length) {
       body.tools = req.tools.map((t) => ({
         type: 'function',
@@ -216,6 +221,13 @@ export class OpenAICompatProvider implements Provider {
         throw toProviderError(idle.signal.reason ?? err, this.id, req.signal);
       }
       this.cfg.onHeaders?.(res.headers);
+      if (!res.ok && this.streamUsage && (res.status === 400 || res.status === 422)) {
+        const error = await errorFromResponse(res, this.id);
+        if (!/stream_options|include_usage/i.test(error.message)) throw error;
+        this.streamUsage = false;
+        yield* this.stream(req);
+        return;
+      }
       if (!res.ok) throw await errorFromResponse(res, this.id);
 
       // A server that ignored stream:true and answered with one JSON body.

@@ -122,6 +122,7 @@ describe('OpenAI-compatible body', () => {
         { role: 'assistant', content: 'hello' },
       ],
       stream: true,
+      stream_options: { include_usage: true },
     });
   });
 
