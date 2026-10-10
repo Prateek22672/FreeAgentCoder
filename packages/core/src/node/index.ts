@@ -18,6 +18,7 @@ export { LocalWorkspace } from './local-workspace';
 export { detectShell, killTree, ProcessRegistry, runCommandTool, processTool, type ShellInfo } from './shell';
 export { fetchUrlTool, htmlToText } from './fetch-url';
 export { libraryDocsTool } from './library-docs';
+export { formatRepoMap, importedNames, repoMap } from './repo-map';
 export { environmentTool, inspectEnvironment, TOOLCHAINS, type CommandRunner, type ToolchainCheck } from './environment';
 export {
   loadConfig,

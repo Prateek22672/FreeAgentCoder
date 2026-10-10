@@ -6,7 +6,7 @@ import { LabRecorder } from './lab/recorder';
 import * as path from 'node:path';
 import * as vscode from 'vscode';
 import { ModelRouter, PRESETS, tokenize, type SearchHit } from '@agentic/core';
-import { configPath, detectShell, isGitRepo, loadConfig, loadProjectInstructions, type AgenticConfig } from '@agentic/core/node';
+import { configPath, detectShell, isGitRepo, loadConfig, loadProjectInstructions, repoMap, type AgenticConfig } from '@agentic/core/node';
 import { planFyx, type FyxContext, type FyxPlan } from './fyx/plan';
 import { FYX_MODEL, FyxProvider } from './fyx/provider';
 import { LearnedCommands } from './fyx/learned';
@@ -614,6 +614,13 @@ export class Controller implements vscode.Disposable {
         this.lastSpecialist = specialist?.id ?? (isFollowUp(prompt) ? this.lastSpecialist : undefined);
         if (!test && firstDeep && structure) {
             agentPrompt += `\n\n${structureBlock(structure)}`;
+            // Changing an existing project: the files that matter most and what they define, so the right ones are opened first.
+            if (!asksForSomethingNew(prompt)) {
+                const map = await repoMap(cwd).catch(() => '');
+                if (map) {
+                    agentPrompt += `\n\n## Code map\nThe most-used code files first, with their main definitions. Open the ones this task touches instead of exploring:\n\`\`\`\n${map}\n\`\`\``;
+                }
+            }
         }
         if (test) {
             notes.push(
