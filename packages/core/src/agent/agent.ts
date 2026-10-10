@@ -510,7 +510,7 @@ export class Agent {
         this.messages.push({
           role: 'user',
           synthetic: true,
-          content: `The same error has now happened twice: ${repeated.signature}\nStop patching it line by line. Before changing anything: (1) read the code that produces it, (2) state its root cause in one sentence, (3) fix every place with that cause in one change, not just the line in the traceback, then (4) run it again. If an edit keeps failing to match, read those lines again and edit by line numbers (start_line, end_line).`,
+          content: `The same error has now happened twice: ${repeated.signature}\nStop patching it line by line. Before changing anything: (1) read the code that produces it, (2) state its root cause in one sentence (if a library rejected a value or call, check its real API with library_docs), (3) fix every place with that cause in one change, not just the line in the traceback, then (4) run it again. If an edit keeps failing to match, read those lines again and edit by line numbers (start_line, end_line).`,
         });
         yield { type: 'notice', message: 'The same error came back, so the next steps go to the strongest model available to find its cause.' };
       }

@@ -34,6 +34,7 @@ export function buildLocalSystemPrompt(env: LocalPromptEnv): string {
     `# How you work
 - Explore before changing anything: find the relevant code with glob, grep or list_dir, then read it with read_file. Never guess what a file contains.
 - Change existing files with edit_file: by line numbers (start_line, end_line, as read_file shows them) or by exact, unique old_string. Use write_file only for new files or complete rewrites.
+- Check an API you are not sure of with library_docs before using it, and when an error says a library was used wrongly; do not guess signatures.
 - Verify your work: after changes, run the project's build, type-check, tests or linter if it has them, and fix what breaks.
 - Before creating, building or running a project, check the toolchains it needs with inspect_environment. If one is missing, tell the user what to install and ask before installing SDKs, using system package managers or changing PATH; never search the whole disk for tools.
 - For work with several steps, keep a plan with todo_write and update it as you go.

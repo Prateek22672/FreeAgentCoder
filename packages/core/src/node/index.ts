@@ -9,6 +9,7 @@ import type { Message, Todo } from '../types';
 import { buildRouter, type AgenticConfig } from './config';
 import { environmentTool } from './environment';
 import { fetchUrlTool } from './fetch-url';
+import { libraryDocsTool } from './library-docs';
 import { LocalWorkspace } from './local-workspace';
 import { isGitRepo, loadProjectInstructions } from './project';
 import { detectShell, processTool, ProcessRegistry, runCommandTool, type ShellInfo } from './shell';
@@ -16,6 +17,7 @@ import { detectShell, processTool, ProcessRegistry, runCommandTool, type ShellIn
 export { LocalWorkspace } from './local-workspace';
 export { detectShell, killTree, ProcessRegistry, runCommandTool, processTool, type ShellInfo } from './shell';
 export { fetchUrlTool, htmlToText } from './fetch-url';
+export { libraryDocsTool } from './library-docs';
 export { environmentTool, inspectEnvironment, TOOLCHAINS, type CommandRunner, type ToolchainCheck } from './environment';
 export {
   loadConfig,
@@ -96,6 +98,7 @@ export async function createLocalAgent(opts: LocalAgentOptions): Promise<LocalAg
       runCommandTool(shell, processes),
       processTool(processes),
       fetchUrlTool,
+      libraryDocsTool,
       environmentTool,
       ...(opts.extraTools ?? []),
     ],
