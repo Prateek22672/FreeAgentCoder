@@ -5,15 +5,15 @@ import { getKeyUrl } from '../shared/site';
 /** Providers a user adds keys for, in display order. */
 // Gemini, Groq and OpenRouter are the dependable free ones; Mistral and Cohere are
 // optional extras. Cerebras is gone: its free keys stopped working.
-export const KEY_PROVIDERS = ['gemini', 'groq', 'openrouter', 'mistral', 'cohere', 'openai', 'anthropic'];
+export const KEY_PROVIDERS = ['gemini', 'groq', 'nvidia', 'openrouter', 'mistral', 'cohere', 'openai', 'anthropic'];
 
 /** Fast first: Groq answers in a second or two, and small requests fit its free tier. Cohere last: 1,000 calls a month. */
-const FAST_ORDER = ['groq', 'gemini', 'mistral', 'openrouter', 'cohere', 'trial'];
+const FAST_ORDER = ['groq', 'gemini', 'nvidia', 'mistral', 'openrouter', 'cohere', 'trial'];
 /**
  * Strongest first: Gemini's 1M-token context carries long, multi-file work. OpenRouter's free router comes last:
  * it hands each request to whichever free model is idle, and those repeat the same mistakes on real builds.
  */
-const DEEP_ORDER = ['gemini', 'mistral', 'groq', 'cohere', 'openrouter', 'trial'];
+const DEEP_ORDER = ['gemini', 'nvidia', 'mistral', 'groq', 'cohere', 'openrouter', 'trial'];
 /** Paid keys are only routed automatically when no free key is active. */
 const PAID_ORDER = ['anthropic', 'openai'];
 
@@ -28,6 +28,11 @@ const TIER_MODELS: Record<string, Record<Tier, string[]>> = {
     gemini: {
         fast: ['gemini-3.5-flash-lite', 'gemini-3.1-flash-lite', 'gemini-2.5-flash-lite'],
         deep: ['gemini-3.8-flash', 'gemini-3.7-flash', 'gemini-3.6-flash', 'gemini-3.5-flash', 'gemini-2.5-flash'],
+    },
+    // Big open models on NVIDIA's free developer tier: strong at long, tool-heavy builds.
+    nvidia: {
+        fast: ['openai/gpt-oss-120b', 'nvidia/nemotron-3-super-120b-a12b'],
+        deep: ['deepseek-ai/deepseek-v4-pro', 'nvidia/nemotron-3-ultra-550b-a55b', 'moonshotai/kimi-k3'],
     },
     mistral: { fast: ['mistral-small-latest'], deep: ['mistral-medium-latest'] },
     cohere: { fast: ['command-a-plus-05-2026'], deep: ['command-a-plus-05-2026'] },
@@ -46,6 +51,7 @@ const SHORT_LABELS: Record<string, string> = {
     trial: 'Free trial',
     mistral: 'Mistral',
     openrouter: 'OpenRouter',
+    nvidia: 'NVIDIA',
     openai: 'OpenAI',
     anthropic: 'Anthropic',
 };

@@ -100,6 +100,7 @@ describe('modelSupportsImages', () => {
       cerebras: false,
       cohere: true,
       mistral: true,
+      nvidia: false,
       openrouter: false,
       ollama: false,
       openai: true,

@@ -15,6 +15,7 @@ export const KEY_LINKS: Record<string, string> = {
     mistral: 'https://console.mistral.ai/api-keys',
     cohere: 'https://dashboard.cohere.com/api-keys',
     openrouter: 'https://openrouter.ai/keys',
+    nvidia: 'https://build.nvidia.com/settings/api-keys',
     ollama: 'https://ollama.com/download',
     openai: 'https://platform.openai.com/api-keys',
     anthropic: 'https://platform.claude.com/settings/keys',
