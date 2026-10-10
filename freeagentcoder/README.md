@@ -73,7 +73,7 @@ It is a free alternative to paid AI coding assistants: no subscription, no per-s
 - **Paste or drop anything.** Screenshots, PDFs (including scanned ones), Word, PowerPoint and Excel files, or long pasted text. Documents are read on your computer, and so is the text in screenshots — no API request, no model, nothing sent anywhere. A vision model (Gemini, Mistral, OpenAI or Anthropic) is asked only when an image has little readable text, or when the layout, colours or a highlighted area are what matter.
 - **Very long documents** are summarized for the agent and saved in `.freeagentcoder/attachments/` (git-ignored), so it can read the exact parts it needs.
 - **Correction mode.** Click **Point out a fix** under a reply, or just say what's wrong. Each point you raise becomes its own item that is fixed with the smallest change and verified separately, and the reply ends with what was wrong, what changed and how it was checked.
-- **Memory.** After a correction, FreeAgentCoder saves a short lesson (for example *"Use Riverpod for state, not setState"*) and follows it in later tasks. Type *"remember that …"* to teach it directly. Review, add or delete lessons in **Settings → Memory**, or turn learning off. Lessons are instructions stored on your computer; they don't retrain the models.
+- **Learning.** After a correction, FreeAgentCoder saves a short lesson (for example *"Use Riverpod for state, not setState"*) and follows it in later tasks. Type *"remember that …"* to teach it directly. **Settings → Learning** shows everything it has learned (lessons, and chores Fyx now does by itself), how much that saved, and whether corrections are falling week by week. Forget anything with one click, or turn learning off. Lessons are instructions stored on your computer; they don't retrain the models.
 
 ## Plan in Project Brain, build here
 
@@ -120,6 +120,14 @@ When you ask for something big, such as *"build a Flutter wallpaper app that's r
 - **Reports honestly.** A quality report lists every check it ran, passed or failed, plus a security and publishing checklist for you.
 - **Recovers on its own.** If every model is rate-limited or your connection drops, the task waits and picks up where it stopped instead of failing. Press Stop at any time to cancel.
 
+## Knows how good projects are built
+
+- **Builds from a requirements document.** Attach a spec (PDF or Word) and it works like an engineer delivering against it: a REQUIREMENTS.md checklist before any code, the stack the document names, shared security and validation built first, demo logins per role, every acceptance step checked with real commands, and an EXPLAIN.md mapping each requirement to the code.
+- **Proven structures and designs.** Complex tasks start from how strong solutions of that kind are built: an ASP.NET Core business app with central audit logging and per-user data, role-based backends, slide decks and reports, and the visual systems of real sites. The library is updated daily and matched on your computer; your request is never sent anywhere for it.
+- **Checks real documentation.** Before using an API it is unsure of, and whenever a library rejects a call, it looks up current docs and examples for that library instead of guessing.
+- **Finds its way in existing projects.** The first step of a complex task gets a map of the files the rest of the project uses most, with their main definitions, so it opens the right files instead of exploring.
+- **Fixes the cause, not the symptom.** When the same error comes back, the next steps go to your strongest model with instructions to find its root cause; if it still returns five times, it stops instead of burning tokens.
+
 ## Usage you can trust
 
 - Tokens and requests for each key: today, since VS Code started, and over the last 30 days.
@@ -163,6 +171,7 @@ If you're looking at **GitHub Copilot**, **Cursor**, **Windsurf**, **Cline**, **
 | --- | --- | --- |
 | Google Gemini | Free tier | 1M-token context; daily request quota |
 | Groq | Free tier | Very fast; small per-minute token limit |
+| NVIDIA | Free developer key | Nemotron models for complex work; about 40 requests a minute; key starts nvapi- |
 | Mistral | Optional | Free only on its "Experiment" plan, after phone verification; otherwise refused |
 | OpenRouter | Free models | 50 requests a day, or 1,000 after a one-time $10 top-up |
 | Cohere | Optional | 1,000 calls a month; personal, non-commercial use only |
@@ -187,7 +196,7 @@ In the chat box, **Enter** sends, **Shift+Enter** adds a new line, **Esc** stops
 
 - **Your API keys stay on your device.** They're stored encrypted in VS Code's Secret Storage (your operating system's keychain: Windows Credential Manager, macOS Keychain or Linux Secret Service), are never uploaded to FreeAgentCoder or anyone else, and are sent only to the provider each key belongs to when you run a task. They're never shown again after you save them.
 - No account and no sign-up. With your own keys, nothing goes through a FreeAgentCoder server.
-- Attachments are saved in your project's `.freeagentcoder/` folder, which is git-ignored automatically. Lessons learned from your corrections are stored on this computer only, and you can review or delete them in Settings → Memory.
+- Attachments are saved in your project's `.freeagentcoder/` folder, which is git-ignored automatically. Lessons learned from your corrections are stored on this computer only, and you can review or delete them in Settings → Learning.
 - **The free trial.** Until you add a key of your own, tasks run on FreeAgentCoder's free trial: a daily allowance on the project's keys. Those requests, including the code and prompts they contain, go through FreeAgentCoder's server to the provider and are not stored there; only counts are kept, against a random id made for the trial. Add your own key and the trial steps aside; turn it off with the `freeagentcoder.freeTrial` setting.
 - With your own keys, your prompts and code are sent only to the providers whose keys you add, directly from your editor. Their terms apply, and some free tiers may use requests to improve their models, so check a provider's data policy before working on sensitive code.
 - Chat history is saved only if you agree, and only on your computer. Turn it off or delete saved chats any time in Settings → History.
