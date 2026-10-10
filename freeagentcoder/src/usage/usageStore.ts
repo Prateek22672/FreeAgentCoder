@@ -15,6 +15,19 @@ interface DayEvents {
     /** Tasks Fyx did on this machine with no model, and the tokens a model would likely have used. */
     fyxTasks?: number;
     fyxTokensSaved?: number;
+    /** Tasks the user then corrected: fewer over time means learning is working. */
+    corrections?: number;
+}
+
+/** One week of tasks, for the learning trend. */
+export interface WeekStats {
+    /** Days ago the week ends: 0 for this week. */
+    endsDaysAgo: number;
+    tasks: number;
+    completed: number;
+    corrections: number;
+    tokens: number;
+    fyxTasks: number;
 }
 
 /** How one key is doing with one model since VS Code started. */
@@ -179,9 +192,12 @@ export class UsageStore implements vscode.Disposable {
         this.touch();
     }
 
-    recordTask(task: { tokens: number; requests: number; completed: boolean; durationMs: number; tier: 'fast' | 'deep' }): void {
+    recordTask(task: { tokens: number; requests: number; completed: boolean; durationMs: number; tier: 'fast' | 'deep'; corrected?: boolean }): void {
         const events = this.todayEvents();
         events.tasks++;
+        if (task.corrected) {
+            events.corrections = (events.corrections ?? 0) + 1;
+        }
         if (task.tier === 'deep') {
             events.deepTasks = (events.deepTasks ?? 0) + 1;
             events.deepRequests = (events.deepRequests ?? 0) + Math.max(0, task.requests);
@@ -233,6 +249,26 @@ export class UsageStore implements vscode.Disposable {
             tokensSaved += events?.fyxTokensSaved ?? 0;
         }
         return { tasks, tokensSaved };
+    }
+
+    /** The last `weeks` weeks, newest first. */
+    weeklyTrend(weeks: number): WeekStats[] {
+        const result: WeekStats[] = [];
+        for (let w = 0; w < weeks; w++) {
+            const week: WeekStats = { endsDaysAgo: w * 7, tasks: 0, completed: 0, corrections: 0, tokens: 0, fyxTasks: 0 };
+            for (let d = 0; d < 7; d++) {
+                const events = this.data.events[dayKey(Date.now() - (w * 7 + d) * 86_400_000)];
+                if (events) {
+                    week.tasks += events.tasks ?? 0;
+                    week.completed += events.completed ?? 0;
+                    week.corrections += events.corrections ?? 0;
+                    week.tokens += events.taskTokens ?? 0;
+                    week.fyxTasks += events.fyxTasks ?? 0;
+                }
+            }
+            result.push(week);
+        }
+        return result;
     }
 
     /** Tasks finished over the last `days` days: how many, how many completed, and their totals. */

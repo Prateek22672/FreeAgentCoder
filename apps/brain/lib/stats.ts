@@ -38,6 +38,7 @@ export interface Report {
         readByModel: number;
         bySpecialist: Record<string, { tasks: number; failed: number }>;
         quality: { corrected: number; codeTasks: number; verified: number; requests: number; tokens: number };
+        learning: { lessons: number; shortcuts: number; fyxTasks: number; shortcutRuns: number; tokensSaved: number };
     };
 }
 
@@ -91,7 +92,20 @@ export function parseReport(body: unknown): Report | undefined {
             readByModel: count(counters.readByModel),
             bySpecialist: specialistCounts(counters.bySpecialist),
             quality: qualityCounts(counters.quality),
+            learning: learningCounts(counters.learning),
         },
+    };
+}
+
+/** Sent from extension 0.5.2; older reports have none, which reads as zero. */
+function learningCounts(raw: unknown): Report['counters']['learning'] {
+    const l = (raw && typeof raw === 'object' ? raw : {}) as Record<string, unknown>;
+    return {
+        lessons: count(l.lessons, 1_000),
+        shortcuts: count(l.shortcuts, 1_000),
+        fyxTasks: count(l.fyxTasks, 10_000),
+        shortcutRuns: count(l.shortcutRuns, 10_000),
+        tokensSaved: count(l.tokensSaved, 100_000_000),
     };
 }
 
@@ -136,6 +150,11 @@ export async function recordReport(report: Report): Promise<void> {
                 failed: counters.tasksFailed,
                 readLocally: counters.readLocally,
                 readByModel: counters.readByModel,
+                learnLessons: counters.learning.lessons,
+                learnShortcuts: counters.learning.shortcuts,
+                fyxTasks: counters.learning.fyxTasks,
+                shortcutRuns: counters.learning.shortcutRuns,
+                fyxTokensSaved: counters.learning.tokensSaved,
             },
             DAY_TTL,
         ),

@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import * as vscode from 'vscode';
 import { SITE_URL } from '../shared/site';
-import { addFailure, addSpecialistOutcome, buildReport, describeReport, emptyCounters, type Counters, type Report } from './payload';
+import { addFailure, addSpecialistOutcome, buildReport, describeReport, emptyCounters, emptyLearning, type Counters, type Report } from './payload';
 
 /**
  * Anonymous counts, sent only if the user says yes.
@@ -64,7 +64,7 @@ export class Telemetry {
         private readonly keys: () => KeySnapshot,
     ) {
         const saved = context.globalState.get<Counters>(COUNTERS);
-        this.counters = saved && typeof saved.tasks === 'number' ? { ...emptyCounters(), ...saved } : emptyCounters();
+        this.counters = saved && typeof saved.tasks === 'number' ? { ...emptyCounters(), ...saved, learning: { ...emptyLearning(), ...saved.learning } } : emptyCounters();
     }
 
     get state(): TelemetryState {
@@ -111,6 +111,21 @@ export class Telemetry {
         void this.afterTask();
     }
 
+    /** A lesson or a Fyx shortcut was learned. */
+    learned(kind: 'lesson' | 'shortcut', count = 1): void {
+        this.counters.learning[kind === 'lesson' ? 'lessons' : 'shortcuts'] += Math.max(0, count);
+        this.save();
+    }
+
+    /** Fyx finished a chore with no model; `shortcut` when it replayed something it learned. */
+    fyxDone(tokensSaved: number, shortcut: boolean): void {
+        const learning = this.counters.learning;
+        learning.fyxTasks += 1;
+        learning.shortcutRuns += shortcut ? 1 : 0;
+        learning.tokensSaved += Math.max(0, Math.round(tokensSaved));
+        this.save();
+    }
+
     imageRead(where: 'locally' | 'model'): void {
         if (where === 'locally') {
             this.counters.readLocally += 1;
@@ -148,7 +163,7 @@ export class Telemetry {
         const choice = await vscode.window.showInformationMessage(
             on
                 ? 'FreeAgentCoder is sending anonymous counts: how many keys you have and which providers, how many tasks ran, and what stopped them. No code, prompts, file names or keys.'
-                : 'Send anonymous counts? How many keys you have and which providers, how many tasks ran, and what stopped them. It decides what gets fixed next. No code, prompts, file names or keys, ever.',
+                : 'Send anonymous counts? Tasks and what stopped them, which providers your keys are from, and how much learning saved. It decides what gets fixed next. No code, prompts, file names or keys, ever.',
             on ? 'Stop sending' : 'Send anonymous counts',
             'Show me what is sent',
         );
@@ -177,7 +192,7 @@ export class Telemetry {
         }
         await this.context.globalState.update(ASKED, true);
         const choice = await vscode.window.showInformationMessage(
-            'Help decide what gets fixed next? FreeAgentCoder can send anonymous counts — how many keys you have and which providers, how many tasks ran, and what stopped them. No code, prompts, file names or keys, ever.',
+            'FreeAgentCoder learns from each task on this computer to do the next one better. Help it improve for everyone by sending anonymous counts: tasks and what stopped them, which providers your keys are from, and how much learning saved. No code, prompts, file names or keys, ever.',
             'Yes, send counts',
             'No thanks',
             'Show me what is sent',

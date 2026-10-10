@@ -37,7 +37,7 @@ export function normalise(prompt: string): string {
 }
 
 /** Commands never learned: anything that deletes, rewrites history, publishes, or runs code from the internet. */
-const RISKY = /\b(rm|del|rmdir|erase|remove-item|format|mkfs|dd|sudo|shutdown|reboot|kill|taskkill|chmod|chown|deploy|publish|release)\b|--force\b|\s-f\b|reset\s+--hard|clean\s+-[a-z]*f|push\s+.*--delete|\|\s*(sh|bash|iex|invoke-expression)\b|curl|wget|invoke-webrequest|iwr\b|>\s*\/dev\//i;
+const RISKY = /\b(rm|del|rmdir|erase|remove-item|format|mkfs|dd|sudo|shutdown|reboot|kill|taskkill|chmod|chown|deploy|publish|release)\b|--force\b|(?<!\btar\b[^|;&\n]*)\s-f\b|reset\s+--hard|clean\s+-[a-z]*f|push\s+.*--delete|\|\s*(sh|bash|iex|invoke-expression)\b|curl|wget|invoke-webrequest|iwr\b|>\s*\/dev\//i;
 
 export function worthLearning(prompt: string, command: string): boolean {
     const words = prompt.trim().split(/\s+/).length;
@@ -88,6 +88,22 @@ export class LearnedCommands {
         const all = this.all();
         delete all[normalise(prompt)];
         await this.memento.update(KEY, all);
+    }
+
+    /** Everything learned, newest first. */
+    list(): ({ prompt: string } & Learned)[] {
+        return Object.entries(this.all())
+            .map(([prompt, entry]) => ({ prompt, ...entry }))
+            .sort((a, b) => b.learnedAt - a.learnedAt);
+    }
+
+    /** Forgets by the stored request, as list() shows it. */
+    async forgetKey(prompt: string): Promise<boolean> {
+        const all = this.all();
+        if (!(prompt in all)) {return false;}
+        delete all[prompt];
+        await this.memento.update(KEY, all);
+        return true;
     }
 
     count(): number {

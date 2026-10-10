@@ -23,8 +23,8 @@ export const FEATURE_INFO: { id: FeatureId; label: string; description: string }
     },
     {
         id: 'learning',
-        label: 'Learn from corrections',
-        description: 'After you correct its work, it saves a short lesson and follows it in later tasks. Review or delete lessons in Memory.',
+        label: 'Learn from my tasks',
+        description: 'Saves a short lesson when you correct its work, and lets Fyx repeat simple chores it saw done, so each task goes better than the last. Everything stays on this computer.',
     },
     {
         id: 'codeSearch',

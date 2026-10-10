@@ -34,7 +34,7 @@ import { ErrorLog, redact } from './logs/errorLog';
 import { lessonsBlock, MemoryStore, type Lesson } from './memory/memoryStore';
 import { featureViews, isFeatureId, loadFeatures, saveFeatures, type Features } from './settings/features';
 import { compactNumber, errorMessage, formatDuration } from './shared/format';
-import { AUTO_MODEL, type AttachmentInput, type FromWebview, type HealthEntry, type HealthStatus, type HealthView, type HistoryMode, type KeySource, type KeyStatus, type KeyView, type LessonView, type OverviewView, type PermissionMode, type ProjectStatus, type PromptsLeft, type RoleHealth, type RouteView, type SettingsView, type Tier, type ToWebview, type PlansView } from './shared/protocol';
+import { AUTO_MODEL, type AttachmentInput, type FromWebview, type HealthEntry, type HealthStatus, type HealthView, type HistoryMode, type KeySource, type KeyStatus, type KeyView, type LearningView, type LessonView, type OverviewView, type PermissionMode, type ProjectStatus, type PromptsLeft, type RoleHealth, type RouteView, type SettingsView, type Tier, type ToWebview, type PlansView } from './shared/protocol';
 import { adviseKeys, estimatePromptsLeft, providerCapacity } from './usage/advisor';
 import { capacityMessage, capacityRisk, estimateSavings, isDailyLimit, requestsNeeded, type TaskShape } from './usage/forecast';
 import { PagePreviews } from './preview/pages';
@@ -387,6 +387,12 @@ export class Controller implements vscode.Disposable {
                 }
                 return;
             }
+            case 'forgetShortcut':
+                if (await this.learned().forgetKey(String(message.prompt))) {
+                    this.toast('Forgotten. FreeAgentCoder will ask the AI model next time.', 'info');
+                    this.scheduleSettings();
+                }
+                return;
             case 'deleteLesson':
                 if (this.memory.remove(String(message.id))) {
                     this.toast('Lesson deleted. It will no longer be used.', 'info');
@@ -1056,6 +1062,9 @@ export class Controller implements vscode.Disposable {
                 const saved = this.memory.add({ text: redact(lesson.text), scope: lesson.scope, source: 'correction', root });
                 return saved?.added ? [lessonView(saved.lesson)] : [];
             });
+            if (learned.length) {
+                this.telemetry.learned('lesson', learned.length);
+            }
             if (learned.length && this.transcript.some((m) => m.type === 'turnStart' && m.turnId === turnId)) {
                 this.post({ type: 'learned', turnId, lessons: learned });
                 if (this.historyMode === 'on') {
@@ -1215,6 +1224,7 @@ export class Controller implements vscode.Disposable {
         if (fyx) {
             if (end.reason === 'completed') {
                 this.usage.recordFyx(fyx.saved);
+                this.telemetry.fyxDone(fyx.saved, !!fyx.learned);
                 if (fyx.learned) {
                     void this.learned().used(fyx.prompt);
                 }
@@ -1224,8 +1234,10 @@ export class Controller implements vscode.Disposable {
             return;
         }
         // The agent settled a short request with one command and nothing else: Fyx can do it next time.
-        if (end.reason === 'completed' && watched.edits === 0 && watched.runs.length === 1 && watched.runs[0]!.ok && this.fyxEnabled()) {
-            void this.learned().learn(watched.prompt, watched.runs[0]!.command);
+        if (end.reason === 'completed' && watched.edits === 0 && watched.runs.length === 1 && watched.runs[0]!.ok && this.fyxEnabled() && this.features.learning) {
+            void this.learned()
+                .learn(watched.prompt, watched.runs[0]!.command)
+                .then((added) => added && this.telemetry.learned('shortcut'));
         }
         const turnRequests = this.turnRequests;
         this.usage.recordTask({
@@ -1234,6 +1246,7 @@ export class Controller implements vscode.Disposable {
             completed: end.reason === 'completed',
             durationMs: end.durationMs,
             tier: this.session.lastTier ?? 'fast',
+            corrected: !!watched.correction,
         });
         this.turnRequests = 0;
         this.dailyWarned.clear();
@@ -1743,6 +1756,28 @@ export class Controller implements vscode.Disposable {
             savings: estimateSavings(views),
             features: featureViews(this.features),
             lessons: this.memory.list(folder?.uri.fsPath).map(lessonView),
+            learning: this.learningView(),
+        };
+    }
+
+    private learningView(): LearningView {
+        const fyx = this.usage.fyxStats(30);
+        const label = (weeksAgo: number) => (weeksAgo === 0 ? 'This week' : weeksAgo === 1 ? 'Last week' : `${weeksAgo} weeks ago`);
+        return {
+            shortcuts: this.learned()
+                .list()
+                .slice(0, 50)
+                .map(({ prompt, command, uses, learnedAt }) => ({ prompt, command, uses, learnedAt })),
+            fyxTasks30d: fyx.tasks,
+            tokensSaved30d: fyx.tokensSaved,
+            weeks: this.usage.weeklyTrend(4).map((w, i) => ({
+                label: label(i),
+                tasks: w.tasks,
+                completed: w.completed,
+                corrections: w.corrections,
+                avgTokens: w.tasks ? Math.round(w.tokens / w.tasks) : 0,
+                fyxTasks: w.fyxTasks,
+            })),
         };
     }
 

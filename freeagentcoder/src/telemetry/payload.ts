@@ -30,6 +30,12 @@ export interface Counters {
      * command, and the model requests and tokens the tasks used.
      */
     quality: { corrected: number; codeTasks: number; verified: number; requests: number; tokens: number };
+    /**
+     * Whether learning pays off, as counts: lessons and Fyx shortcuts learned,
+     * chores Fyx did with no model (and how many were learned shortcuts), and
+     * the tokens those saved. Never what was learned.
+     */
+    learning: { lessons: number; shortcuts: number; fyxTasks: number; shortcutRuns: number; tokensSaved: number };
 }
 
 export interface Report {
@@ -50,7 +56,11 @@ export interface Report {
 }
 
 export function emptyCounters(): Counters {
-    return { tasks: 0, tasksDone: 0, tasksStopped: 0, tasksFailed: 0, failures: {}, readLocally: 0, readByModel: 0, bySpecialist: {}, quality: { corrected: 0, codeTasks: 0, verified: 0, requests: 0, tokens: 0 } };
+    return { tasks: 0, tasksDone: 0, tasksStopped: 0, tasksFailed: 0, failures: {}, readLocally: 0, readByModel: 0, bySpecialist: {}, quality: { corrected: 0, codeTasks: 0, verified: 0, requests: 0, tokens: 0 }, learning: emptyLearning() };
+}
+
+export function emptyLearning(): Counters['learning'] {
+    return { lessons: 0, shortcuts: 0, fyxTasks: 0, shortcutRuns: 0, tokensSaved: 0 };
 }
 
 const MAX_FAILURE_KINDS = 20;

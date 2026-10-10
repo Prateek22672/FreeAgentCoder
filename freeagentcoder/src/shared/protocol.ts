@@ -2,7 +2,7 @@ export type PermissionMode = 'ask' | 'auto-edit' | 'auto';
 export type Tier = 'fast' | 'deep';
 export type KeyStatus = 'active' | 'cooldown' | 'invalid' | 'disabled' | 'unverified';
 export type KeySource = 'extension' | 'env' | 'config';
-export type SettingsSection = 'overview' | 'keys' | 'plans' | 'usage' | 'health' | 'memory' | 'history' | 'model' | 'permissions' | 'logs';
+export type SettingsSection = 'overview' | 'keys' | 'plans' | 'usage' | 'health' | 'learning' | 'history' | 'model' | 'permissions' | 'logs';
 export type HistoryMode = 'ask' | 'on' | 'off';
 export type LogKind = 'provider' | 'agent' | 'extension';
 /** `budget`: paused after using the tokens one task may use, for the user to say continue. */
@@ -255,6 +255,34 @@ export interface OverviewView {
     savings: SavingsView;
     features: FeatureView[];
     lessons: LessonView[];
+    learning: LearningView;
+}
+
+/** A command Fyx learned from the agent, and now runs itself with no model. */
+export interface ShortcutView {
+    prompt: string;
+    command: string;
+    uses: number;
+    learnedAt: number;
+}
+
+export interface LearningWeek {
+    /** "This week", "Last week", "3 weeks ago"… */
+    label: string;
+    tasks: number;
+    completed: number;
+    corrections: number;
+    avgTokens: number;
+    fyxTasks: number;
+}
+
+/** What FreeAgentCoder has learned on this computer, and whether it is paying off. */
+export interface LearningView {
+    shortcuts: ShortcutView[];
+    fyxTasks30d: number;
+    tokensSaved30d: number;
+    /** Newest first. */
+    weeks: LearningWeek[];
 }
 
 export interface ChatSummary {
@@ -471,4 +499,5 @@ export type FromWebview =
     | { type: 'logError'; message: string }
     | { type: 'setFeature'; id: FeatureId; on: boolean }
     | { type: 'addLesson'; text: string; scope: LessonScope }
-    | { type: 'deleteLesson'; id: string };
+    | { type: 'deleteLesson'; id: string }
+    | { type: 'forgetShortcut'; prompt: string };

@@ -29,7 +29,7 @@ const TABS: [SettingsSection, string, IconName][] = [
     ['plans', 'Plans', 'layers'],
     ['usage', 'Usage', 'gauge'],
     ['health', 'Health', 'health'],
-    ['memory', 'Memory', 'brain'],
+    ['learning', 'Learning', 'brain'],
     ['history', 'History', 'history'],
     ['model', 'Model', 'spark'],
     ['permissions', 'Permissions', 'shield'],
@@ -37,9 +37,9 @@ const TABS: [SettingsSection, string, IconName][] = [
 ];
 
 const DESCRIPTIONS: Record<SettingsSection, string> = {
+    learning: 'What FreeAgentCoder has learned from your tasks on this computer, and whether it is getting better at them.',
     plans: 'What is free, and what the paid tier offers when your free limits run out.',
     overview: "Prompts left today, this project's status, and the features you can turn on or off.",
-    memory: "Lessons from your corrections, added to future tasks so the same mistake isn't repeated.",
     keys: 'Add several keys per provider: when one hits its limit, the next takes over.',
     usage: 'Counted on this machine from every provider response, with advice on how many keys you need.',
     health: 'Each job FreeAgentCoder gives to its own models, and whether every key and model serving it is working right now.',
@@ -592,13 +592,6 @@ export class SettingsPanel {
     private readonly keyGroups = h('div', { class: 'key-groups' });
     private readonly historySearch = h('input', { class: 'input', attrs: { type: 'search', placeholder: 'Search saved chats' } });
     private readonly historyList = h('div', { class: 'history-list' });
-    private readonly lessonInput = h('input', { class: 'input', attrs: { type: 'text', maxlength: '240', placeholder: 'e.g. Use pnpm, not npm' } });
-    private readonly lessonScope = h(
-        'select',
-        { class: 'input', attrs: { 'aria-label': 'Where the lesson applies' } },
-        h('option', { text: 'This project', attrs: { value: 'project' } }),
-        h('option', { text: 'All projects', attrs: { value: 'global' } }),
-    );
     private readonly sections: Record<SettingsSection, { el: HTMLElement; content: HTMLElement }>;
     private readonly expanded = new Set<string>();
     private readonly renaming = new Set<string>();
@@ -630,17 +623,12 @@ export class SettingsPanel {
             plans: make('plans', this.plansBody),
             usage: make('usage'),
             health: make('health'),
-            memory: make('memory'),
+            learning: make('learning'),
             history: make('history'),
             model: make('model'),
             permissions: make('permissions'),
             logs: make('logs'),
         };
-        this.lessonInput.addEventListener('keydown', (event) => {
-            if (event.key === 'Enter') {
-                this.saveLesson();
-            }
-        });
         this.historySearch.addEventListener('input', () => this.renderHistoryList());
         this.scroller.append(...Object.values(this.sections).map((s) => s.el));
         this.scroller.addEventListener('click', handleContentClick);
@@ -663,10 +651,10 @@ export class SettingsPanel {
         this.data = data;
         this.form.setProviders(data.providers);
         this.renderOverview();
-        this.renderMemory();
         this.renderKeys();
         this.renderUsage();
         this.renderHealth();
+        this.renderLearning();
         this.renderModel();
         this.renderPermissions();
     }
@@ -1328,59 +1316,100 @@ export class SettingsPanel {
         this.sections.overview.content.replaceChildren(...parts);
     }
 
-    private renderMemory(): void {
+    private renderLearning(): void {
         const data = this.data;
         if (!data) {
             return;
         }
-        const overview = data.overview;
-        const learning = overview.features.find((f) => f.id === 'learning');
-        const lessonItem = (lesson: LessonView) =>
+        const { learning, lessons, features } = data.overview;
+        const toggle = features.find((f) => f.id === 'learning');
+        const [thisWeek, ...earlier] = learning.weeks;
+        const rate = (w: { tasks: number; corrections: number }) => (w.tasks ? w.corrections / w.tasks : 0);
+        const before = earlier.filter((w) => w.tasks > 0);
+        const beforeRate = before.length ? before.reduce((n, w) => n + rate(w), 0) / before.length : undefined;
+        const trend =
+            thisWeek && thisWeek.tasks >= 3 && beforeRate !== undefined
+                ? rate(thisWeek) < beforeRate
+                    ? 'fewer corrections than before'
+                    : rate(thisWeek) > beforeRate
+                      ? 'more corrections than before'
+                      : 'about the same as before'
+                : 'needs a few more tasks';
+        const tile = (label: string, value: string, sub: string) =>
+            h('div', { class: 'tile' }, h('div', { class: 'tile-label', text: label }), h('div', { class: 'tile-value', text: value }), h('div', { class: 'tile-sub', text: sub }));
+
+        type Item = { at: number; title: string; meta: string; icon: IconName; forget: () => void };
+        const items: Item[] = [
+            ...lessons.map((lesson) => ({
+                at: lesson.createdAt,
+                title: lesson.text,
+                meta: `${lesson.source === 'user' ? 'You asked it to remember' : 'Learned from a correction'} · ${lesson.scope === 'global' ? 'all projects' : 'this project'}`,
+                icon: 'brain' as IconName,
+                forget: () => send({ type: 'deleteLesson', id: lesson.id }),
+            })),
+            ...learning.shortcuts.map((shortcut) => ({
+                at: shortcut.learnedAt,
+                title: `"${shortcut.prompt}" → ${shortcut.command}`,
+                meta: `Fyx shortcut · used ${shortcut.uses} time${shortcut.uses === 1 ? '' : 's'} with no model`,
+                icon: 'spark' as IconName,
+                forget: () => send({ type: 'forgetShortcut', prompt: shortcut.prompt }),
+            })),
+        ].sort((a, b) => b.at - a.at);
+
+        this.sections.learning.content.replaceChildren(
+            ...(toggle ? [switchRow(toggle.label, toggle.on, toggle.description, (on) => send({ type: 'setFeature', id: 'learning', on }))] : []),
             h(
                 'div',
-                { class: 'lesson-item' },
-                icon(lesson.source === 'user' ? 'pencil' : 'brain'),
-                h(
-                    'div',
-                    { class: 'lesson-main' },
-                    h('div', { text: lesson.text }),
-                    h('div', { class: 'lesson-meta', text: `${lesson.source === 'user' ? 'Added by you' : 'Learned from a correction'} · ${formatAgo(lesson.createdAt)}` }),
-                ),
-                iconButton('trash', 'Delete this lesson', () => send({ type: 'deleteLesson', id: lesson.id })),
-            );
-        const group = (title: string, lessons: LessonView[], empty: string) => [
-            h('div', { class: 'subhead', text: title }),
-            lessons.length ? h('div', { class: 'lesson-list' }, ...lessons.map(lessonItem)) : h('p', { class: 'muted small', text: empty }),
-        ];
-
-        this.sections.memory.content.replaceChildren(
-            ...(learning ? [switchRow(learning.label, learning.on, learning.description, (on) => send({ type: 'setFeature', id: 'learning', on }))] : []),
-            h('div', { class: 'subhead', text: 'Teach it something' }),
-            h('div', { class: 'lesson-add' }, this.lessonInput, this.lessonScope, button('Save', 'primary small', () => this.saveLesson(), 'check')),
-            h('p', { class: 'muted small', text: 'You can also type "remember that …" in the chat.' }),
-            ...group(
-                overview.project ? `This project · ${overview.project.name}` : 'This project',
-                overview.lessons.filter((l) => l.scope === 'project'),
-                'No lessons for this project yet. Point out a fix in the chat, or add one above.',
+                { class: 'tiles' },
+                tile('Learned', fullNumber(lessons.length + learning.shortcuts.length), `${lessons.length} lesson${lessons.length === 1 ? '' : 's'} · ${learning.shortcuts.length} Fyx shortcut${learning.shortcuts.length === 1 ? '' : 's'}`),
+                tile('Done with no model', fullNumber(learning.fyxTasks30d), `${compactNumber(learning.tokensSaved30d)} tokens saved, last 30 days`),
+                tile('Corrections this week', thisWeek ? `${thisWeek.corrections} of ${thisWeek.tasks}` : '0', trend),
             ),
-            ...group('All projects', overview.lessons.filter((l) => l.scope === 'global'), 'No lessons that apply everywhere yet.'),
+            h('div', { class: 'subhead', text: 'Week by week' }),
+            h(
+                'table',
+                { class: 'usage-table' },
+                h('thead', {}, h('tr', {}, ...['', 'Tasks', 'Finished', 'Corrected', 'Avg tokens', 'By Fyx'].map((t) => h('th', { text: t })))),
+                h(
+                    'tbody',
+                    {},
+                    ...learning.weeks.map((w) =>
+                        h(
+                            'tr',
+                            {},
+                            h('td', { text: w.label }),
+                            h('td', { text: fullNumber(w.tasks) }),
+                            h('td', { text: fullNumber(w.completed) }),
+                            h('td', { text: fullNumber(w.corrections) }),
+                            h('td', { text: w.avgTokens ? compactNumber(w.avgTokens) : '–' }),
+                            h('td', { text: fullNumber(w.fyxTasks) }),
+                        ),
+                    ),
+                ),
+            ),
+            h('div', { class: 'subhead', text: 'What it learned' }),
+            items.length
+                ? h(
+                      'div',
+                      { class: 'lesson-list' },
+                      ...items.map((item) =>
+                          h(
+                              'div',
+                              { class: 'lesson-item' },
+                              icon(item.icon),
+                              h('div', { class: 'lesson-main' }, h('div', { text: item.title }), h('div', { class: 'lesson-meta', text: `${item.meta} · ${formatAgo(item.at)}` })),
+                              iconButton('trash', 'Forget this', item.forget),
+                          ),
+                      ),
+                  )
+                : h('p', { class: 'muted small', text: 'Nothing yet. It learns when you correct its work, when you say "remember that …", and when a short request is done with a single command that Fyx can repeat.' }),
             h(
                 'div',
                 { class: 'callout' },
                 icon('lock'),
-                h('span', { text: 'Lessons stay on this computer and are added to future tasks as plain instructions. They never train or change the AI models themselves.' }),
+                h('span', { text: 'Everything here stays on this computer and is used as instructions for later tasks. It does not change the AI models themselves.' }),
             ),
         );
-    }
-
-    private saveLesson(): void {
-        const text = this.lessonInput.value.trim();
-        if (!text) {
-            this.lessonInput.focus();
-            return;
-        }
-        send({ type: 'addLesson', text, scope: this.lessonScope.value === 'global' ? 'global' : 'project' });
-        this.lessonInput.value = '';
     }
 
     private renderHealth(): void {

@@ -218,6 +218,17 @@ export default async function AdminPage() {
                 />
             </Section>
 
+            <Section title="Learning — is each task going better than the last? (last 30 days, counts only)">
+                <Stat label="Lessons learned" value={format(stats.totals.learnLessons ?? 0)} hint="From users correcting its work" />
+                <Stat label="Fyx shortcuts learned" value={format(stats.totals.learnShortcuts ?? 0)} hint="Chores Fyx now does itself" />
+                <Stat
+                    label="Shortcuts reused"
+                    value={format(stats.totals.shortcutRuns ?? 0)}
+                    hint={stats.totals.fyxTasks ? `${Math.round(((stats.totals.shortcutRuns ?? 0) / stats.totals.fyxTasks) * 100)}% of ${format(stats.totals.fyxTasks)} Fyx chores` : 'None yet'}
+                />
+                <Stat label="Tokens saved" value={format(stats.totals.fyxTokensSaved ?? 0)} hint="Chores that needed no model" />
+            </Section>
+
             <Section title="Specialists — how each kind of work is done">
                 <SpecialistsForm info={SPECIALIST_INFO} settings={specialists} stats={stats.bySpecialist} />
             </Section>

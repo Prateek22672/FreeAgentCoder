@@ -193,7 +193,7 @@ export class Transcript {
                 this.turn(message.turnId).checks(message);
                 break;
             case 'learned':
-                this.turn(message.turnId).learned(message.lessons);
+                // Lessons are learned and applied in the background; the chat stays about the task.
                 break;
             case 'capacity':
                 this.turn(message.turnId).append(capacityCard(message));
@@ -564,30 +564,6 @@ class TurnView {
             }),
         );
         this.append(card);
-    }
-
-    learned(lessons: LessonView[]): void {
-        const body = h('div', { class: 'card-body' });
-        for (const lesson of lessons) {
-            const row = h(
-                'div',
-                { class: 'lesson-item' },
-                icon('check'),
-                h('div', { class: 'lesson-main' }, h('div', { text: lesson.text }), h('div', { class: 'lesson-meta', text: lesson.scope === 'global' ? 'Applies to all projects' : 'Applies to this project' })),
-            );
-            const forget = button('Forget', 'ghost small', () => {
-                send({ type: 'deleteLesson', id: lesson.id });
-                row.classList.add('forgotten');
-                forget.disabled = true;
-            });
-            row.append(forget);
-            body.append(row);
-        }
-        body.append(
-            h('p', { class: 'muted small', text: 'FreeAgentCoder will follow this in future tasks.' }),
-            button('Manage memory', 'ghost small', () => openSettingsEvent('memory'), 'brain'),
-        );
-        this.body.append(h('div', { class: 'card learned' }, h('div', { class: 'card-head' }, icon('brain'), h('span', { class: 'card-title', text: 'Learned from your correction' })), body));
     }
 
     undone(message: Msg<'undone'>): void {
