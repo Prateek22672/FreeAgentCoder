@@ -1,4 +1,5 @@
 import { asksForSomethingNew } from './agent/intent';
+import { blueprintsFor, isSpec, referenceBlock } from './agent/references';
 import { mkdir, readdir, readFile, writeFile } from 'node:fs/promises';
 import { LabRecorder } from './lab/recorder';
 import * as path from 'node:path';
@@ -651,6 +652,16 @@ export class Controller implements vscode.Disposable {
 
         this.learning = correction && this.features.learning ? { prompt, evidence: '' } : undefined;
 
+        // Complex work gets the know-how that fits it: the spec method for a requirements document, and the blueprints for its kind of project.
+        const withReferences = tier === 'deep' && !followUp && !test;
+        if (withReferences && !attachments.length) {
+            const reference = referenceBlock(prompt);
+            if (reference) {
+                agentPrompt += `\n\n${reference}`;
+                notes.push(referenceNote(prompt));
+            }
+        }
+
         let prepare: TurnPlan['prepare'];
         if (attachments.length) {
             const base = agentPrompt;
@@ -683,7 +694,12 @@ export class Controller implements vscode.Disposable {
                 if (prepared.imageSource) {
                     this.telemetry.imageRead(prepared.imageSource === 'local' ? 'locally' : 'model');
                 }
-                return { agentPrompt: prepared.block ? `${base}\n\n${prepared.block}` : base, images: prepared.images };
+                const reference = withReferences ? referenceBlock(prompt, prepared.block) : '';
+                if (reference) {
+                    this.post({ type: 'notice', turnId, level: 'info', message: referenceNote(prompt, prepared.block) });
+                }
+                const withDocument = prepared.block ? `${base}\n\n${prepared.block}` : base;
+                return { agentPrompt: reference ? `${withDocument}\n\n${reference}` : withDocument, images: prepared.images };
             };
         }
 
@@ -1936,3 +1952,9 @@ export class Controller implements vscode.Disposable {
     }
 }
 
+/** What the user is told the task was given. */
+function referenceNote(prompt: string, documentText = ''): string {
+    const names = blueprintsFor(`${prompt}\n${documentText}`).map((b) => b.name.replace(/ \(.*\)$/, ''));
+    const spec = isSpec(prompt, documentText) ? 'Working from the requirements: a checklist first, and every acceptance step checked at the end' : '';
+    return `${[spec, names.length ? `Following the proven structure for: ${names.join(', ')}` : ''].filter(Boolean).join('. ')}.`;
+}

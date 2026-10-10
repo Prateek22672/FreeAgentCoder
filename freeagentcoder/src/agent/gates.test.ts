@@ -95,3 +95,11 @@ describe('the documents playbook', () => {
         expect(brief).toContain('os.path.dirname(os.path.abspath(__file__))');
     });
 });
+
+describe('the .NET playbook', () => {
+    it('is chosen for an ASP.NET build and requires dotnet build', () => {
+        const chosen = choosePlaybooks('build a CRM web app in ASP.NET Core MVC with Identity', 'deep', new Set());
+        expect(chosen.map((p) => p.id)).toEqual(['dotnet']);
+        expect(chosen[0]!.toolchains).toEqual(['dotnet']);
+    });
+});

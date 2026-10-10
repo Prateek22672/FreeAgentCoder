@@ -293,6 +293,30 @@ const DOCUMENTS: Playbook = {
     release: ['The script, its outputs and a short README on how to rebuild them.'],
 };
 
+const DOTNET: Playbook = {
+    id: 'dotnet',
+    name: '.NET',
+    request: /\b(?:asp\.?net|\.net\s*(?:core|\d)|blazor|razor\s+pages|entity\s*framework|ef\s*core|c#|csharp)\b/i,
+    projectFiles: ['global.json', 'Directory.Build.props'],
+    toolchains: ['dotnet'],
+    manifests: ['*.csproj', '*.sln'],
+    guide: [
+        'Create with the dotnet CLI and non-interactive flags (dotnet new mvc -n Name, dotnet new webapi). Add packages with dotnet add package, pinned to the SDK major version.',
+        'Configuration in appsettings.json with secrets from user-secrets or environment variables; EF Core migrations or EnsureCreated plus a seed for a demo.',
+        'Check it: dotnet build with no warnings, then dotnet run with background=true and fetch_url the home page and one API endpoint.',
+    ],
+    gates: [
+        { id: 'build', label: 'Build', command: 'dotnet build', matches: /\bdotnet\s+build\b/, required: 'always' },
+        { id: 'test', label: 'Tests', command: 'dotnet test', matches: /\bdotnet\s+test\b/, required: 'optional' },
+    ],
+    security: [
+        'ASP.NET Core Identity for passwords, lockout and roles; never a custom password table.',
+        'Anti-forgery on every state-changing form; EF Core queries only, no SQL built from input.',
+        'Authorization on the server for every page and endpoint, not only hidden links.',
+    ],
+    release: ['Production appsettings with HTTPS and HSTS, secrets outside source control, and a README with run steps and demo logins.'],
+};
+
 const GENERAL: Playbook = {
     id: 'general',
     name: 'Project',
@@ -336,7 +360,7 @@ const GENERAL: Playbook = {
     release: ['README with setup, run and test instructions.', 'A license file.', 'Build and tests pass on a clean checkout.'],
 };
 
-export const PLAYBOOKS: Playbook[] = [FLUTTER, ML, PYTHON_API, NODE_API, WEB];
+export const PLAYBOOKS: Playbook[] = [FLUTTER, ML, DOTNET, PYTHON_API, NODE_API, WEB];
 
 /** Asking for a document to be made, in any wording: "i need a ppt…", "generate a pdf…". */
 const DOCUMENT_INTENT = /\b(?:need|want|make|create|generate|build|prepare|produce|write|design|give\s+me)\b/i;
@@ -365,7 +389,11 @@ export function choosePlaybooks(prompt: string, tier: Tier, rootFiles: ReadonlyS
     if (!build && !CHANGE_INTENT.test(prompt)) {
         return [];
     }
-    const matched = PLAYBOOKS.filter((playbook) => playbook.request.test(prompt));
+    let matched = PLAYBOOKS.filter((playbook) => playbook.request.test(prompt));
+    // ASP.NET renders its own pages; the web playbook's Vite and React advice would pull the wrong way.
+    if (matched.includes(DOTNET)) {
+        matched = matched.filter((playbook) => playbook !== WEB);
+    }
     if (!matched.length && MOBILE.test(prompt) && !OTHER_MOBILE.test(prompt)) {
         matched.push(FLUTTER);
     }

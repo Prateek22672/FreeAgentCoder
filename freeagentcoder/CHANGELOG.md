@@ -6,6 +6,9 @@
 
 - **Settings → Learning** replaces Memory. It shows what FreeAgentCoder has learned from your tasks (lessons from your corrections and chores Fyx now does itself), how much it saved, and your corrections week by week, so you can see whether each task goes better than the last. Forget anything with one click.
 - **Edits by line number.** The agent can now replace lines 40-55 instead of retyping the old text exactly, which removes most "old_string was not found" retries. Numbers are only trusted while they still point where they did.
+- **NVIDIA as a free provider.** A free key from build.nvidia.com adds DeepSeek V4 Pro, Nemotron 3 Ultra and Kimi K3 for complex tasks (right after Gemini) and gpt-oss for quick ones. Keys starting nvapi- are recognised when pasted.
+- **Building from a requirements document.** Attach a spec (PDF, Word) and FreeAgentCoder works like an engineer delivering against it: a REQUIREMENTS.md checklist before any code, the stack the document names, shared security and validation built first, demo logins per role, every acceptance step checked with real commands, and an EXPLAIN.md mapping each requirement to the code.
+- **Proven structures for common projects.** For ASP.NET Core business apps and role-based backends, the task now starts from how strong solutions are put together (central audit logging, one row-level access filter, validation on client and server). A .NET playbook checks the SDK and requires dotnet build to pass.
 - **Documents and presentations.** Requests for slides, PDFs and reports now follow a proven recipe: one build script, correct colours for python-pptx and matplotlib, paths that work from any folder, a PDF without LibreOffice, and a check of every slide.
 
 ### Improved
