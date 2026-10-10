@@ -1336,7 +1336,7 @@ export class SettingsPanel {
                       : 'about the same as before'
                 : 'needs a few more tasks';
         const tile = (label: string, value: string, sub: string) =>
-            h('div', { class: 'tile' }, h('div', { class: 'tile-label', text: label }), h('div', { class: 'tile-value', text: value }), h('div', { class: 'tile-sub', text: sub }));
+            h('div', { class: 'tile', title: `${label}: ${value} · ${sub}` }, h('div', { class: 'tile-label', text: label }), h('div', { class: 'tile-value', text: value }), h('div', { class: 'tile-sub', text: sub }));
 
         type Item = { at: number; title: string; meta: string; icon: IconName; forget: () => void };
         const items: Item[] = [

@@ -22,7 +22,7 @@ const WHATS_NEW: Record<string, string> = {
     '0.5.0':
         'FreeAgentCoder 0.5.0: edits come back with the errors your editor finds, so they are fixed at once; Fix with FreeAgentCoder on any error; @-mention files in the chat; and small builds stay small, with web pages run in a hidden browser before they are called done.',
     '0.5.2':
-        'FreeAgentCoder 0.5.2: a repeated error now goes to your strongest model to fix at its cause, bigger tasks use stronger models first, and a task that is still making progress no longer pauses halfway. Your keys, chats and settings are kept.',
+        'FreeAgentCoder 0.5.2: all your Gemini models are used before work moves to weaker ones, a repeated error goes to your strongest model, edits by line number fail far less, and Settings → Learning shows what it has learned. Your keys, chats and settings are kept.',
     '0.5.1':
         'FreeAgentCoder 0.5.1: now always on screen (left bar, a button at the top right of any editor, and the status bar), and the tab comes back after a restart. Also new: edits come back with your editor’s errors, Fix with FreeAgentCoder on any error, and @-mention files. Your keys, chats and settings are kept.',
 };

@@ -2,8 +2,15 @@
 
 ## 0.5.2 — Fewer wasted steps, fewer pauses
 
+### Added
+
+- **Settings → Learning** replaces Memory. It shows what FreeAgentCoder has learned from your tasks (lessons from your corrections and chores Fyx now does itself), how much it saved, and your corrections week by week, so you can see whether each task goes better than the last. Forget anything with one click.
+- **Edits by line number.** The agent can now replace lines 40-55 instead of retyping the old text exactly, which removes most "old_string was not found" retries. Numbers are only trusted while they still point where they did.
+- **Documents and presentations.** Requests for slides, PDFs and reports now follow a proven recipe: one build script, correct colours for python-pptx and matplotlib, paths that work from any folder, a PDF without LibreOffice, and a check of every slide.
+
 ### Improved
 
+- **Every Gemini model on your key is used before work moves elsewhere.** Google's free limits are per model, so when Gemini 3.8 Flash is busy or out of quota, Gemini 3.7, 3.6, 3.5 and 2.5 Flash carry on on the same key. Groq has a second model too. Gemini's token use now shows in Usage (it was missing, which made it look unused).
 - **A repeated error gets fixed at its cause.** When the same error comes back (even with other steps in between), the next steps go to the strongest model you have, with an instruction to find the root cause and fix every place it comes from, instead of patching one line at a time. If it still comes back five times, the task stops instead of burning tokens.
 - **Stronger models first on big tasks.** OpenRouter's free router, which hands each request to whichever free model is idle, is now the last resort for every task, after Groq and Cohere.
 - **Fewer pauses.** A task that is still changing files or running commands successfully carries on past the token limit, up to twice it, instead of stopping halfway. Tasks that are only going round in circles still pause.
