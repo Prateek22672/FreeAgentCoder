@@ -110,6 +110,8 @@ async function reason(response: Response, key: string): Promise<string> {
 }
 
 export async function checkKey(provider: string, key: string): Promise<Health> {
+    // NVIDIA lists its models to anyone, key or not, so only a real one-token request proves a key works.
+    if (provider === 'nvidia') return testRequest(provider, key);
     const probe = PROBES[provider];
     const at = Date.now();
     if (!probe) return { state: 'error', message: 'No check for this provider.', at };
@@ -178,6 +180,7 @@ async function testRequest(provider: string, key: string): Promise<Health> {
 
 /** The light check, then, when it passes, one real request. Keeps what both learned about limits. */
 export async function deepCheckKey(provider: string, key: string): Promise<Health> {
+    if (provider === 'nvidia') return testRequest(provider, key);
     const light = await checkKey(provider, key);
     if (light.state === 'invalid') return light;
     const real = await testRequest(provider, key);
