@@ -4,6 +4,19 @@ import type { Workspace } from '../workspace/types';
 /** Remembers when the agent last read each file (read-before-write guard). */
 export class FileReadTracker implements FileTracker {
   private reads = new Map<string, number>();
+  private moved = new Map<string, number>();
+
+  markLinesFresh(absPath: string): void {
+    this.moved.set(absPath, Infinity);
+  }
+
+  markLinesMoved(absPath: string, fromLine: number): void {
+    this.moved.set(absPath, Math.min(this.moved.get(absPath) ?? Infinity, fromLine));
+  }
+
+  linesMovedFrom(absPath: string): number | undefined {
+    return this.moved.get(absPath);
+  }
 
   markRead(absPath: string, mtimeMs: number): void {
     this.reads.set(absPath, mtimeMs);
@@ -15,6 +28,7 @@ export class FileReadTracker implements FileTracker {
 
   clear(): void {
     this.reads.clear();
+    this.moved.clear();
   }
 }
 

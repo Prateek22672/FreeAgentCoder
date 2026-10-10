@@ -174,3 +174,46 @@ describe('todo_write', () => {
     expect(r.content).toContain('1/3 done');
   });
 });
+
+describe('edit_file by line numbers', () => {
+  it('replaces lines as read_file numbered them', async () => {
+    await run('read_file', { path: 'src/app.ts' });
+    const r = await run('edit_file', { path: 'src/app.ts', start_line: 2, end_line: 2, new_string: '  return a * b;' });
+    expect(r.isError).toBeFalsy();
+    expect(await ws.readFile('/src/app.ts')).toBe('export function add(a: number, b: number) {\n  return a * b;\n}\n\nexport const x = 1;\nexport const y = 1;\n');
+    expect(r.content).toContain('2\t  return a * b;');
+  });
+
+  it('keeps CRLF files CRLF and deletes lines with an empty new_string', async () => {
+    await run('read_file', { path: 'crlf.txt' });
+    await run('edit_file', { path: 'crlf.txt', start_line: 2, new_string: '' });
+    expect(await ws.readFile('/crlf.txt')).toBe('one\r\nthree\r\n');
+  });
+
+  it('allows numbers above an edit that added lines, and refuses those below until re-read', async () => {
+    await run('read_file', { path: 'src/app.ts' });
+    await run('edit_file', { path: 'src/app.ts', start_line: 5, new_string: 'export const x = 1;\nexport const z = 3;' });
+    const above = await run('edit_file', { path: 'src/app.ts', start_line: 2, new_string: '  return b + a;' });
+    expect(above.isError).toBeFalsy();
+    const below = await run('edit_file', { path: 'src/app.ts', start_line: 6, new_string: 'export const y = 2;' });
+    expect(below.isError).toBe(true);
+    expect(below.content).toContain('may have moved');
+    expect(below.content).toContain('7\texport const y = 1;');
+    await run('read_file', { path: 'src/app.ts' });
+    const again = await run('edit_file', { path: 'src/app.ts', start_line: 7, new_string: 'export const y = 2;' });
+    expect(again.isError).toBeFalsy();
+    expect(await ws.readFile('/src/app.ts')).toContain('export const z = 3;\nexport const y = 2;\n');
+  });
+
+  it('checks old_string against the lines when both are given', async () => {
+    await run('read_file', { path: 'src/app.ts' });
+    const r = await run('edit_file', { path: 'src/app.ts', start_line: 1, old_string: 'return a + b;', new_string: 'x' });
+    expect(r.isError).toBe(true);
+    expect(r.content).toContain('are not the old_string');
+  });
+
+  it('refuses line numbers for a file that was never read', async () => {
+    const r = await run('edit_file', { path: 'src/app.ts', start_line: 1, new_string: 'x' });
+    expect(r.isError).toBe(true);
+  });
+});

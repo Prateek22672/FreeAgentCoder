@@ -4,24 +4,28 @@ import { toolError, type PreparedCall, type Tool, type ToolContext, type ToolRes
 
 interface Args {
   path: string;
-  old_string: string;
+  old_string?: string;
   new_string: string;
   replace_all?: boolean;
+  start_line?: number;
+  end_line?: number;
 }
 
 export const editFileTool: Tool<Args> = {
   name: 'edit_file',
   description:
-    'Replace exact text in a file you have read. old_string must match once (add surrounding lines if needed) or set replace_all; no line-number prefixes.',
+    'Change a file you have read. Either replace exact text (old_string must match once; add surrounding lines if needed, or set replace_all), or replace whole lines by number with start_line and end_line (inclusive, as read_file numbers them). Line numbers are often easier to get right than exact text. new_string never includes line-number prefixes.',
   parameters: {
     type: 'object',
     properties: {
       path: { type: 'string', description: 'File path, relative to the project root or absolute' },
-      old_string: { type: 'string', description: 'Exact existing text to replace' },
-      new_string: { type: 'string', description: 'Replacement text' },
+      old_string: { type: 'string', description: 'Exact existing text to replace. Not needed with start_line' },
+      new_string: { type: 'string', description: 'Replacement text (the new lines, with start_line). Empty deletes them' },
       replace_all: { type: 'boolean', description: 'Replace every occurrence instead of exactly one. Default false' },
+      start_line: { type: 'integer', description: 'First line to replace, 1-based, as read_file numbers it' },
+      end_line: { type: 'integer', description: 'Last line to replace, inclusive. Defaults to start_line' },
     },
-    required: ['path', 'old_string', 'new_string'],
+    required: ['path', 'new_string'],
   },
   kind: 'write',
   label: (a, ws) => `Edit ${displayPath(ws, ws.resolve(a.path))}`,
@@ -36,12 +40,14 @@ async function prepareEdit(args: Args, ctx: ToolContext): Promise<PreparedCall |
   const st = await ws.stat(abs);
 
   if (!st) {
-    if (args.old_string === '') return createFile(ctx, abs, shown, args.new_string);
+    if (!args.old_string && args.start_line === undefined) return createFile(ctx, abs, shown, args.new_string);
     return toolError(`File not found: ${shown}.${await suggestSimilar(ws, abs)} Use write_file to create a new file.`);
   }
   if (st.type === 'dir') return toolError(`${shown} is a directory, not a file.`);
   const stale = checkFreshness(ctx, abs, st, shown);
   if (stale) return stale;
+  if (args.start_line !== undefined) return prepareLineEdit(args, ctx, abs, shown);
+  if (args.old_string === undefined) return toolError('Give old_string (the exact text to replace) or start_line and end_line (the lines to replace).');
   if (args.old_string === '') {
     return toolError('old_string is empty. Copy the exact text you want to replace, or use write_file to replace the whole file.');
   }
@@ -97,6 +103,7 @@ async function prepareEdit(args: Args, ctx: ToolContext): Promise<PreparedCall |
       ctx.checkpoints.record(abs, raw);
       await ws.writeFile(abs, after);
       await markWritten(ctx, abs);
+      if (lineCount(oldS) !== lineCount(newS)) ctx.files.markLinesMoved(abs, lineAt(text, first));
       return {
         content: `Edited ${shown}${replaced > 1 ? ` (${replaced} replacements)` : ''}${normalized}. The changed region now reads:\n${regionAround(updated, first, newS.length)}`,
         summary: replaced > 1 ? `${replaced} replacements` : 'edited',
@@ -115,6 +122,72 @@ async function createFile(ctx: ToolContext, abs: string, shown: string, content:
       await ctx.workspace.writeFile(abs, content);
       await markWritten(ctx, abs);
       return { content: `Created ${shown}.`, summary: 'created', display };
+    },
+  };
+}
+
+function lineCount(s: string): number {
+  return s.split('\n').length;
+}
+
+/**
+ * Replaces whole lines by number, the way read_file shows them. Exact text is
+ * hard for small models to reproduce; numbers are not. Numbers are trusted
+ * only while they still point where they did: an edit that adds or removes
+ * lines moves every number from there down, so those need a fresh read.
+ */
+async function prepareLineEdit(args: Args, ctx: ToolContext, abs: string, shown: string): Promise<PreparedCall | ToolResult> {
+  const ws = ctx.workspace;
+  const raw = await ws.readFile(abs);
+  const crlf = raw.includes('\r\n');
+  const text = crlf ? raw.replace(/\r\n/g, '\n') : raw;
+  const lines = text.split('\n');
+  const trailingNewline = lines.length > 1 && lines[lines.length - 1] === '';
+  if (trailingNewline) lines.pop();
+
+  const start = Math.floor(Number(args.start_line));
+  const end = Math.floor(Number(args.end_line ?? args.start_line));
+  if (!Number.isFinite(start) || start < 1 || !Number.isFinite(end) || end < start) {
+    return toolError('start_line must be 1 or more, and end_line at least start_line.');
+  }
+  if (end > lines.length) return toolError(`${shown} has ${lines.length} lines; end_line ${end} is past the end.`);
+  const movedFrom = ctx.files.linesMovedFrom(abs);
+  if (movedFrom === undefined || end >= movedFrom) {
+    const from = Math.max(1, Math.min(start, movedFrom ?? start) - 2);
+    return toolError(
+      `Line numbers in ${shown} from line ${movedFrom ?? 1} on may have moved since you read it (an earlier edit added or removed lines). Its current lines ${from}-${Math.min(lines.length, end + 3)} are:\n${numberedLines(lines, from - 1, end + 3)}\nRetry with these numbers.`,
+    );
+  }
+  const newS = lf(args.new_string);
+  const replacement = stripLineNumbers(newS) ?? newS;
+  if (args.old_string) {
+    const norm = (s: string) => s.split('\n').map((l) => l.trim()).join('\n').trim();
+    if (norm(lf(args.old_string)) !== norm(lines.slice(start - 1, end).join('\n'))) {
+      return toolError(
+        `Lines ${start}-${end} of ${shown} are not the old_string you gave. They are:\n${numberedLines(lines, start - 1, end)}\nRetry with the right numbers, or leave out old_string.`,
+      );
+    }
+  }
+  const inserted = replacement === '' ? [] : replacement.split('\n');
+  const updatedLines = [...lines.slice(0, start - 1), ...inserted, ...lines.slice(end)];
+  const updated = updatedLines.join('\n') + (trailingNewline ? '\n' : '');
+  const after = crlf ? updated.replace(/\n/g, '\r\n') : updated;
+  if (after === raw) return toolError('That would not change anything.');
+  const display = { type: 'diff' as const, path: shown, before: raw, after, created: false };
+  const replacedCount = end - start + 1;
+  return {
+    preview: display,
+    run: async () => {
+      ctx.checkpoints.record(abs, raw);
+      await ws.writeFile(abs, after);
+      await markWritten(ctx, abs);
+      if (inserted.length !== replacedCount) ctx.files.markLinesMoved(abs, start);
+      const shownEnd = start + Math.max(inserted.length, 1) - 1;
+      return {
+        content: `Edited ${shown}: lines ${start}-${end} replaced with ${inserted.length} line${inserted.length === 1 ? '' : 's'}. They now read:\n${numberedLines(updatedLines, Math.max(0, start - 3), shownEnd + 2)}`,
+        summary: `lines ${start}-${end}`,
+        display,
+      };
     },
   };
 }
@@ -239,14 +312,14 @@ function notFound(text: string, oldS: string, shown: string): string {
         }
       }
       if (same) {
-        return `old_string was not found in ${shown} exactly, but lines ${i + 1}-${i + target.length} match apart from whitespace/indentation. The file has:\n${numberedLines(fileLines, i, i + target.length)}\nCopy that text exactly (without the line-number prefixes) and retry.`;
+        return `old_string was not found in ${shown} exactly, but lines ${i + 1}-${i + target.length} match apart from whitespace/indentation. The file has:\n${numberedLines(fileLines, i, i + target.length)}\nCopy that text exactly (without the line-number prefixes), or replace lines ${i + 1}-${i + target.length} by number with start_line and end_line.`;
       }
     }
     const firstWanted = target.find((t) => t.length > 0);
     if (firstWanted) {
       const at = fileLines.findIndex((l) => norm(l) === firstWanted);
       if (at !== -1) {
-        return `old_string was not found in ${shown}. Its first line matches line ${at + 1}, but the lines after it differ. The file has:\n${numberedLines(fileLines, at, at + target.length + 2)}\nCopy the exact current text and retry.`;
+        return `old_string was not found in ${shown}. Its first line matches line ${at + 1}, but the lines after it differ. The file has:\n${numberedLines(fileLines, at, at + target.length + 2)}\nCopy the exact current text, or replace the lines by number with start_line and end_line.`;
       }
     }
   }

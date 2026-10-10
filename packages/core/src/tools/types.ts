@@ -31,6 +31,12 @@ export interface FileTracker {
   markRead(absPath: string, mtimeMs: number): void;
   /** mtime recorded at the last read/write, or undefined if never read. */
   readMtime(absPath: string): number | undefined;
+  /** Line numbers are trustworthy again (the file was read or rewritten whole). */
+  markLinesFresh(absPath: string): void;
+  /** An edit added or removed lines starting at `fromLine`: numbers from there on have moved. */
+  markLinesMoved(absPath: string, fromLine: number): void;
+  /** The first line whose number may have moved since the last read (Infinity: none), or undefined if never read. */
+  linesMovedFrom(absPath: string): number | undefined;
 }
 
 export interface Checkpointer {

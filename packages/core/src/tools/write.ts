@@ -50,6 +50,7 @@ export const writeFileTool: Tool<Args> = {
         ctx.checkpoints.record(abs, st ? before : null);
         await ws.writeFile(abs, content);
         await markWritten(ctx, abs);
+        ctx.files.markLinesFresh(abs);
         const lines = plural(countLines(content), 'line');
         return {
           content: `${st ? 'Rewrote' : 'Created'} ${shown} (${lines}).`,

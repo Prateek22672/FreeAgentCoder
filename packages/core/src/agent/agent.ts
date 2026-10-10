@@ -510,7 +510,7 @@ export class Agent {
         this.messages.push({
           role: 'user',
           synthetic: true,
-          content: `The same error has now happened twice: ${repeated.signature}\nStop patching it line by line. Before changing anything: (1) read the code that produces it, (2) state its root cause in one sentence, (3) fix every place with that cause in one change, not just the line in the traceback, then (4) run it again. If an edit keeps failing to match, rewrite the file with write_file.`,
+          content: `The same error has now happened twice: ${repeated.signature}\nStop patching it line by line. Before changing anything: (1) read the code that produces it, (2) state its root cause in one sentence, (3) fix every place with that cause in one change, not just the line in the traceback, then (4) run it again. If an edit keeps failing to match, read those lines again and edit by line numbers (start_line, end_line).`,
         });
         yield { type: 'notice', message: 'The same error came back, so the next steps go to the strongest model available to find its cause.' };
       }
@@ -536,7 +536,7 @@ export class Agent {
         this.messages.push({
           role: 'user',
           synthetic: true,
-          content: `The last ${FAILED_STEPS_GUIDE} steps all failed (latest: ${lastError}). Change strategy instead of retrying: read the file again before editing it, use write_file to rewrite a file whose edits keep failing, check the path with glob, or ask the user what is blocking you.`,
+          content: `The last ${FAILED_STEPS_GUIDE} steps all failed (latest: ${lastError}). Change strategy instead of retrying: read the file again before editing it, edit by line numbers when exact text keeps failing to match, check the path with glob, or ask the user what is blocking you.`,
         });
       }
       const open = this.todos.filter((t) => t.status !== 'completed');
@@ -807,7 +807,11 @@ export class Agent {
     for (const p of paths) {
       const abs = this.workspace.resolve(p);
       const st = await this.workspace.stat(abs);
-      if (st?.type === 'file') this.files.markRead(abs, st.mtimeMs);
+      if (st?.type === 'file') {
+        this.files.markRead(abs, st.mtimeMs);
+        // Included with numbered lines, so the numbers are as good as a read.
+        this.files.markLinesFresh(abs);
+      }
     }
   }
 

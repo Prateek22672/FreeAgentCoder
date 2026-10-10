@@ -62,6 +62,7 @@ async function readFile(args: Args, ctx: ToolContext): Promise<ToolResult> {
   const lines = (notebook ?? text).split(/\r?\n/);
   if (lines.length > 1 && lines[lines.length - 1] === '') lines.pop();
   const total = lines.length;
+  if (!notebook) ctx.files.markLinesFresh(abs);
   const start = Math.max(1, Math.floor(args.offset ?? 1));
   if (start > total) return toolError(`offset ${start} is past the end of ${shown} (${total} lines).`);
   const ranged = args.offset !== undefined || args.limit !== undefined;
