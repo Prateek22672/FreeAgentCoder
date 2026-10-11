@@ -1,4 +1,5 @@
-import { asksForSomethingNew } from './agent/intent';
+import { asksForSomethingNew, isGeneralQuestion } from './agent/intent';
+import { toolsFor } from './agent/toolsets';
 import { isSpec, matchLibrary, referenceBlock } from './agent/references';
 import type { RemoteReference } from './agent/remoteConfig';
 import { mkdir, readdir, readFile, writeFile } from 'node:fs/promises';
@@ -527,10 +528,12 @@ export class Controller implements vscode.Disposable {
 
         const correction = !test && (explicitCorrection || isCorrection(prompt, this.session.hasHistory, attachments.length > 0));
         this.turnWatch.correction = correction;
+        // A question about the world, not this project: answered from knowledge, with no tools and no project context.
+        const general = !test && !correction && !attachments.length && isGeneralQuestion(prompt);
         const selected = parseModelChoice(this.model);
         // The kind of work sets the method. Follow-ups and corrections keep the method they already have.
         const specialist =
-            !test && !correction && !isFollowUp(prompt) && this.features.seniorMode
+            !general && !test && !correction && !isFollowUp(prompt) && this.features.seniorMode
                 ? chooseSpecialist(prompt, enabledSpecialists(this.remoteConfig.current))
                 : undefined;
         const base = selected
@@ -541,7 +544,9 @@ export class Controller implements vscode.Disposable {
               ? { tier: 'deep' as Tier, reason: 'Correcting earlier work: handled point by point' }
               : attachments.length
                 ? { tier: 'deep' as Tier, reason: 'Request with attachments' }
-                : classifyTask(prompt, this.session.lastTier);
+                : general
+                  ? { tier: 'fast' as Tier, reason: 'General question: answered directly' }
+                  : classifyTask(prompt, this.session.lastTier);
         // A short request can still be the kind of work that needs a plan and checks.
         const { tier, reason } =
             specialist && specialist.minTier === 'deep' && base.tier === 'fast' && !selected
@@ -636,7 +641,7 @@ export class Controller implements vscode.Disposable {
         }
 
         // Quick tasks get the likely files too: naming them up front saves exploring for them, step by resent step.
-        if (this.features.codeSearch && !followUp && !test && this.session.indexedFiles !== 0) {
+        if (this.features.codeSearch && !general && !followUp && !test && this.session.indexedFiles !== 0) {
             const hits = (await this.relevantFiles(cwd, prompt)).slice(0, tier === 'fast' ? 4 : 8);
             if (hits.length) {
                 agentPrompt += `\n\n## Likely relevant files\nFound by a local search of this project for the words in the request. Read one only if it is clearly part of what the request is about.\n${hits
@@ -649,6 +654,14 @@ export class Controller implements vscode.Disposable {
                         .join(', ')}${hits.length > 3 ? '…' : ''}`,
                 );
             }
+        }
+
+        // Explaining a project: its own overview goes along with the request, so the answer can come in one step.
+        const explaining = specialist?.id === 'explain';
+        const overview = explaining && !test ? await this.projectOverview(cwd) : undefined;
+        if (overview?.text) {
+            agentPrompt += `\n\n## The project's own overview (start of the file; read more only if needed)${overview.text}`;
+            notes.push(`Read ${overview.path} first, to explain from the project's own description`);
         }
 
         // Files the user @-mentioned go along with the request, so the agent need not spend a step reading them.
@@ -728,7 +741,8 @@ export class Controller implements vscode.Disposable {
             test,
             checks,
             fresh: !followUp && !correction,
-            knownFiles: mentioned.included,
+            knownFiles: [...mentioned.included, ...(overview?.included ?? [])],
+            tools: toolsFor({ tier, general, explain: explaining, newBuild: asksForSomethingNew(prompt), test }),
         });
     }
 
@@ -1099,6 +1113,25 @@ export class Controller implements vscode.Disposable {
         } catch (error) {
             this.errorLog.add({ kind: 'agent', source: 'Learning', message: errorMessage(error), recovered: true, action: 'Skipped saving a lesson from this correction' });
         }
+    }
+
+    /** The project's own description: its README, or the overview in docs/, first part only. */
+    private async projectOverview(cwd: string): Promise<{ path: string; text: string; included: string[] } | undefined> {
+        const names = await readdir(cwd).catch(() => [] as string[]);
+        const docs = await readdir(path.join(cwd, 'docs')).catch(() => [] as string[]);
+        const candidates = [
+            ...names.filter((n) => /^readme(\.md|\.txt)?$/i.test(n)),
+            ...docs.filter((n) => /overview|architecture|how-it-works|design|guide|readme/i.test(n) && /\.md$/i.test(n)).map((n) => `docs/${n}`),
+        ];
+        for (const relative of candidates) {
+            const content = await readFile(path.join(cwd, relative), 'utf8').catch(() => undefined);
+            // A README that is only a title or a badge says nothing worth sending.
+            if (content && content.trim().length > 400 && !content.includes(String.fromCharCode(0))) {
+                const block = mentionBlock([{ path: relative, content: content.slice(0, OVERVIEW_CHARS) }]);
+                return { path: relative, text: block.text, included: content.length <= OVERVIEW_CHARS ? block.included : [] };
+            }
+        }
+        return undefined;
     }
 
     private async mentionedFiles(cwd: string, prompt: string): Promise<{ text: string; included: string[]; names: string[] }> {
@@ -1968,3 +2001,6 @@ function referenceNote(prompt: string, documentText: string, library: RemoteRefe
     const spec = isSpec(prompt, documentText) ? 'Working from the requirements: a checklist first, and every acceptance step checked at the end' : '';
     return `${[spec, names.length ? `Following the proven structure for: ${names.join(', ')}` : ''].filter(Boolean).join('. ')}.`;
 }
+
+/** The part of a project overview sent with an "explain" request: about 1,500 tokens. */
+const OVERVIEW_CHARS = 6_000;

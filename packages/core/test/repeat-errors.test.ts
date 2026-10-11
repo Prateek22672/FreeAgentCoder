@@ -83,3 +83,19 @@ describe('the task token limit', () => {
     expect(events.at(-1)).toMatchObject({ type: 'done', reason: 'budget', steps: 1 });
   });
 });
+
+describe('a turn with no tools', () => {
+  it('answers in one step and is never nudged to call a tool', async () => {
+    const provider = new ScriptedProvider([say("Let me explain: a closure is a function that remembers the variables around it."), say('never')]);
+    const agent = new Agent({
+      router: new ModelRouter([{ provider, model: 'm', contextWindow: 200_000 }]),
+      workspace: new MemoryWorkspace({}),
+      tools: fileTools(),
+      systemPrompt: 'test',
+      permissions: new PermissionPolicy('auto'),
+    });
+    const events = await collect(agent.run('what is a closure?', { tools: [] }));
+    expect(events.at(-1)).toMatchObject({ type: 'done', reason: 'completed', steps: 1 });
+    expect(provider.requests[0]!.tools).toEqual([]);
+  });
+});

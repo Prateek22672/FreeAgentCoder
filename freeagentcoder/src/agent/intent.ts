@@ -10,3 +10,20 @@ export function asksForSomethingNew(prompt: string): boolean {
         );
     return making && !changing;
 }
+
+/**
+ * A question about the world rather than this project ("what is a closure",
+ * "how does OAuth work"): answered from knowledge, with no tools and no project
+ * context. Anything that points at the project, a file, or the conversation is not.
+ */
+export function isGeneralQuestion(prompt: string): boolean {
+    const text = prompt.trim();
+    const words = text.split(/\s+/).length;
+    if (words < 3 || words > 40) {
+        return false;
+    }
+    const asking = /^(?:what|why|how|when|which|who|explain|describe|define|compare|difference|is|are|can|does|do|should)\b/i.test(text) || text.endsWith('?');
+    const local =
+        /\b(?:my|our|this|these|those|that|it|its|here|you|your|above|earlier|previous|again|project|repo|repository|codebase|folder|file|files|function|class|component|module|page|error|bug|crash|failing|install|run|build|fix|change|add|create|make|write|update)\b|@\S|\b[\w-]+\.(?:[cm]?[jt]sx?|py|cs|java|go|rs|rb|php|md|json|ya?ml|html|css|sql|toml)\b|[/\\]/i.test(text);
+    return asking && !local;
+}

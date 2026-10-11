@@ -128,7 +128,7 @@ export function getProblemsTool(): Tool<{ path?: string; warnings?: boolean }> {
     return {
         name: 'get_problems',
         description:
-            "The errors (and, with warnings=true, warnings) that the editor's language servers report: type errors, lint and syntax errors, with file and line. Faster than running a type check or build. Give a path for one file (it is opened and checked); leave it out for every file the editor has checked so far.",
+            "Type, lint and syntax errors the editor's language servers report, with file and line (warnings=true adds warnings). Faster than a build. A path checks one file; without it, every file checked so far.",
         parameters: {
             type: 'object',
             properties: {

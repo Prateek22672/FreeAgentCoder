@@ -143,6 +143,41 @@ const BENCHMARK_TASKS: LabTask[] = [
         },
     },
     {
+        id: 'bench-explain-project',
+        title: 'Benchmark: explain my project, cheaply',
+        category: 'other',
+        prompts: ['explain my project'],
+        files: {
+            'README.md':
+                '# Tasklet\n\nA small task-tracking API for teams. Users sign up, create projects, add tasks with due dates and assign them to teammates. Overdue tasks are emailed to their owner every morning.\n\n## Stack\n- Node.js with Express\n- SQLite through better-sqlite3\n- JWT sign-in\n\n## Layout\n- src/server.js: starts Express and mounts the routes\n- src/routes/: HTTP endpoints for auth, projects and tasks\n- src/db.js: the database connection and schema\n- src/jobs/overdue.js: the daily overdue-task email\n\n## Run\nnpm install, then npm start. Tests: npm test.\n',
+            'package.json': '{\n  "name": "tasklet",\n  "type": "module",\n  "scripts": { "start": "node src/server.js", "test": "node --test" },\n  "dependencies": { "express": "^5.1.0", "better-sqlite3": "^12.0.0", "jsonwebtoken": "^9.0.2" }\n}\n',
+            'src/server.js':
+                "import express from 'express';\nimport { auth } from './routes/auth.js';\nimport { projects } from './routes/projects.js';\nimport { tasks } from './routes/tasks.js';\n\nconst app = express();\napp.use(express.json());\napp.use('/auth', auth);\napp.use('/projects', projects);\napp.use('/tasks', tasks);\napp.listen(process.env.PORT ?? 3000);\n",
+            'src/db.js':
+                "import Database from 'better-sqlite3';\n\nexport const db = new Database('tasklet.db');\ndb.exec(`create table if not exists users (id integer primary key, email text unique, password_hash text);\ncreate table if not exists projects (id integer primary key, name text, owner_id integer);\ncreate table if not exists tasks (id integer primary key, project_id integer, title text, due text, assignee_id integer, done integer default 0);`);\n",
+            'src/routes/tasks.js':
+                "import { Router } from 'express';\nimport { db } from '../db.js';\n\nexport const tasks = Router();\ntasks.get('/', (req, res) => res.json(db.prepare('select * from tasks where assignee_id = ?').all(req.query.user)));\ntasks.post('/', (req, res) => {\n  const { project_id, title, due, assignee_id } = req.body;\n  const info = db.prepare('insert into tasks (project_id, title, due, assignee_id) values (?, ?, ?, ?)').run(project_id, title, due, assignee_id);\n  res.status(201).json({ id: info.lastInsertRowid });\n});\n",
+            'src/jobs/overdue.js':
+                "import { db } from '../db.js';\n\nexport function overdueTasks(today) {\n  return db.prepare('select * from tasks where done = 0 and due < ?').all(today);\n}\n",
+        },
+        expect: 'A short, accurate explanation from the README and code, in one step and well under 4,000 tokens, with plain path:line references and no changes to any file.',
+        checklist: [
+            'Says what the project is for (team task tracking with overdue emails)',
+            'Names the stack (Express, SQLite, JWT)',
+            'Explains how a request flows (server.js mounts routes, routes use db.js)',
+            'Mentions the overdue-task job',
+            'References files as plain path or path:line, no 【…】 marks',
+            'Changed no files',
+            'Finished in 1 step',
+            'Used under 4,000 tokens',
+        ],
+        benchmark: {
+            by: 'FreeAgentCoder 0.6.0 before the token work',
+            passed: 5,
+            note: 'Measured on a similar request: 2 steps and 7.7K tokens, with 【…】 citations. Target: 1 step, under 4K tokens.',
+        },
+    },
+    {
         id: 'bench-acxiom-crm',
         title: 'Benchmark: AcxiomCRM from a requirements document',
         category: 'app',

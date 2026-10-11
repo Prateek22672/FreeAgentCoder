@@ -50,6 +50,11 @@ export function cleanModelText(text: string): string {
   return text
     .replace(/<\|[a-z_]+\|>/gi, '')
     .replace(/<think(?:ing)?>[\s\S]*?<\/think(?:ing)?>/gi, '')
+    // gpt-oss cites as 【path:49‑53】 (or with †); the editor links plain path:line.
+    .replace(/【([^【】\n]{1,200}?)】/g, (_, inner: string) => {
+      const ref = inner.split('†')[0]!.trim().replace(/[‐-―]/g, '-');
+      return /^[\w./\\-]+(?::\d+(?:-\d+)?)?$/.test(ref) && /[./:]/.test(ref) ? ` \`${ref}\`` : '';
+    })
     .trim();
 }
 

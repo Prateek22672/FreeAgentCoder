@@ -14,7 +14,7 @@ interface Args {
 export const editFileTool: Tool<Args> = {
   name: 'edit_file',
   description:
-    'Change a file you have read. Either replace exact text (old_string must match once; add surrounding lines if needed, or set replace_all), or replace whole lines by number with start_line and end_line (inclusive, as read_file numbers them). Line numbers are often easier to get right than exact text. new_string never includes line-number prefixes.',
+    'Change a file you have read: replace exact text (old_string, matching once unless replace_all), or replace lines start_line to end_line as read_file numbers them (often easier). No line-number prefixes in new_string.',
   parameters: {
     type: 'object',
     properties: {

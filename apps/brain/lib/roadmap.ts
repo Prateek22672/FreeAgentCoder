@@ -77,6 +77,18 @@ export const DEFAULT_ITEMS: RoadmapItem[] = [
     { id: 'b-design-data', group: 'todo', title: 'Admin: a Data tab for the design library', detail: 'Upload reference zips and fonts that feed the directions and recipes.' },
     { id: 'b-evals', group: 'todo', title: 'An eval smoke suite run before each release', detail: 'A handful of Test lab tasks with pass/fail and token budgets.' },
 
+    // Fleet learning: every user's mistakes improve the agent for everyone (kept in Supabase tables, not the key-value store)
+    { id: 'fl-consent', group: 'todo', title: 'Welcome card: "OK, start using the agent" (shares learning data) or a visible "Close"', detail: 'Before the first task, replacing the question after it. Says what is sent, never code, files or prompts; "See exactly what is sent". Not shown when VS Code telemetry is off. Changeable in Settings → Learning.' },
+    { id: 'fl-tables', group: 'todo', title: 'Supabase tables for learning data', detail: 'lessons, error_patterns, task_outcomes, feedback, fyx_patterns, training_examples: proper columns and indexes, row-level security, written only by the site with the service key.' },
+    { id: 'fl-feedback', group: 'todo', title: 'A thumbs up or down after each task, with reason chips', detail: '"didn\'t run", "ignored my request", "too slow", "ugly result". Feeds the quality score per kind of task and per model.' },
+    { id: 'fl-lessons', group: 'todo', title: 'Shared lessons with an approval queue', detail: 'Only rules that apply to every project; a model strips names, paths and secrets; the admin approves; approved lessons ship in the daily download.' },
+    { id: 'fl-errors', group: 'todo', title: 'Recurring error patterns, and a drafted rule for each', detail: 'Normalised signatures and how often they repeat; a "top errors" page where a model drafts the playbook rule that prevents each, for approval.' },
+    { id: 'fl-routing', group: 'todo', title: 'Model order learned from real outcomes', detail: 'Per kind of task: which model finishes, in how many steps and tokens, corrected or not. Better models move up automatically (a bandit), within the free tiers.' },
+    { id: 'fl-fyx', group: 'todo', title: 'Popular Fyx chores promoted to built-ins', detail: 'Patterns with names removed ("zip the {folder} folder"), counted across installs.' },
+    { id: 'fl-graders', group: 'todo', title: 'Automatic grading scripts for each benchmark', detail: 'Count slides, run tests, call the API, check pages, count steps and tokens: no manual ticking.' },
+    { id: 'fl-nightly', group: 'todo', title: 'Nightly benchmark runs with a score trend', detail: 'Headless engine on a schedule with the site\'s keys; a change that lowers a score is rolled back.' },
+    { id: 'fl-prompts', group: 'todo', title: 'Instructions tuned automatically', detail: 'Variants of playbook rules tried in the nightly runs; the best-scoring one is kept (beyond hand-written prompts).' },
+    { id: 'fl-finetune', group: 'research', title: 'Fine-tune an open coding model on our own examples', detail: 'Curated, consented examples (situation, bad step, better step) from Supabase; LoRA on rented GPUs once there are a few thousand; served as one more model and used only if it beats the others in the nightly runs.' },
     // Research
     { id: 'r-tokens', group: 'research', title: 'Tokens per task, by kind', detail: 'From Test lab runs: set a budget per kind and alert when a release goes over.' },
     { id: 'r-cache', group: 'research', title: 'How much each provider’s prompt cache saves us', detail: 'Gemini implicit caching, OpenAI, Groq: measure cached vs fresh tokens per step.' },

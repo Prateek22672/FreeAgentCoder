@@ -107,7 +107,7 @@ export function checkPageTool(previews: PagePreviews): Tool<{ path: string; scri
     return {
         name: 'check_page',
         description:
-            'Load an HTML page from the project in a hidden real browser: get its errors (file and line), files that failed to load, cut-off layout and the text shown. With `script`, act on it like a user and return what changed. Use it before calling a plain web page done: once to load, once with a script that uses the main features. For a dev-server app use fetch_url.',
+            'Load a project HTML page in a real browser: errors with file and line, files that failed to load, cut-off layout, visible text. With script, use it like a user and return what changed. Run it before calling a web page done (once plain, once using the main features); for a dev-server app use fetch_url.',
         parameters: {
             type: 'object',
             properties: {
@@ -115,7 +115,7 @@ export function checkPageTool(previews: PagePreviews): Tool<{ path: string; scri
                 script: {
                     type: 'string',
                     description:
-                        "Optional JavaScript, run as the body of an async function after load; return a value to see it. E.g. \"document.querySelector('#roll').click(); await new Promise(r => setTimeout(r, 1500)); return document.querySelector('#score').textContent;\"",
+                        "Optional JavaScript run after load as an async function body; return a value to see it, e.g. \"document.querySelector('#roll').click(); return document.querySelector('#score').textContent;\"",
                 },
             },
             required: ['path'],

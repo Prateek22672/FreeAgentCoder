@@ -33,11 +33,6 @@ type ToolEndEvent = Extract<AgentEvent, { type: 'tool_end' }>;
 type RawDisplay = NonNullable<ToolEndEvent['result']['display']>;
 
 const MAX_STEPS = 150;
-/**
- * A quick task's tools: reading, searching, editing and one command. Leaving the
- * rest out saves about a thousand tokens on every step; the deep tier has all.
- */
-export const QUICK_TOOLS = ['read_file', 'edit_file', 'write_file', 'list_dir', 'glob', 'grep', 'search_code', 'run_command'];
 const DIFF_LINES = 400;
 const OUTPUT_CHARS = 8_000;
 const RESUME_PROMPT = 'Continue the task from where you stopped. (The editor resumed it automatically after a temporary problem reaching the AI providers.)';
@@ -74,6 +69,8 @@ export interface TurnPlan {
     fresh?: boolean;
     /** Files whose contents the prompt already includes (ones the user mentioned), so they count as read. */
     knownFiles?: string[];
+    /** The tools this kind of task uses (see toolsFor); undefined means all. */
+    tools?: string[];
 }
 
 export interface SessionLogEntry {
@@ -361,7 +358,7 @@ export class AgentSession implements vscode.Disposable {
                 const outcome = await this.runAgent(agent, input, turn.id, first ? images : undefined, {
                     fresh: first && plan.fresh,
                     knownFiles: first ? plan.knownFiles : undefined,
-                    tools: plan.tier === 'fast' ? QUICK_TOOLS : undefined,
+                    tools: plan.tools,
                     // Quick tasks need little thinking; deep tasks keep each provider's own default.
                     effort: plan.tier === 'fast' ? 'low' : undefined,
                 });

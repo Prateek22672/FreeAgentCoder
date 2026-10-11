@@ -411,7 +411,7 @@ export class Agent {
       }
 
       if (!message.toolCalls?.length) {
-        const recovered = extractTextToolCalls(message.content, new Set(this.toolMap.keys()));
+        const recovered = extractTextToolCalls(message.content, new Set(this.turnSchemas.map((t) => t.name)));
         if (recovered) {
           message.content = recovered.text;
           message.toolCalls = recovered.calls;
@@ -433,7 +433,7 @@ export class Agent {
       if (!message.toolCalls?.length) {
         if (nudges < MAX_NUDGES) {
           const nudge =
-            message.stop === 'max_tokens' ? NUDGE_CUT_OFF : !message.content ? NUDGE_EMPTY : announcesAction(message.content) ? NUDGE_ACT : null;
+            message.stop === 'max_tokens' ? NUDGE_CUT_OFF : !message.content ? NUDGE_EMPTY : this.turnSchemas.length && announcesAction(message.content) ? NUDGE_ACT : null;
           if (nudge) {
             nudges++;
             this.messages.push({ role: 'user', content: nudge, synthetic: true });

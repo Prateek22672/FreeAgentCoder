@@ -121,3 +121,11 @@ describe('announcesAction', () => {
     expect(announcesAction('Fixed the bug in src/app.ts:12.')).toBe(false);
   });
 });
+
+import { cleanModelText as clean } from '../src/util/text';
+describe('citations', () => {
+  it('turns gpt-oss citations into plain path:line', () => {
+    expect(clean('Routing lives in the router【docs/how-it-works.md:165‑177】.')).toBe('Routing lives in the router `docs/how-it-works.md:165-177`.');
+    expect(clean('See this【3†source】 and that.')).toBe('See this and that.');
+  });
+});
