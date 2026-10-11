@@ -129,12 +129,25 @@ const remote: Store = {
  * throws, like the Redis store, so a save is never reported as done when it
  * was not.
  */
-async function rpc<T>(fn: string, args: Record<string, unknown>): Promise<T> {
-    const headers: Record<string, string> = { apikey: SUPABASE_KEY!, 'content-type': 'application/json' };
+/** Whether the Supabase tables (not just a key-value store) are available. */
+export const supabaseAvailable = supabaseConfigured;
+
+/** A request to the Supabase REST API with the secret key; for tables beyond the key-value store. */
+export function supabaseRest(path: string, init: { method?: string; body?: unknown; headers?: Record<string, string> } = {}): Promise<Response> {
+    const headers: Record<string, string> = { apikey: SUPABASE_KEY!, 'content-type': 'application/json', ...init.headers };
     // The older service_role key is a JWT and goes in Authorization too; the
     // newer sb_secret_ keys go in apikey alone.
     if (SUPABASE_KEY!.startsWith('eyJ')) headers.authorization = `Bearer ${SUPABASE_KEY}`;
-    const response = await fetch(`${SUPABASE_URL}/rest/v1/rpc/${fn}`, { method: 'POST', headers, body: JSON.stringify(args), cache: 'no-store' });
+    return fetch(`${SUPABASE_URL}/rest/v1/${path}`, {
+        method: init.method ?? (init.body === undefined ? 'GET' : 'POST'),
+        headers,
+        body: init.body === undefined ? undefined : JSON.stringify(init.body),
+        cache: 'no-store',
+    });
+}
+
+async function rpc<T>(fn: string, args: Record<string, unknown>): Promise<T> {
+    const response = await supabaseRest(`rpc/${fn}`, { body: args });
     if (!response.ok) {
         const detail = (await response.text().catch(() => '')).slice(0, 200);
         throw new Error(`store: ${fn} HTTP ${response.status}${detail ? ` ${detail}` : ''}`);

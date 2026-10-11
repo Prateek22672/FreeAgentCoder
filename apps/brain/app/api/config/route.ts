@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { readSpecialists } from '@/lib/specialists';
 import { marketplaceStats } from '@/lib/marketplace';
 import { publicReferences } from '@/lib/references';
+import { publicLearning } from '@/lib/learning';
 
 export const runtime = 'nodejs';
 
@@ -13,9 +14,14 @@ export const runtime = 'nodejs';
  */
 export async function GET(): Promise<Response> {
     // The newest version on the Marketplace, so an out-of-date extension can say an update is out.
-    const [specialists, market, references] = await Promise.all([readSpecialists(), marketplaceStats(), publicReferences()]);
+    const [specialists, market, references, learning] = await Promise.all([
+        readSpecialists(),
+        marketplaceStats(),
+        publicReferences(),
+        publicLearning().catch(() => ({ lessons: [], fyx: [], order: {} })),
+    ]);
     return NextResponse.json(
-        { specialists, references, latest: market?.version && market.version !== 'unknown' ? market.version : undefined },
+        { specialists, references, learning, latest: market?.version && market.version !== 'unknown' ? market.version : undefined },
         { headers: { 'cache-control': 'public, max-age=600, s-maxage=600' } },
     );
 }
