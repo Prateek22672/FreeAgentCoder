@@ -1,16 +1,18 @@
 import { asksForSomethingNew, isGeneralQuestion } from './agent/intent';
 import { toolsFor } from './agent/toolsets';
+import { chorePattern, isShareableRule, type Outcome } from './learning/fleet';
+import { FleetSender } from './learning/fleetSender';
 import { isSpec, matchLibrary, referenceBlock } from './agent/references';
 import type { RemoteReference } from './agent/remoteConfig';
 import { mkdir, readdir, readFile, writeFile } from 'node:fs/promises';
 import { LabRecorder } from './lab/recorder';
 import * as path from 'node:path';
 import * as vscode from 'vscode';
-import { ModelRouter, PRESETS, tokenize, type SearchHit } from '@agentic/core';
+import { bestMatches, ModelRouter, PRESETS, tokenize, type SearchHit } from '@agentic/core';
 import { configPath, detectShell, isGitRepo, loadConfig, loadProjectInstructions, repoMap, type AgenticConfig } from '@agentic/core/node';
 import { planFyx, type FyxContext, type FyxPlan } from './fyx/plan';
 import { FYX_MODEL, FyxProvider } from './fyx/provider';
-import { LearnedCommands } from './fyx/learned';
+import { LearnedCommands, sharedChore } from './fyx/learned';
 import { classifyTask, FYX_CHOICE, isFollowUp, isValidModelChoice, KEY_PROVIDERS, parseModelChoice, planRoute, providerLabel, providerViews } from './agent/catalog';
 import { ChainBuilder, isAuthFailure, verifyKey, type CallResult, type RoutableKey } from './agent/chain';
 import { correctionBrief, isCorrection, learnPrompt, LEARN_SYSTEM, parseLessons, rememberCommand } from './agent/correction';
@@ -162,6 +164,14 @@ export class Controller implements vscode.Disposable {
     /** The request and the commands the agent ran this turn, so Fyx can learn one-command chores. */
     private turnWatch: { prompt: string; runs: { command: string; ok: boolean }[]; edits: number; okAfterEdit?: boolean; correction?: boolean } = { prompt: '', runs: [], edits: 0 };
     private learnedCommands?: LearnedCommands;
+    private fleet: FleetSender;
+    /** The kind of the running task and the model that answered last, for its outcome. */
+    private turnShape: { kind: string; tier: Tier } = { kind: 'other', tier: 'fast' };
+    private turnModel: { provider: string; model: string } = { provider: '', model: '' };
+    /** Each finished task's kind and model, so a rating given later is filed against the right one. */
+    private rated = new Map<string, { kind: string; provider: string; model: string }>();
+    /** The last task's outcome waits for the next request: if that is a correction, the outcome counts as corrected. */
+    private pendingOutcome?: Outcome;
     private consentShown = false;
     private learning?: { prompt: string; evidence: string };
     private projectCache?: { root: string; at: number; stack: string[]; instructionsFile?: string; git: boolean };
@@ -194,6 +204,7 @@ export class Controller implements vscode.Disposable {
             const keys = this.keys.list();
             return { count: keys.length, providers: keys.map((key) => key.provider) };
         });
+        this.fleet = new FleetSender(context, this.telemetry);
 
         const savedMode = context.globalState.get<string>(MODE_KEY);
         this.mode = savedMode === 'ask' || savedMode === 'auto-edit' || savedMode === 'auto' ? savedMode : 'auto-edit';
@@ -301,6 +312,9 @@ export class Controller implements vscode.Disposable {
     private async dispatch(message: FromWebview): Promise<void> {
         switch (message.type) {
             case 'ready': {
+                if (this.telemetry.needsWelcome()) {
+                    this.sink?.post({ type: 'welcome' });
+                }
                 // Snapshot synchronously so live events can't be replayed twice.
                 const replay = [...this.transcript];
                 for (const event of replay) {
@@ -387,6 +401,32 @@ export class Controller implements vscode.Disposable {
                     this.toast('Write the lesson in a few words or more.', 'error');
                 } else {
                     this.toast(saved.added ? 'Saved to memory.' : 'Updated a similar lesson you already had.', 'info');
+                }
+                return;
+            }
+            case 'welcomeChoice':
+                await this.telemetry.decide(message.share === true);
+                this.scheduleSettings(true);
+                return;
+            case 'setSharing':
+                await this.telemetry.decide(message.on === true);
+                this.toast(message.on ? 'Thanks: what FreeAgentCoder learns now helps every user, and theirs helps you.' : 'Sharing is off. Nothing more is sent.', 'info');
+                this.scheduleSettings(true);
+                return;
+            case 'showShared': {
+                const document = await vscode.workspace.openTextDocument({
+                    language: 'json',
+                    content: JSON.stringify({ learning: this.fleet.preview(), counts: this.telemetry.report() }, null, 2),
+                });
+                await vscode.window.showTextDocument(document, { preview: true });
+                return;
+            }
+            case 'rate': {
+                const task = this.rated.get(String(message.turnId));
+                if (task && typeof message.good === 'boolean') {
+                    const reasons = (Array.isArray(message.reasons) ? message.reasons : []).filter((r): r is string => typeof r === 'string').slice(0, 6);
+                    this.fleet.add('feedback', [{ ...task, good: message.good, reasons }]);
+                    void this.fleet.flush();
                 }
                 return;
             }
@@ -528,6 +568,11 @@ export class Controller implements vscode.Disposable {
 
         const correction = !test && (explicitCorrection || isCorrection(prompt, this.session.hasHistory, attachments.length > 0));
         this.turnWatch.correction = correction;
+        if (this.pendingOutcome) {
+            this.fleet.add('outcomes', [{ ...this.pendingOutcome, corrected: correction }]);
+            this.pendingOutcome = undefined;
+        }
+        this.turnModel = { provider: '', model: '' };
         // A question about the world, not this project: answered from knowledge, with no tools and no project context.
         const general = !test && !correction && !attachments.length && isGeneralQuestion(prompt);
         const selected = parseModelChoice(this.model);
@@ -556,7 +601,7 @@ export class Controller implements vscode.Disposable {
         // On Auto, the admin can point a kind of work at a model; it is tried first, and the rest still follow.
         const preferred = !selected && specialist ? this.remoteConfig.current[specialist.id]?.model : undefined;
         const preferredProvider = preferred ? parseModelChoice(preferred)?.provider : undefined;
-        const route = planRoute(keys, preferred && keys.some((k) => k.provider === preferredProvider) ? preferred : this.model, tier, load);
+        const route = planRoute(keys, preferred && keys.some((k) => k.provider === preferredProvider) ? preferred : this.model, tier, load, this.remoteConfig.fleet.order);
         if (selected && route.steps[0]?.provider !== selected.provider) {
             this.post({
                 type: 'error',
@@ -617,6 +662,7 @@ export class Controller implements vscode.Disposable {
             notes.push(`Method: ${specialist.name}`);
         }
         this.lastSpecialist = specialist?.id ?? (isFollowUp(prompt) ? this.lastSpecialist : undefined);
+        this.turnShape = { kind: general ? 'question' : (specialist?.id ?? (asksForSomethingNew(prompt) ? 'build' : tier === 'fast' ? 'quick' : 'change')), tier };
         if (!test && firstDeep && structure) {
             agentPrompt += `\n\n${structureBlock(structure)}`;
             // Changing an existing project: the files that matter most and what they define, so the right ones are opened first.
@@ -638,6 +684,11 @@ export class Controller implements vscode.Disposable {
         const lessons = followUp ? [] : this.memory.forPrompt(cwd, prompt);
         if (lessons.length) {
             agentPrompt += `\n\n${lessonsBlock(lessons)}`;
+        }
+        // Rules every user's corrections taught, approved by the admin: only the few that fit this request.
+        const shared = followUp || general || !this.features.learning ? [] : sharedLessonsFor(`${prompt} ${this.projectStack()}`, this.remoteConfig.fleet.lessons);
+        if (shared.length) {
+            agentPrompt += `\n\n## Lessons from other users\nRules learned when other users corrected this kind of work. Follow them unless this request says otherwise.\n${shared.map((l) => `- ${l.text}`).join('\n')}`;
         }
 
         // Quick tasks get the likely files too: naming them up front saves exploring for them, step by resent step.
@@ -743,6 +794,7 @@ export class Controller implements vscode.Disposable {
             fresh: !followUp && !correction,
             knownFiles: [...mentioned.included, ...(overview?.included ?? [])],
             tools: toolsFor({ tier, general, explain: explaining, newBuild: asksForSomethingNew(prompt), test }),
+            rate: this.fleet.sharing && !test,
         });
     }
 
@@ -906,7 +958,7 @@ export class Controller implements vscode.Disposable {
 
     private async fyxPlan(cwd: string, prompt: string): Promise<FyxPlan | undefined> {
         try {
-            return planFyx(prompt, await this.fyxContext(cwd)) ?? this.learned().plan(prompt);
+            return planFyx(prompt, await this.fyxContext(cwd)) ?? this.learned().plan(prompt) ?? sharedChore(prompt, this.remoteConfig.fleet.fyx);
         } catch (error) {
             this.errorLog.add({ kind: 'extension', source: 'Fyx', message: errorMessage(error), recovered: true, action: 'Handed the request to the AI agent' });
             return undefined;
@@ -1103,6 +1155,10 @@ export class Controller implements vscode.Disposable {
             });
             if (learned.length) {
                 this.telemetry.learned('lesson', learned.length);
+                this.fleet.add(
+                    'lessons',
+                    learned.filter((l) => l.scope === 'global' && isShareableRule(l.text)).map((l) => ({ text: l.text, stack: this.projectStack() })),
+                );
             }
             if (learned.length && this.transcript.some((m) => m.type === 'turnStart' && m.turnId === turnId)) {
                 this.post({ type: 'learned', turnId, lessons: learned });
@@ -1201,6 +1257,9 @@ export class Controller implements vscode.Disposable {
     }
 
     private onCallResult(key: RoutableKey, result: CallResult): void {
+        if (result.ok && this.session.turnId) {
+            this.turnModel = { provider: key.provider, model: result.model };
+        }
         if (this.session.turnId) {
             this.turnRequests++;
         }
@@ -1293,10 +1352,44 @@ export class Controller implements vscode.Disposable {
         }
         // The agent settled a short request with one command and nothing else: Fyx can do it next time.
         if (end.reason === 'completed' && watched.edits === 0 && watched.runs.length === 1 && watched.runs[0]!.ok && this.fyxEnabled() && this.features.learning) {
+            const command = watched.runs[0]!.command;
             void this.learned()
-                .learn(watched.prompt, watched.runs[0]!.command)
-                .then((added) => added && this.telemetry.learned('shortcut'));
+                .learn(watched.prompt, command)
+                .then((added) => {
+                    if (!added) {
+                        return;
+                    }
+                    this.telemetry.learned('shortcut');
+                    const pattern = chorePattern(watched.prompt, command);
+                    if (pattern) {
+                        this.fleet.add('fyx', [pattern]);
+                    }
+                });
         }
+        // What the task taught: its outcome (held until the next request shows whether it was corrected) and the errors it hit.
+        const stack = this.projectStack();
+        this.rated.set(end.turnId, { kind: this.turnShape.kind, ...this.turnModel });
+        if (this.rated.size > 50) {
+            this.rated.delete(this.rated.keys().next().value!);
+        }
+        if (this.pendingOutcome) {
+            this.fleet.add('outcomes', [this.pendingOutcome]);
+        }
+        const errors = this.session.turnErrors();
+        this.pendingOutcome = {
+            kind: this.turnShape.kind,
+            tier: this.turnShape.tier,
+            ...this.turnModel,
+            completed: end.reason === 'completed',
+            corrected: false,
+            steps: end.steps,
+            tokens: end.tokens,
+            durationMs: end.durationMs,
+            paused: end.reason === 'budget',
+            repeatedErrors: errors.reduce((n, e) => n + e.repeats, 0),
+        };
+        this.fleet.add('errors', errors.map((e) => ({ ...e, stack })));
+        void this.fleet.flush();
         const turnRequests = this.turnRequests;
         this.usage.recordTask({
             tokens: end.tokens,
@@ -1818,10 +1911,16 @@ export class Controller implements vscode.Disposable {
         };
     }
 
+    /** The project's main stack, lowercased, as the project status found it ("python", "react"…). */
+    private projectStack(): string {
+        return (this.projectCache?.stack[0] ?? '').toLowerCase().replace(/[^a-z0-9.+#-]/g, '').slice(0, 30);
+    }
+
     private learningView(): LearningView {
         const fyx = this.usage.fyxStats(30);
         const label = (weeksAgo: number) => (weeksAgo === 0 ? 'This week' : weeksAgo === 1 ? 'Last week' : `${weeksAgo} weeks ago`);
         return {
+            sharing: this.telemetry.state,
             shortcuts: this.learned()
                 .list()
                 .slice(0, 50)
@@ -2004,3 +2103,8 @@ function referenceNote(prompt: string, documentText: string, library: RemoteRefe
 
 /** The part of a project overview sent with an "explain" request: about 1,500 tokens. */
 const OVERVIEW_CHARS = 6_000;
+
+/** The shared lessons that fit a request: its stack, or several of its words. At most three, to stay cheap. */
+function sharedLessonsFor(text: string, lessons: { text: string; stack: string }[]): { text: string; stack: string }[] {
+    return bestMatches(lessons, text, (l) => ({ tags: l.stack ? [l.stack, l.stack] : [], name: l.text }), 3);
+}

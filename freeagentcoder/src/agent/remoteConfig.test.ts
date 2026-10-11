@@ -49,3 +49,17 @@ describe('the reference library download', () => {
         expect(parseReferences({ not: 'a list' })).toEqual([]);
     });
 });
+
+describe('what every user taught, from the download', () => {
+    it('keeps valid lessons, chores and providers, and drops the rest', async () => {
+        const { parseFleetLearned } = await import('./remoteConfig');
+        const learned = parseFleetLearned({
+            lessons: [{ text: 'Write the PDF in the same script; LibreOffice is rarely installed.', stack: 'Python' }, { text: 'short' }],
+            fyx: [{ pattern: 'zip the {name} folder', command: 'tar -a -c -f {name}.zip {name}' }, { pattern: '<script>', command: 'x' }],
+            order: { deep: ['nvidia', 'gemini', 'evil'], fast: 'groq' },
+        });
+        expect(learned.lessons).toEqual([{ text: 'Write the PDF in the same script; LibreOffice is rarely installed.', stack: 'python' }]);
+        expect(learned.fyx).toHaveLength(1);
+        expect(learned.order).toEqual({ deep: ['nvidia', 'gemini'], fast: undefined });
+    });
+});

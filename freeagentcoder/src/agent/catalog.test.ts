@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { planRoute } from './catalog';
+import { orderWith, planRoute } from './catalog';
 
 const keys = ['gemini', 'groq', 'cohere', 'openrouter'].map((provider) => ({ id: provider, provider, label: provider }));
 const route = (tier: 'fast' | 'deep') => planRoute(keys, 'auto', tier, () => 0).steps.map((s) => `${s.provider}:${s.model}`);
@@ -14,5 +14,14 @@ describe('planRoute', () => {
 
     it('starts quick tasks on Groq with a backup model on the same key', () => {
         expect(route('fast').slice(0, 2)).toEqual(['groq:openai/gpt-oss-120b', 'groq:qwen/qwen3.8-27b']);
+    });
+});
+
+describe('orderWith', () => {
+    it('puts the providers real outcomes rank best first, and keeps the free router and trial last', () => {
+        const defaults = ['gemini', 'nvidia', 'mistral', 'groq', 'cohere', 'openrouter', 'trial'];
+        expect(orderWith(defaults, ['nvidia', 'groq'])).toEqual(['nvidia', 'groq', 'gemini', 'mistral', 'cohere', 'openrouter', 'trial']);
+        expect(orderWith(defaults, ['openrouter', 'unknown'])).toEqual(defaults);
+        expect(orderWith(defaults)).toEqual(defaults);
     });
 });

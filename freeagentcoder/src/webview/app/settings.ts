@@ -1356,8 +1356,19 @@ export class SettingsPanel {
             })),
         ].sort((a, b) => b.at - a.at);
 
+        const sharingNote = h('button', { class: 'link-button', attrs: { type: 'button' }, text: 'See exactly what is sent' });
+        sharingNote.addEventListener('click', () => send({ type: 'showShared' }));
         this.sections.learning.content.replaceChildren(
             ...(toggle ? [switchRow(toggle.label, toggle.on, toggle.description, (on) => send({ type: 'setFeature', id: 'learning', on }))] : []),
+            learning.sharing === 'blocked'
+                ? h('p', { class: 'muted small', text: "Sharing what it learns is off because VS Code's own telemetry is turned off. Nothing is sent." })
+                : switchRow(
+                      'Share what it learns with every user',
+                      learning.sharing === 'on',
+                      'Lessons from your corrections, error patterns and how tasks went (never your code, files or prompts) help the agent avoid mistakes for everyone, and their lessons come back to you.',
+                      (on) => send({ type: 'setSharing', on }),
+                  ),
+            ...(learning.sharing === 'blocked' ? [] : [h('p', { class: 'small' }, sharingNote)]),
             h(
                 'div',
                 { class: 'tiles' },

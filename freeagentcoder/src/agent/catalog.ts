@@ -108,11 +108,24 @@ export interface RouteStep<K extends KeyRef> {
  * own step entry, least-used today first, so load spreads across keys and a
  * rate-limited key hands over to the next one.
  */
+/**
+ * The default order with the providers real outcomes rank best moved to the
+ * front, in that order. Providers the outcomes do not rank keep their place
+ * after them; OpenRouter's free router and the trial always stay last.
+ */
+export function orderWith(defaults: string[], learned: string[] = []): string[] {
+    const last = new Set(['openrouter', 'trial']);
+    const ranked = learned.filter((id, i) => defaults.includes(id) && !last.has(id) && learned.indexOf(id) === i);
+    const rest = defaults.filter((id) => !ranked.includes(id) && !last.has(id));
+    return [...ranked, ...rest, ...defaults.filter((id) => last.has(id))];
+}
+
 export function planRoute<K extends KeyRef>(
     keys: K[],
     choice: string,
     tier: Tier,
     load: (keyId: string) => number,
+    learned?: { fast?: string[]; deep?: string[] },
 ): { steps: RouteStep<K>[]; note?: string } {
     const byProvider = new Map<string, K[]>();
     for (const key of keys) {
@@ -148,7 +161,7 @@ export function planRoute<K extends KeyRef>(
         return { steps };
     }
 
-    for (const id of tier === 'fast' ? FAST_ORDER : DEEP_ORDER) {
+    for (const id of orderWith(tier === 'fast' ? FAST_ORDER : DEEP_ORDER, learned?.[tier])) {
         add(id, TIER_MODELS[id][tier]);
     }
     if (!steps.length) {

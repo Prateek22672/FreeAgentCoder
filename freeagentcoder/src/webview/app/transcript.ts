@@ -1,5 +1,5 @@
 import { compactNumber, formatDuration } from '../../shared/format';
-import type { ApprovalView, AttachmentView, DiffLineView, LessonView, TodoView, ToWebview, TurnEndReason } from '../../shared/protocol';
+import { RATING_REASONS, type ApprovalView, type AttachmentView, type DiffLineView, type LessonView, type TodoView, type ToWebview, type TurnEndReason } from '../../shared/protocol';
 import { button, fileLink, h, handleContentClick, openSettingsEvent, send } from './dom';
 import { icon, type IconName } from './icons';
 import { renderMarkdown } from './markdown';
@@ -653,7 +653,48 @@ class TurnView {
         if (actions.childElementCount) {
             footer.append(actions);
         }
+        if (message.rate) {
+            footer.append(this.ratingBar());
+        }
         return footer;
+    }
+
+    /** A thumbs up or down, with reasons for a down: what tasks went wrong, across every user. */
+    private ratingBar(): HTMLElement {
+        const bar = h('div', { class: 'rate' }, h('span', { class: 'muted', text: 'How did this go?' }));
+        const thanks = () => bar.replaceChildren(h('span', { class: 'muted', text: 'Thanks. This helps every user.' }));
+        const reasons = () => {
+            const picked = new Set<string>();
+            const chips = RATING_REASONS.map((reason) => {
+                const chip = h('button', { class: 'chip rate-reason', attrs: { type: 'button', 'aria-pressed': 'false' }, text: reason.label });
+                chip.addEventListener('click', () => {
+                    if (picked.has(reason.id)) {
+                        picked.delete(reason.id);
+                    } else {
+                        picked.add(reason.id);
+                    }
+                    chip.classList.toggle('on', picked.has(reason.id));
+                    chip.setAttribute('aria-pressed', String(picked.has(reason.id)));
+                });
+                return chip;
+            });
+            bar.replaceChildren(
+                h('span', { class: 'muted', text: 'What went wrong?' }),
+                ...chips,
+                button('Send', 'primary small', () => {
+                    send({ type: 'rate', turnId: this.id, good: false, reasons: [...picked] });
+                    thanks();
+                }),
+            );
+        };
+        bar.append(
+            button('👍', 'ghost small', () => {
+                send({ type: 'rate', turnId: this.id, good: true, reasons: [] });
+                thanks();
+            }, undefined, 'It went well'),
+            button('👎', 'ghost small', reasons, undefined, 'Something was wrong'),
+        );
+        return bar;
     }
 
     private setStatus(text: string, attention = false): void {

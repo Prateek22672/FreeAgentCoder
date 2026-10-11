@@ -278,6 +278,8 @@ export interface LearningWeek {
 
 /** What FreeAgentCoder has learned on this computer, and whether it is paying off. */
 export interface LearningView {
+    /** Whether this install shares what it learns: blocked when VS Code's own telemetry is off. */
+    sharing: 'on' | 'off' | 'unasked' | 'blocked';
     shortcuts: ShortcutView[];
     fyxTasks30d: number;
     tokensSaved30d: number;
@@ -443,12 +445,16 @@ export type ToWebview =
           files: ChangedFile[];
           canUndo: boolean;
           preview?: PreviewView;
+          /** Ask for a thumbs up or down: only when the user shares what the agent learns. */
+          rate?: boolean;
       }
     | { type: 'undone'; turnId: string; restored: string[]; deleted: string[] }
     | { type: 'checks'; turnId: string; playbooks: string[]; gates: GateView[]; security: string[]; release: string[] }
     | { type: 'learned'; turnId: string; lessons: LessonView[] }
     | { type: 'history'; mode: HistoryMode; chats: ChatSummary[]; currentId: string }
     | { type: 'historyConsent' }
+    /** The welcome card: share what the agent learns, or close it. */
+    | { type: 'welcome' }
     | { type: 'logs'; entries: LogEntry[]; stats: LogStats }
     | { type: 'usage'; sessionTokens: number; contextTokens: number; contextLimit: number }
     | { type: 'reset' }
@@ -500,4 +506,18 @@ export type FromWebview =
     | { type: 'setFeature'; id: FeatureId; on: boolean }
     | { type: 'addLesson'; text: string; scope: LessonScope }
     | { type: 'deleteLesson'; id: string }
-    | { type: 'forgetShortcut'; prompt: string };
+    | { type: 'forgetShortcut'; prompt: string }
+    | { type: 'welcomeChoice'; share: boolean }
+    | { type: 'setSharing'; on: boolean }
+    | { type: 'showShared' }
+    | { type: 'rate'; turnId: string; good: boolean; reasons: string[] };
+
+/** Why a task was rated down, as chips under the thumbs. */
+export const RATING_REASONS: { id: string; label: string }[] = [
+    { id: 'did-not-run', label: "Didn't run" },
+    { id: 'ignored-request', label: 'Ignored my request' },
+    { id: 'wrong-answer', label: 'Wrong answer' },
+    { id: 'looks-bad', label: 'Looks bad' },
+    { id: 'too-slow', label: 'Too slow' },
+    { id: 'too-many-tokens', label: 'Too many tokens' },
+];

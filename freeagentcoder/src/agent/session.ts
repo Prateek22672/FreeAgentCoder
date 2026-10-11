@@ -4,6 +4,7 @@ import * as vscode from 'vscode';
 import {
     dangerousReason,
     displayPath,
+    errorSignature,
     lineDiff,
     type AgentEvent,
     type ApprovalDecision,
@@ -71,6 +72,8 @@ export interface TurnPlan {
     knownFiles?: string[];
     /** The tools this kind of task uses (see toolsFor); undefined means all. */
     tools?: string[];
+    /** Ask for a thumbs up or down at the end (the user shares what the agent learns). */
+    rate?: boolean;
 }
 
 export interface SessionLogEntry {
@@ -90,6 +93,8 @@ interface TouchedFile {
 
 interface ActiveTurn {
     id: string;
+    /** Ask for a rating at the end. */
+    rate?: boolean;
     startedAt: number;
     tokensAtStart: number;
     files: Map<string, TouchedFile>;
@@ -127,6 +132,8 @@ export interface SessionOptions {
 
 /** One conversation with the engine: runs turns and translates its events for the webview. */
 export class AgentSession implements vscode.Disposable {
+    /** Normalised errors seen in the current task, for fleet learning: signature → tool and how often. */
+    private errorsThisTurn = new Map<string, { tool: string; count: number }>();
     private local?: LocalAgent;
     private localRoot?: string;
     private creating?: Promise<LocalAgent>;
@@ -215,8 +222,14 @@ export class AgentSession implements vscode.Disposable {
     }
 
     run(cwd: string, prompt: string, plan: TurnPlan): Promise<void> {
+        this.errorsThisTurn = new Map();
         this.runPromise = this.execute(cwd, prompt, plan);
         return this.runPromise;
+    }
+
+    /** The errors the last task hit, with how often each came back. */
+    turnErrors(): { signature: string; tool: string; count: number; repeats: number }[] {
+        return [...this.errorsThisTurn].map(([signature, e]) => ({ signature, tool: e.tool, count: e.count, repeats: Math.max(0, e.count - 1) }));
     }
 
     stop(): void {
@@ -296,6 +309,7 @@ export class AgentSession implements vscode.Disposable {
             runs: [],
             playbooks: plan.playbooks,
             release: plan.release,
+            rate: plan.rate,
             stopRequested: false,
             deep: plan.tier === 'deep',
             checks: plan.checks ?? [],
@@ -456,6 +470,11 @@ export class AgentSession implements vscode.Disposable {
             } else if (event.type === 'error') {
                 error = event.message;
             } else {
+                if (event.type === 'tool_end' && event.result.isError && !event.denied) {
+                    const signature = errorSignature(event.call.name, event.result.content);
+                    const seen = this.errorsThisTurn.get(signature);
+                    this.errorsThisTurn.set(signature, { tool: event.call.name, count: (seen?.count ?? 0) + 1 });
+                }
                 this.forward(turnId, event);
             }
         }
@@ -537,6 +556,7 @@ export class AgentSession implements vscode.Disposable {
             files,
             canUndo,
             preview,
+            ...(turn.rate && reason !== 'aborted' ? { rate: true } : {}),
         });
         this.options.post({ type: 'usage', ...this.usageInfo() });
     }

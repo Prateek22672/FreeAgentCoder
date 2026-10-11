@@ -110,3 +110,40 @@ export class LearnedCommands {
         return Object.keys(this.all()).length;
     }
 }
+
+/**
+ * A chore every user can run with no model: an approved pattern such as
+ * "zip the {name} folder" → `tar -a -c -f {name}.zip {name}`, matched against
+ * the request and filled in. The same risky-command rule as learned commands
+ * applies, and running it still asks the user's permission.
+ */
+export function sharedChore(prompt: string, patterns: { pattern: string; command: string }[]): FyxPlan | undefined {
+    const request = normalise(prompt);
+    for (const { pattern, command } of patterns) {
+        const slots: string[] = [];
+        const source = pattern
+            .split(/(\{\w+\})/)
+            .map((part) => {
+                const slot = /^\{(\w+)\}$/.exec(part);
+                if (slot) {
+                    slots.push(slot[1]!);
+                    return '([\\w.@+-]+)';
+                }
+                return part.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+            })
+            .join('');
+        const match = new RegExp(`^${source}$`).exec(request);
+        if (!match) {
+            continue;
+        }
+        let filled = command;
+        slots.forEach((slot, i) => {
+            filled = filled.split(`{${slot}}`).join(match[i + 1]!);
+        });
+        if (/\{\w+\}/.test(filled) || !worthLearning(prompt, filled)) {
+            continue;
+        }
+        return { kind: 'learned', intro: 'Running a chore other users taught Fyx.', steps: [{ command: filled, timeout: 600 }], done: 'Done, with no AI model.' };
+    }
+    return undefined;
+}

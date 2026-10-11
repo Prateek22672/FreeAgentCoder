@@ -27,3 +27,16 @@ describe('worthLearning', () => {
         expect(worthLearning('clean the build', 'rm -rf dist')).toBe(false);
     });
 });
+
+describe('sharedChore', () => {
+    it('fills an approved pattern from the request, and never runs a risky command', async () => {
+        const { sharedChore } = await import('./learned');
+        const patterns = [
+            { pattern: 'zip the {name} folder', command: 'tar -a -c -f {name}.zip {name}' },
+            { pattern: 'clean {name}', command: 'rm -rf {name}' },
+        ];
+        expect(sharedChore('zip the reports folder', patterns)?.steps[0]?.command).toBe('tar -a -c -f reports.zip reports');
+        expect(sharedChore('clean dist', patterns)).toBeUndefined();
+        expect(sharedChore('zip everything', patterns)).toBeUndefined();
+    });
+});

@@ -181,27 +181,26 @@ export class Telemetry {
         }
     }
 
-    /** Asks once, after a few tasks, so the question reaches someone who has used it. */
+    /** Sends the counts after a task, when sharing is on. The question itself is the welcome card. */
     private async afterTask(): Promise<void> {
         if (this.state === 'on') {
             void this.flush();
-            return;
         }
-        if (this.state !== 'unasked' || this.counters.tasks < ASK_AFTER_TASKS || this.context.globalState.get<boolean>(ASKED)) {
-            return;
-        }
+    }
+
+    /** The welcome card is shown until the user answers it, and never when VS Code's telemetry is off. */
+    needsWelcome(): boolean {
+        return this.state === 'unasked' && !this.context.globalState.get<boolean>(ASKED);
+    }
+
+    /** The answer to the welcome card: "OK, start using the agent" shares, "Close" does not. */
+    async decide(share: boolean): Promise<void> {
         await this.context.globalState.update(ASKED, true);
-        const choice = await vscode.window.showInformationMessage(
-            'FreeAgentCoder learns from each task on this computer to do the next one better. Help it improve for everyone by sending anonymous counts: tasks and what stopped them, which providers your keys are from, and how much learning saved. No code, prompts, file names or keys, ever.',
-            'Yes, send counts',
-            'No thanks',
-            'Show me what is sent',
-        );
-        if (choice === 'Show me what is sent') {
-            return this.choose();
+        if (this.state === 'blocked') {
+            return;
         }
-        await this.context.globalState.update(CONSENT, choice === 'Yes, send counts' ? 'on' : 'off');
-        if (choice === 'Yes, send counts') {
+        await this.context.globalState.update(CONSENT, share ? 'on' : 'off');
+        if (share) {
             void this.flush(true);
         }
     }
@@ -235,7 +234,7 @@ export class Telemetry {
         await this.context.globalState.update(SENT, Date.now());
     }
 
-    private installId(): string {
+    installId(): string {
         let id = this.context.globalState.get<string>(INSTALL);
         if (!id) {
             id = randomUUID();

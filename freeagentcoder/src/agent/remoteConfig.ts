@@ -26,6 +26,7 @@ export type SpecialistConfig = Partial<Record<SpecialistId, SpecialistOverride>>
 
 const STATE = 'freeagentcoder.specialistConfig';
 const REFERENCES = 'freeagentcoder.references';
+const LEARNED = 'freeagentcoder.fleetLearned';
 const FETCHED = 'freeagentcoder.specialistConfigFetched';
 const EVERY_MS = 24 * 60 * 60 * 1000;
 /** A known provider, then a model id with no URL-like parts. */
@@ -87,6 +88,29 @@ export function parseReferences(raw: unknown): RemoteReference[] {
     return out;
 }
 
+/** What the admin approved from every user's learning, and the model order the outcomes support. */
+export interface FleetLearned {
+    lessons: { text: string; stack: string }[];
+    fyx: { pattern: string; command: string }[];
+    order: { fast?: string[]; deep?: string[] };
+}
+
+export function parseFleetLearned(raw: unknown): FleetLearned {
+    const r = (raw ?? {}) as Record<string, unknown>;
+    const lessons = (Array.isArray(r.lessons) ? r.lessons : [])
+        .slice(0, 60)
+        .map((l) => ({ text: strip((l as Record<string, unknown>)?.text, 240), stack: strip((l as Record<string, unknown>)?.stack, 30).toLowerCase() }))
+        .filter((l) => l.text.length >= 12);
+    const fyx = (Array.isArray(r.fyx) ? r.fyx : [])
+        .slice(0, 100)
+        .map((f) => ({ pattern: strip((f as Record<string, unknown>)?.pattern, 80).toLowerCase(), command: strip((f as Record<string, unknown>)?.command, 160) }))
+        .filter((f) => /^[a-z0-9 {}'"._-]{3,80}$/.test(f.pattern) && f.command.length > 1);
+    const providers = (value: unknown) =>
+        Array.isArray(value) ? value.filter((p): p is string => typeof p === 'string' && KEY_PROVIDERS.includes(p)).slice(0, KEY_PROVIDERS.length) : undefined;
+    const rawOrder = (r.order ?? {}) as Record<string, unknown>;
+    return { lessons, fyx, order: { fast: providers(rawOrder.fast), deep: providers(rawOrder.deep) } };
+}
+
 /** The ids the admin has left on; every specialist when nothing is configured. */
 export function enabledSpecialists(config: SpecialistConfig): Set<string> {
     return new Set(SPECIALISTS.filter((s) => config[s.id]?.enabled !== false).map((s) => s.id));
@@ -96,10 +120,17 @@ export class RemoteConfig {
     private config: SpecialistConfig;
 
     private library: RemoteReference[];
+    private learned: FleetLearned;
 
     constructor(private readonly context: vscode.ExtensionContext) {
         this.config = parseConfig({ specialists: context.globalState.get(STATE) });
         this.library = parseReferences(context.globalState.get(REFERENCES));
+        this.learned = parseFleetLearned(context.globalState.get(LEARNED));
+    }
+
+    /** Lessons, Fyx chores and model order learned across every user, from the last download. */
+    get fleet(): FleetLearned {
+        return this.learned;
     }
 
     /** The reference library from the last download; matched to tasks on this machine. */
@@ -139,6 +170,11 @@ export class RemoteConfig {
                     if (library.length) {
                         this.library = library;
                         await this.context.globalState.update(REFERENCES, library);
+                    }
+                    const learnedRaw = (body as { learning?: unknown }).learning;
+                    if (learnedRaw) {
+                        this.learned = parseFleetLearned(learnedRaw);
+                        await this.context.globalState.update(LEARNED, this.learned);
                     }
                 }
                 await this.context.globalState.update(FETCHED, Date.now());
