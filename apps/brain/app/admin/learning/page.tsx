@@ -15,7 +15,8 @@ import {
     type LessonRow,
     type ModelScore,
 } from '@/lib/learning';
-import { draftRuleAction, errorAction, fyxAction, lessonAction } from './actions';
+import { failingSteps, listResults, readTasks } from '@/lib/lab';
+import { draftRuleAction, errorAction, fyxAction, lessonAction, tuneAction } from './actions';
 
 export const metadata: Metadata = { title: 'Learning', robots: { index: false, follow: false } };
 export const dynamic = 'force-dynamic';
@@ -47,13 +48,16 @@ export default async function LearningPage() {
             failure ||= error instanceof Error ? error.message : String(error);
             return fallback;
         });
-    const [lessons, errors, fyx, scores, feedback] = await Promise.all([
+    const [lessons, errors, fyx, scores, feedback, labTasks, labResults] = await Promise.all([
         safe(listLessons(), [] as LessonRow[]),
         safe(listErrors(), [] as ErrorRow[]),
         safe(listFyx(), [] as FyxRow[]),
         safe(modelScores(14), [] as ModelScore[]),
         safe(feedbackSummary(14), { good: 0, bad: 0, reasons: {} as Record<string, number> }),
+        readTasks().catch(() => []),
+        listResults().catch(() => []),
     ]);
+    const failing = failingSteps(labTasks, labResults);
     const order = learnedOrder(scores);
     const pending = lessons.filter((l) => l.status === 'pending');
     const decided = lessons.filter((l) => l.status !== 'pending');
@@ -170,6 +174,32 @@ export default async function LearningPage() {
                         </div>
                     ))}
                     {!errors.length && <p className="text-[13px] text-muted">None yet.</p>}
+                </div>
+            </section>
+
+            <section className="mt-10">
+                <h2 className="mb-1 text-xs font-semibold uppercase tracking-wide text-muted">Checks the benchmarks keep failing</h2>
+                <p className="mb-3 text-[12.5px] text-muted">
+                    From the automatic grading of Test lab runs (the nightly run and yours), last 14 days. Draft a rule and it joins the lessons above for approval; the next
+                    nightly run shows whether it helped.
+                </p>
+                <div className="grid gap-2">
+                    {failing.map((f) => (
+                        <div key={`${f.taskId}:${f.step}`} className="flex flex-wrap items-start justify-between gap-3 rounded-lg border border-line bg-panel p-3">
+                            <div className="min-w-0 flex-1">
+                                <div className="text-[13px] text-fg">{f.text}</div>
+                                <div className="mt-0.5 text-[12px] text-faint">
+                                    {f.title} · failed {f.failed} of {f.graded} runs{f.notes.length ? ` · ${f.notes.join(' | ').slice(0, 200)}` : ''}
+                                </div>
+                            </div>
+                            <form action={tuneAction}>
+                                <input type="hidden" name="taskId" value={f.taskId} />
+                                <input type="hidden" name="step" value={f.step} />
+                                <button className="text-[12px] text-accent hover:underline">Draft a rule with a model</button>
+                            </form>
+                        </div>
+                    ))}
+                    {!failing.length && <p className="text-[13px] text-muted">Nothing failing twice yet. Runs need automatic checks: the benchmark tasks have them.</p>}
                 </div>
             </section>
 

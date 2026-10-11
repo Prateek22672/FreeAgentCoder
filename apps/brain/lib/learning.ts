@@ -274,6 +274,12 @@ export async function feedbackSummary(days = 14): Promise<{ good: number; bad: n
     return { good: rows.filter((r) => r.good).length, bad: rows.filter((r) => !r.good).length, reasons };
 }
 
+/** A rule drafted from the benchmarks' failing checks: waits in the lessons queue like a user's, for approval. */
+export async function proposeLesson(text: string, stack: string): Promise<void> {
+    if (!isShareableRule(text)) return;
+    await ok(supabaseRest('rpc/fac_learn_lesson', { body: { p_hash: ruleHash(text), p_text: text, p_stack: stack, p_install: 'benchmark' } }), 'lesson');
+}
+
 export async function setLessonStatus(hash: string, status: LessonRow['status'], edited?: string): Promise<void> {
     await ok(supabaseRest(`fac_lessons?hash=eq.${encodeURIComponent(hash)}`, { method: 'PATCH', body: { status, ...(edited ? { text: edited } : {}) } }), 'lesson status');
 }

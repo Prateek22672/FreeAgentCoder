@@ -11,6 +11,7 @@ import {
   type LocalAgent,
 } from '@agentic/core/node';
 import { askApproval } from './approve';
+import { runLab } from './lab';
 import { handleCommand, modelHint } from './commands';
 import { TurnRenderer } from './render';
 import { runSetup } from './setup';
@@ -28,11 +29,12 @@ interface Args {
   verbose: boolean;
   help: boolean;
   version: boolean;
-  command?: 'setup' | 'models';
+  command?: 'setup' | 'models' | 'lab';
+  only: string[];
 }
 
 function parseArgs(argv: string[]): Args {
-  const args: Args = { cwd: process.cwd(), verbose: false, help: false, version: false };
+  const args: Args = { cwd: process.cwd(), verbose: false, help: false, version: false, only: [] };
   const words: string[] = [];
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i]!;
@@ -54,6 +56,8 @@ function parseArgs(argv: string[]): Args {
     else if (a === '-p' || a === '--prompt') args.prompt = next();
     else if (a === 'setup' && !words.length) args.command = 'setup';
     else if (a === 'models' && !words.length) args.command = 'models';
+    else if (a === 'lab' && !words.length) args.command = 'lab';
+    else if (a === '--task') args.only.push(next() ?? '');
     else words.push(a);
   }
   if (words.length && !args.prompt) args.prompt = words.join(' ');
@@ -66,6 +70,7 @@ ${c.bold('Usage')}
   agentic                      interactive session in the current folder
   agentic "fix the failing test"   one task, then exit
   agentic setup                add API keys
+  agentic lab [--task <id>]    run the Test lab benchmarks and send the results (needs LAB_TOKEN)
   agentic models               list providers and models
 
 ${c.bold('Options')}
@@ -138,6 +143,10 @@ async function main(): Promise<void> {
   }
   if (args.command === 'models') {
     await handleCommand('/models', { config } as never);
+    return;
+  }
+  if (args.command === 'lab') {
+    process.exitCode = await runLab(config, { model: args.model, only: args.only, version: VERSION });
     return;
   }
 

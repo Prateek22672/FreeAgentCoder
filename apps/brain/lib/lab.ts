@@ -28,6 +28,24 @@ export interface LabTask {
     checklist?: string[];
     /** A reference result to beat, e.g. Claude's solution of the same task. */
     benchmark?: Benchmark;
+    /** Checks that grade checklist steps without a person: commands run in the test folder, or facts of the run. */
+    graders?: Grader[];
+}
+
+/** One automatic check for checklist step `step` (0-based). */
+export type Grader =
+    | { step: number; type: 'command'; command: string; timeout?: number }
+    | { step: number; type: 'max-steps'; max: number }
+    | { step: number; type: 'max-tokens'; max: number }
+    | { step: number; type: 'no-pause' }
+    | { step: number; type: 'no-changes' }
+    | { step: number; type: 'transcript-absent'; pattern: string };
+
+/** What a command grader reported from the extension. */
+export interface CheckResult {
+    step: number;
+    passed: boolean;
+    output: string;
 }
 
 export interface Benchmark {
@@ -63,6 +81,8 @@ export interface LabResult {
     transcript: string;
     /** Set by the admin after reading the run. */
     rating?: { understood: number; quality: number; notes: string; passed?: number[] };
+    /** Steps graded automatically, and which of them passed. */
+    auto?: { graded: number[]; passed: number[]; notes: Record<number, string> };
 }
 
 export type LabSummary = Omit<LabResult, 'transcript'>;
@@ -107,6 +127,15 @@ const BENCHMARK_TASKS: LabTask[] = [
             'The build script runs again without errors',
             'Finished without a token-limit pause',
         ],
+        graders: [
+            { step: 0, type: 'command', command: "python -c \"import glob,sys; from pptx import Presentation; f=[p for p in glob.glob('**/*.pptx', recursive=True)]; n=len(Presentation(f[0]).slides) if f else 0; print(f'{n} slides'); sys.exit(0 if n == 12 else 1)\"" },
+            { step: 1, type: 'command', command: "python -c \"import glob,sys; f=glob.glob('**/*.pdf', recursive=True); print(f[:3]); sys.exit(0 if f else 1)\"" },
+            { step: 2, type: 'command', command: "python -c \"import glob,sys; from pptx import Presentation; f=glob.glob('**/*.pptx', recursive=True); n=sum(1 for s in Presentation(f[0]).slides if any(sh.shape_type in (3, 13) or getattr(sh, 'has_chart', False) for sh in s.shapes)) if f else 0; print(f'{n} slides with a picture or chart'); sys.exit(0 if n >= 4 else 1)\"" },
+            { step: 5, type: 'command', command: "python -c \"import glob,sys; from pptx import Presentation; f=glob.glob('**/*.pptx', recursive=True); p=Presentation(f[0]) if f else None; bad=[i+1 for i,s in enumerate(p.slides) for sh in s.shapes if sh.left is not None and (sh.left+sh.width>p.slide_width+9525 or sh.top+sh.height>p.slide_height+9525)] if p else ['no deck']; print('off the slide on', sorted(set(bad)) or 'none'); sys.exit(0 if not bad else 1)\"" },
+            { step: 6, type: 'command', command: "python -c \"import glob,sys,re; from pptx import Presentation; f=glob.glob('**/*.pptx', recursive=True); t=' '.join(sh.text_frame.text for s in Presentation(f[0]).slides for sh in s.shapes if sh.has_text_frame) if f else ''; ok=re.search(r'approx|estimate', t, re.I) and re.search(r'source|reference|notes', t, re.I); print('found' if ok else 'missing'); sys.exit(0 if ok else 1)\"" },
+            { step: 7, type: 'command', command: "python -c \"import glob,subprocess,sys; f=sorted(glob.glob('**/build*.py', recursive=True)) or sorted(glob.glob('**/*.py', recursive=True)); print(f[:1]); sys.exit(subprocess.call([sys.executable, f[0]]) if f else 1)\"", timeout: 300 },
+            { step: 8, type: 'no-pause' },
+        ],
         benchmark: {
             by: 'FreeAgentCoder 0.5.1',
             passed: 5,
@@ -134,6 +163,15 @@ const BENCHMARK_TASKS: LabTask[] = [
             'Server starts and answers a request',
             'No leftover temporary, debug or venv files in the project',
             'Finished without a token-limit pause',
+        ],
+        graders: [
+            { step: 0, type: 'transcript-absent', pattern: '(uv|poetry)[^\\n]{0,40}(not installed|missing)|which approach you|let me know which' },
+            { step: 1, type: 'command', command: "python -c \"import glob,re,sys; t=''.join(open(f, encoding='utf-8', errors='ignore').read() for f in glob.glob('**/*.py', recursive=True) if 'venv' not in f and 'site-packages' not in f); ok=re.search(r'(FastAPI|Flask)\\(', t) and re.search(r'[\\'\\\"]/chat[\\'\\\"]', t); print('found' if ok else 'missing'); sys.exit(0 if ok else 1)\"" },
+            { step: 4, type: 'command', command: "python -c \"import glob,re,sys; e=[f for f in glob.glob('**/.env.example', recursive=True)]; t=''.join(open(f, encoding='utf-8', errors='ignore').read() for f in glob.glob('**/*.py', recursive=True) if 'venv' not in f and 'site-packages' not in f); ok=bool(e) and re.search(r'getenv|environ|dotenv', t); print(e or 'no .env.example'); sys.exit(0 if ok else 1)\"" },
+            { step: 5, type: 'command', command: "python -c \"import glob,sys; r=[f for f in glob.glob('**/README*', recursive=True) if 'venv' not in f and 'site-packages' not in f]; ok=any('run' in open(f, encoding='utf-8', errors='ignore').read().lower() for f in r); print(r[:2]); sys.exit(0 if ok else 1)\"" },
+            { step: 6, type: 'command', command: "python -c \"import glob,os,subprocess,sys; py=[p for p in glob.glob('**/*env/Scripts/python.exe', recursive=True)+glob.glob('**/*env/bin/python', recursive=True)]; exe=os.path.abspath(py[0]) if py else sys.executable; root=os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(py[0])))) if py else '.'; print('using', exe); sys.exit(subprocess.call([exe, '-m', 'pytest', '-q'], cwd=root))\"", timeout: 300 },
+            { step: 8, type: 'command', command: "python -c \"import glob,os,re,sys; bad=[f for f in glob.glob('**/*', recursive=True) if 'site-packages' not in f and (re.match(r'(tmp|temp)[_-]', os.path.basename(f)) or os.path.basename(f) in ('show_app.py', 'read_app.py'))] + [d for d in glob.glob('**/*env', recursive=True) if os.path.isdir(d) and os.path.exists(os.path.join(d, 'pyvenv.cfg')) and os.path.exists(os.path.join(d, '.gitignore')) is False and not any(os.path.exists(g) and d.split(os.sep)[-1] in open(g, encoding='utf-8', errors='ignore').read() for g in glob.glob('**/.gitignore', recursive=True))]; print(bad[:5] or 'clean'); sys.exit(0 if not bad else 1)\"" },
+            { step: 9, type: 'no-pause' },
         ],
         benchmark: {
             by: 'FreeAgentCoder 0.5.1',
@@ -170,6 +208,12 @@ const BENCHMARK_TASKS: LabTask[] = [
             'Changed no files',
             'Finished in 1 step',
             'Used under 4,000 tokens',
+        ],
+        graders: [
+            { step: 4, type: 'transcript-absent', pattern: '【' },
+            { step: 5, type: 'no-changes' },
+            { step: 6, type: 'max-steps', max: 1 },
+            { step: 7, type: 'max-tokens', max: 4000 },
         ],
         benchmark: {
             by: 'FreeAgentCoder 0.6.0 before the token work',
@@ -287,7 +331,11 @@ export async function readTasks(): Promise<LabTask[]> {
             store.put(SEEDED, JSON.stringify(DEFAULT_TASKS.map((t) => t.id)), TEN_YEARS),
         ]);
     }
-    return tasks;
+    // Graders belong to the code, not the saved list: built-in tasks always carry the current ones.
+    return tasks.map((t) => {
+        const builtIn = DEFAULT_TASKS.find((d) => d.id === t.id);
+        return builtIn?.graders ? { ...t, graders: builtIn.graders } : t;
+    });
 }
 
 export async function writeTasks(tasks: LabTask[]): Promise<void> {
@@ -306,6 +354,82 @@ export async function listResults(): Promise<LabSummary[]> {
 export async function readResult(id: string): Promise<LabResult | undefined> {
     const [raw] = await store.getMany([`pb:lab:result:${id}`]);
     return raw ? (JSON.parse(raw) as LabResult) : undefined;
+}
+
+/** Grades what can be graded without a person: command results from the extension, and facts of the run. */
+export function autoGrade(task: LabTask | undefined, turns: LabTurn[], transcript: string, checks: CheckResult[]): LabResult['auto'] {
+    if (!task?.graders?.length) return undefined;
+    const graded = new Set<number>();
+    const failed = new Set<number>();
+    const notes: Record<number, string> = {};
+    const steps = turns.reduce((n, t) => n + t.steps, 0);
+    const tokens = turns.reduce((n, t) => n + t.tokens, 0);
+    for (const grader of task.graders) {
+        let ok: boolean | undefined;
+        switch (grader.type) {
+            case 'command': {
+                const result = checks.find((c) => c.step === grader.step);
+                if (result) {
+                    ok = result.passed;
+                    if (result.output) notes[grader.step] = result.output.slice(0, 300);
+                }
+                break;
+            }
+            case 'max-steps':
+                ok = steps > 0 && steps <= grader.max;
+                notes[grader.step] = `${steps} steps`;
+                break;
+            case 'max-tokens':
+                ok = tokens > 0 && tokens <= grader.max;
+                notes[grader.step] = `${tokens.toLocaleString('en-US')} tokens`;
+                break;
+            case 'no-pause':
+                ok = turns.length > 0 && turns.every((t) => t.reason === 'completed');
+                notes[grader.step] = turns.map((t) => t.reason).join(', ');
+                break;
+            case 'no-changes':
+                ok = turns.every((t) => t.filesChanged.length === 0);
+                break;
+            case 'transcript-absent':
+                ok = !new RegExp(grader.pattern, 'i').test(transcript);
+                break;
+        }
+        if (ok === undefined) continue;
+        graded.add(grader.step);
+        // Several graders on one step must all pass.
+        if (!ok) failed.add(grader.step);
+    }
+    const sorted = [...graded].sort((a, b) => a - b);
+    return { graded: sorted, passed: sorted.filter((s) => !failed.has(s)), notes };
+}
+
+/** A checklist step the automatic checks keep failing: what instruction tuning works on. */
+export interface FailingStep {
+    taskId: string;
+    title: string;
+    step: number;
+    text: string;
+    failed: number;
+    graded: number;
+    notes: string[];
+}
+
+/** Steps failed in at least two of the graded runs of the last `days` days, worst first. */
+export function failingSteps(tasks: LabTask[], results: LabSummary[], days = 14, now = Date.now()): FailingStep[] {
+    const since = now - days * 86_400_000;
+    const rows: FailingStep[] = [];
+    for (const task of tasks) {
+        if (!task.checklist?.length) continue;
+        const runs = results.filter((r) => r.taskId === task.id && r.at >= since && r.auto);
+        task.checklist.forEach((text, step) => {
+            const graded = runs.filter((r) => r.auto!.graded.includes(step));
+            const failed = graded.filter((r) => !r.auto!.passed.includes(step));
+            if (failed.length < 2) return;
+            const notes = [...new Set(failed.map((r) => r.auto!.notes[step]).filter((n): n is string => !!n))].slice(0, 3);
+            rows.push({ taskId: task.id, title: task.title, step, text, failed: failed.length, graded: graded.length, notes });
+        });
+    }
+    return rows.sort((a, b) => b.failed / b.graded - a.failed / a.graded || b.failed - a.failed);
 }
 
 export async function saveResult(input: Omit<LabResult, 'id' | 'at' | 'rating'>): Promise<string> {
@@ -386,8 +510,9 @@ export function scorecard(tasks: LabTask[], results: LabSummary[]): ScoreRow[] {
         .map((task) => {
             const steps = task.checklist!.length;
             const runs = results.filter((r) => r.taskId === task.id).sort((a, b) => b.at - a.at);
-            const scored = runs.filter((r) => r.rating?.passed);
-            const pct = (r: LabSummary) => Math.round(((r.rating!.passed!.length) / steps) * 100);
+            const passedOf = (r: LabSummary) => r.rating?.passed ?? r.auto?.passed;
+            const scored = runs.filter((r) => passedOf(r));
+            const pct = (r: LabSummary) => Math.round((passedOf(r)!.length / steps) * 100);
             const latest = runs[0];
             return {
                 taskId: task.id,

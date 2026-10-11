@@ -1,5 +1,21 @@
 # Changelog
 
+## 0.6.1 — Learns from everyone
+
+### Added
+
+- **Learning shared across users, if you choose.** A card on the welcome screen asks once. "OK, start using the agent" turns sharing on; "Close" leaves it off. When it is on, the general lessons from your corrections, errors that keep coming back, how each task ended, and Fyx chores you taught (as patterns, with names replaced) are sent. Your code, files and prompts never are. Names, paths and secrets are stripped on your computer first, and "See exactly what is sent" shows the queue. Change it any time in Settings → Learning.
+- **Lessons from other users.** Rules learned from other users' corrections, reviewed before they ship, come back in the daily download. Up to three that fit your request and project are added to it, so a mistake fixed once is avoided everywhere.
+- **Models ranked by real results.** Once there are enough finished tasks, providers that succeed most often for each kind of task are tried first. The free router and the trial still come last.
+- **Shared Fyx chores.** Chores other users taught Fyx (zipping a folder, starting a dev server) run for you with no AI model. Running a command still asks your permission.
+- **Thumbs up or down after a task**, with a reason for a thumbs down, so we see what goes wrong across every task.
+
+### Improved
+
+- **Simple questions cost far less.** A general question is answered in one step with no tools or project files (about 1,500 tokens instead of 7,000+). "Explain my project" starts with an overview of the project, so it answers in one or two steps.
+- **Tools that fit the task.** Explaining code uses only reading tools; a new build does not search the project first. Tool descriptions are shorter, which saves tokens on every step.
+- **Cleaner answers from some models.** Citation marks like 【3†source】 become plain file:line references.
+
 ## 0.6.0 — Knows more, wastes less
 
 ### Added

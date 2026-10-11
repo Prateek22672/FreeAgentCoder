@@ -1,4 +1,4 @@
-import { labAuthorised, saveResult, type LabCategory, type LabTurn } from '@/lib/lab';
+import { autoGrade, labAuthorised, readTasks, saveResult, type CheckResult, type LabCategory, type LabTurn } from '@/lib/lab';
 
 export const runtime = 'nodejs';
 
@@ -22,13 +22,22 @@ export async function POST(request: Request): Promise<Response> {
         filesChanged: (Array.isArray(t.filesChanged) ? t.filesChanged : []).slice(0, 200).map((f) => str(f, 300)),
         usedFyx: t.usedFyx === true,
     }));
+    const checks: CheckResult[] = (Array.isArray(body.checks) ? body.checks : []).slice(0, 30).map((c: Record<string, unknown>) => ({
+        step: num(c.step, 50),
+        passed: c.passed === true,
+        output: str(c.output, 600),
+    }));
+    const taskId = str(body.taskId, 60);
+    const transcript = str(body.transcript, 200_000);
+    const task = (await readTasks()).find((t) => t.id === taskId);
     const id = await saveResult({
-        taskId: str(body.taskId, 60),
+        taskId,
         title: str(body.title, 120),
         category: (CATEGORIES.has(String(body.category)) ? body.category : 'other') as LabCategory,
         extension: str(body.extension, 20),
         turns,
-        transcript: str(body.transcript, 200_000),
+        transcript,
+        auto: autoGrade(task, turns, transcript, checks),
     });
     return Response.json({ id });
 }

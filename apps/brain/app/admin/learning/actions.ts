@@ -4,7 +4,8 @@ import { revalidatePath } from 'next/cache';
 import { isSignedIn } from '@/lib/admin';
 import { getRouter } from '@/lib/ai';
 import { completeText } from '@/lib/references';
-import { isShareableRule, setErrorRule, setFyxStatus, setLessonStatus } from '@/lib/learning';
+import { failingSteps, listResults, readTasks } from '@/lib/lab';
+import { isShareableRule, proposeLesson, setErrorRule, setFyxStatus, setLessonStatus } from '@/lib/learning';
 
 const PATH = '/admin/learning';
 
@@ -62,5 +63,30 @@ export async function errorAction(form: FormData): Promise<void> {
     } else if (decision === 'save') {
         await setErrorRule(signature, { draft_rule: rule, status: rule ? 'drafted' : 'new' });
     }
+    revalidatePath(PATH);
+}
+
+const TUNE_SYSTEM =
+    'You improve the instructions of an AI coding agent. Given a check it keeps failing in benchmark runs, write one general rule that makes it pass: under 35 words, true for any project of that kind, no names or paths. Answer with the rule only.';
+
+/** Instruction tuning: a model drafts the rule for a step the nightly benchmarks keep failing; it waits in the lessons queue. */
+export async function tuneAction(form: FormData): Promise<void> {
+    if (!(await isSignedIn())) return;
+    const taskId = String(form.get('taskId') ?? '');
+    const step = Number(form.get('step'));
+    const router = getRouter();
+    if (!taskId || !Number.isInteger(step) || !router) return;
+    const [tasks, results] = await Promise.all([readTasks(), listResults()]);
+    const failing = failingSteps(tasks, results).find((f) => f.taskId === taskId && f.step === step);
+    const task = tasks.find((t) => t.id === taskId);
+    if (!failing || !task) return;
+    const reply = await completeText(
+        router,
+        TUNE_SYSTEM,
+        `Task given to the agent: ${task.prompts[0]?.slice(0, 600) ?? task.title}\nCheck it failed in ${failing.failed} of ${failing.graded} runs: ${failing.text}\n${failing.notes.length ? `What the check saw: ${failing.notes.join(' | ')}\n` : ''}Write the rule.`,
+        AbortSignal.timeout(60_000),
+    ).catch(() => '');
+    const rule = reply.replace(/^["'\s-]+|["'\s]+$/g, '').replace(/\s+/g, ' ').slice(0, 240);
+    if (rule) await proposeLesson(rule, task.category === 'ml' ? 'python' : '');
     revalidatePath(PATH);
 }

@@ -5,6 +5,7 @@ import { FleetSender } from './learning/fleetSender';
 import { isSpec, matchLibrary, referenceBlock } from './agent/references';
 import type { RemoteReference } from './agent/remoteConfig';
 import { mkdir, readdir, readFile, writeFile } from 'node:fs/promises';
+import { runCommandGraders, type CommandGrader } from './lab/graders';
 import { LabRecorder } from './lab/recorder';
 import * as path from 'node:path';
 import * as vscode from 'vscode';
@@ -823,7 +824,7 @@ export class Controller implements vscode.Disposable {
             void vscode.window.showWarningMessage('Wait for the current task to finish first.');
             return;
         }
-        type Task = { id: string; title: string; category: string; prompts: string[]; files: Record<string, string> };
+        type Task = { id: string; title: string; category: string; prompts: string[]; files: Record<string, string>; graders?: CommandGrader[] };
         let tasks: Task[];
         try {
             const response = await fetch(`${SITE_URL}/api/lab/tasks`, { headers: { 'x-lab-token': token }, signal: AbortSignal.timeout(15_000) });
@@ -876,6 +877,13 @@ export class Controller implements vscode.Disposable {
         } finally {
             this.lab = undefined;
         }
+        // Checks that grade the result without a person, run in the test folder.
+        const checks = task.graders?.some((g) => g.type === 'command')
+            ? await vscode.window.withProgress(
+                  { location: vscode.ProgressLocation.Notification, title: `Checking "${task.title}"…` },
+                  () => runCommandGraders(root, task.graders),
+              )
+            : [];
         try {
             const response = await fetch(`${SITE_URL}/api/lab/results`, {
                 method: 'POST',
@@ -887,13 +895,17 @@ export class Controller implements vscode.Disposable {
                     extension: String(this.context.extension.packageJSON.version ?? ''),
                     turns: recorder.turns,
                     transcript: redact(recorder.transcript),
+                    checks: checks.map((c) => ({ ...c, output: redact(c.output) })),
                 }),
                 signal: AbortSignal.timeout(20_000),
             });
             if (!response.ok) {
                 throw new Error(`HTTP ${response.status}`);
             }
-            void vscode.window.showInformationMessage(`Test "${task.title}" finished and was sent to the Test lab.`);
+            const passed = checks.filter((c) => c.passed).length;
+            void vscode.window.showInformationMessage(
+                `Test "${task.title}" finished and was sent to the Test lab${checks.length ? ` (${passed} of ${checks.length} automatic checks passed)` : ''}.`,
+            );
         } catch (error) {
             void vscode.window.showErrorMessage(`The test ran but could not be sent: ${errorMessage(error)}`);
         }

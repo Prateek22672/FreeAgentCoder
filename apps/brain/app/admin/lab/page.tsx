@@ -220,8 +220,16 @@ export default async function LabPage({ searchParams }: { searchParams: Promise<
                                 </legend>
                                 {openTask.checklist.map((step, i) => (
                                     <label key={i} className="flex items-start gap-2 text-[13px] text-muted">
-                                        <input type="checkbox" name="passed" value={i} defaultChecked={open.rating?.passed?.includes(i)} className="mt-0.5" />
-                                        <span>{step}</span>
+                                        <input type="checkbox" name="passed" value={i} defaultChecked={(open.rating?.passed ?? open.auto?.passed)?.includes(i)} className="mt-0.5" />
+                                        <span>
+                                            {step}
+                                            {open.auto?.graded.includes(i) ? (
+                                                <span className="ml-2 text-[11px] text-faint">
+                                                    auto: {open.auto.passed.includes(i) ? 'passed' : 'failed'}
+                                                    {open.auto.notes[i] ? ` · ${open.auto.notes[i]}` : ''}
+                                                </span>
+                                            ) : null}
+                                        </span>
                                     </label>
                                 ))}
                             </fieldset>

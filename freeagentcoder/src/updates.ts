@@ -21,6 +21,8 @@ const WHATS_NEW: Record<string, string> = {
         'FreeAgentCoder 0.4.2: small builds stay small (a browser game is plain HTML, not a framework set-up), web pages are run in a hidden browser before they are called done, a preview opens when a task ends, and a task pauses at 500K tokens before it can use up your day.',
     '0.5.0':
         'FreeAgentCoder 0.5.0: edits come back with the errors your editor finds, so they are fixed at once; Fix with FreeAgentCoder on any error; @-mention files in the chat; and small builds stay small, with web pages run in a hidden browser before they are called done.',
+    '0.6.1':
+        'FreeAgentCoder 0.6.1: simple questions use a fraction of the tokens, and, if you choose, the agent learns from every user’s corrections (never your code, files or prompts). Rate a task with 👍 or 👎. Your keys, chats and settings are kept.',
     '0.6.0':
         'FreeAgentCoder 0.6.0: complex tasks start from proven structures and design references, check library docs instead of guessing, use every Gemini model on your key (and free NVIDIA models), fix repeated errors on your strongest model, and pause far less. See Settings → Learning. Your keys, chats and settings are kept.',
     '0.5.1':
