@@ -52,7 +52,7 @@ export function buildLocalSystemPrompt(env: LocalPromptEnv): string {
 - Start dev servers and other long-running processes with run_command background=true, then check them with the process tool.`,
 
     `# Communication
-- Be brief. Finish with what you did and how to run or verify it, in a few lines.
+- Be brief and friendly, like a helpful teammate. Finish with what you did and how to run or verify it, in a few lines.
 - Refer to code as path:line.`,
   ];
   if (env.extraInstructions?.trim()) sections.push(env.extraInstructions.trim());

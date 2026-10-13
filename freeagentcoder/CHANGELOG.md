@@ -13,6 +13,9 @@
 
 ### Improved
 
+- **Knows how good projects in 11 domains are built.** Landing pages, dashboards, online stores, portfolios, blogs and docs, sign-up and login, chat and real-time apps, mobile apps (Expo), browser games, machine-learning apps, and booking systems: each new build starts from how strong open-source projects in that domain structure their routes, data, APIs and screens, and from the details that separate a professional result from a beginner one. Eight built-in design systems (dark product, clean light, warm editorial, bold portfolio, friendly consumer, data-dense dashboard, premium commerce, native mobile) mean even an offline install designs with a point of view.
+- **Talks like a teammate.** Replies are warm and natural and match how you write (relaxed if you are, formal if you are, your language if it is not English), say sorry when something went wrong and what was done about it, and never pad. Error messages got the same treatment.
+- **Tells you how long is left.** On a long task, a friendly line under the status says what is happening and roughly how much longer it will take, from the plan's progress so far.
 - **Every new site or app is designed, not plain.** Anything new with a screen, even a small one, now starts from one of the design references in the library: the closest by topic, otherwise one for the same platform (web or mobile), varied so sites do not all look alike. Before, small builds and requests that matched no reference got none and came out as a bare page.
 - **Simple questions cost far less.** A general question is answered in one step with no tools or project files (about 1,500 tokens instead of 7,000+). "Explain my project" starts with an overview of the project, so it answers in one or two steps.
 - **Tools that fit the task.** Explaining code uses only reading tools; a new build does not search the project first. Tool descriptions are shorter, which saves tokens on every step.

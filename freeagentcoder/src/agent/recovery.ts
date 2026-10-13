@@ -38,48 +38,48 @@ export function explainError(message: string): { title: string; hint: string; ac
     const reasons = failureReasons(message);
     const all = (test: (line: string) => boolean) => reasons.length > 0 && reasons.every(test);
     if (/No model is configured/i.test(message)) {
-        return { title: 'No API key is ready to use', hint: 'Add a free key in Settings → API Keys to start.', action: 'openKeys' };
+        return { title: 'No API key is ready to use', hint: 'Add a free key in Settings → API Keys and we’re off. It takes about a minute, and no card is needed.', action: 'openKeys' };
     }
     if (/too small for this task/i.test(message)) {
         return {
-            title: 'The models available right now are too small for this task',
+            title: 'Sorry, the models free right now are too small for this task',
             hint: "Only models that take a few thousand tokens per request can answer at the moment: Groq's free tier, or the free trial while its larger models are busy. Add a free Gemini key in Settings → API Keys (it takes about 1M tokens per request), then press Continue.",
             action: 'openKeys',
         };
     }
     if (isContextTooLarge(message)) {
         return {
-            title: 'This conversation is too long for your models',
-            hint: 'Start a new chat to continue. A Gemini key helps a lot here: it accepts about 1M tokens at once.',
+            title: 'Sorry, this conversation got too long for your models',
+            hint: 'Start a new chat and pick up from there; nothing in your project is lost. A free Gemini key helps a lot here: it takes about 1M tokens at once.',
             action: 'openKeys',
         };
     }
     if (all((line) => isDailyLimit(line))) {
         return {
-            title: "Today's free limits on your keys are used up",
-            hint: 'They reset within a day. To keep working now, add a key from a provider you have not used today.',
+            title: "Sorry, today's free limits on your keys are used up",
+            hint: 'They reset within a day. Want to keep going now? Add a key from a provider you haven’t used today and press Continue.',
             action: 'openKeys',
         };
     }
     if (all((line) => AUTH.test(line))) {
-        return { title: 'Your keys were rejected by their providers', hint: 'Test or replace them in Settings → API Keys.', action: 'openKeys' };
+        return { title: 'Your keys were rejected by their providers', hint: 'They may have expired or been revoked. Test or replace them in Settings → API Keys and we’ll carry on.', action: 'openKeys' };
     }
     if (all((line) => OFFLINE.test(line))) {
-        return { title: "Couldn't reach the AI providers", hint: 'Check your internet connection, then send your message again. Nothing was lost.' };
+        return { title: "Couldn't reach the AI providers", hint: 'Looks like the connection dropped. Check your internet, then send your message again. Nothing was lost.' };
     }
     if (all((line) => TEMPORARY.test(line))) {
         return {
             title: 'Every model is busy or rate-limited',
-            hint: 'Waiting did not free one up. Try again in a few minutes, or add a key from another provider so there is always one free.',
+            hint: 'Sorry, I waited but none freed up. Try again in a few minutes, or add a key from another provider so one is always free.',
             action: 'openKeys',
         };
     }
     if (/Every model failed/i.test(message)) {
         return {
             title: 'None of your keys could complete this request',
-            hint: "Each key's status and last error are in Settings → Health. Adding a key from another provider usually fixes this.",
+            hint: "Sorry about that. Each key's status and last error are in Settings → Health, and a key from another provider usually fixes it.",
             action: 'openKeys',
         };
     }
-    return { title: 'The task stopped because of an unexpected error', hint: 'Send your message again to retry. If it keeps happening, Settings → Logs has the details.' };
+    return { title: 'Sorry, the task stopped because of an unexpected error', hint: 'Send your message again and I’ll retry. If it keeps happening, Settings → Logs has the details.' };
 }

@@ -1,4 +1,5 @@
 import { compactNumber, formatDuration } from '../../shared/format';
+import { patienceNote, type Progress } from './patience';
 import { RATING_REASONS, type ApprovalView, type AttachmentView, type DiffLineView, type LessonView, type TodoView, type ToWebview, type TurnEndReason } from '../../shared/protocol';
 import { button, fileLink, h, handleContentClick, openSettingsEvent, send } from './dom';
 import { icon, type IconName } from './icons';
@@ -248,6 +249,7 @@ class TurnView {
     private readonly tools = new Map<string, ToolView>();
     private readonly approvals = new Map<string, HTMLElement>();
     private status?: StatusLine;
+    private readonly progress: Progress = { done: 0, total: 0 };
     private footer?: HTMLElement;
     private undoButton?: HTMLButtonElement;
 
@@ -424,6 +426,8 @@ class TurnView {
     }
 
     todos(todos: TodoView[]): void {
+        this.progress.done = todos.filter((t) => t.status === 'completed').length;
+        this.progress.total = todos.length;
         if (!this.plan) {
             this.plan = new PlanCard();
             this.body.prepend(this.plan.el);
@@ -699,7 +703,7 @@ class TurnView {
 
     private setStatus(text: string, attention = false): void {
         if (!this.status) {
-            this.status = new StatusLine(this.startedAt);
+            this.status = new StatusLine(this.startedAt, () => this.progress);
             this.body.append(this.status.el);
         }
         this.status.set(text, attention);
@@ -720,20 +724,27 @@ class TurnView {
 }
 
 class StatusLine {
-    readonly el = h('div', { class: 'status-line' });
+    readonly el = h('div', { class: 'status-wrap' });
+    private readonly line = h('div', { class: 'status-line' });
     private readonly label = h('span', { class: 'status-text' });
     private readonly time = h('span', { class: 'status-time' });
+    /** A friendly word on a long task: what's happening and roughly how long is left. */
+    private readonly note = h('div', { class: 'status-note', attrs: { 'aria-live': 'polite' } });
     private readonly timer: number;
 
-    constructor(private readonly startedAt: number) {
-        this.el.append(h('span', { class: 'spinner' }), this.label, this.time);
+    constructor(
+        private readonly startedAt: number,
+        private readonly progress: () => Progress = () => ({ done: 0, total: 0 }),
+    ) {
+        this.line.append(h('span', { class: 'spinner' }), this.label, this.time);
+        this.el.append(this.line, this.note);
         this.timer = window.setInterval(() => this.tick(), 1_000);
         this.tick();
     }
 
     set(text: string, attention: boolean): void {
         this.label.textContent = text;
-        this.el.classList.toggle('attention', attention);
+        this.line.classList.toggle('attention', attention);
     }
 
     dispose(): void {
@@ -742,7 +753,13 @@ class StatusLine {
     }
 
     private tick(): void {
-        this.time.textContent = formatDuration(Date.now() - this.startedAt);
+        const elapsed = Date.now() - this.startedAt;
+        this.time.textContent = formatDuration(elapsed);
+        const note = this.line.classList.contains('attention') ? undefined : patienceNote(elapsed, this.progress());
+        if ((note ?? '') !== this.note.textContent) {
+            this.note.textContent = note ?? '';
+        }
+        this.note.hidden = !note;
     }
 }
 

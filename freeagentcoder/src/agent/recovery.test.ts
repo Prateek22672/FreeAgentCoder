@@ -34,7 +34,7 @@ describe('recoveryFor', () => {
 describe('explainError', () => {
     it('turns daily limits into a clear next step', () => {
         const explained = explainError(everyFailed('groq:m (College): groq: rate limit on tokens per day (TPD)'));
-        expect(explained.title).toBe("Today's free limits on your keys are used up");
+        expect(explained.title).toBe("Sorry, today's free limits on your keys are used up");
         expect(explained.action).toBe('openKeys');
     });
 
@@ -62,6 +62,6 @@ describe('explainError', () => {
     it('explains models that are too small for the task, and does not wait for them', () => {
         const message = 'The models available right now are too small for this task: they take about 5.5K tokens per request, and the work does not fit in that even after summarizing it. Stopped rather than going round in circles.';
         expect(recoveryFor(message, 0)).toBeUndefined();
-        expect(explainError(message)).toMatchObject({ title: 'The models available right now are too small for this task', action: 'openKeys' });
+        expect(explainError(message)).toMatchObject({ title: 'Sorry, the models free right now are too small for this task', action: 'openKeys' });
     });
 });

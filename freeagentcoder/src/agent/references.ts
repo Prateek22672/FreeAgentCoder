@@ -1,4 +1,5 @@
 import { bestMatches } from '@agentic/core';
+import { BUILT_IN_DESIGNS, DOMAIN_BLUEPRINTS } from './domains';
 import type { RemoteReference } from './remoteConfig';
 
 /**
@@ -45,7 +46,7 @@ const API_BACKEND: Blueprint = {
     ],
 };
 
-export const BLUEPRINTS: Blueprint[] = [ASPNET_MVC, API_BACKEND];
+export const BLUEPRINTS: Blueprint[] = [ASPNET_MVC, API_BACKEND, ...DOMAIN_BLUEPRINTS];
 
 /** The blueprints that fit, best first; at most two, to keep every step cheap. */
 export function blueprintsFor(text: string): Blueprint[] {
@@ -120,7 +121,8 @@ export function matchLibrary(text: string, library: RemoteReference[] = []): Mat
         2,
     );
     const blueprints = remote.length ? remote : blueprintsFor(text);
-    const designs = wantsDesign(text) ? designFor(text, library.filter((r) => r.kind === 'design')) : [];
+    // The downloaded designs and the built-in ones compete on fit; the built-in ones mean there is always one.
+    const designs = wantsDesign(text) ? designFor(text, [...library.filter((r) => r.kind === 'design'), ...BUILT_IN_DESIGNS]) : [];
     return { blueprints, designs };
 }
 

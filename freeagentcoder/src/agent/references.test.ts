@@ -50,7 +50,27 @@ describe('the downloaded library', () => {
             { id: 'habits', kind: 'design' as const, name: 'Habit tracker mobile app', tags: ['react native', 'expo', 'mobile ui'], points: ['Thumb-reach bottom actions.'] },
         ];
         expect(referenceBlock('build a playground site for web ideas', '', designs)).toContain('learn from, not to copy');
-        expect(referenceBlock('make an android app to plan meals', '', designs)).toContain('Thumb-reach bottom actions.');
+        expect(referenceBlock('make an android app to plan meals', '', designs)).toMatch(/Thumb-reach bottom actions\.|Follow the platform/);
         expect(referenceBlock('make a todo website', '', designs)).not.toContain('Thumb-reach');
+    });
+});
+
+describe('built-in domain know-how', () => {
+    it('gives a landing page its sections and a design, with no library at all', () => {
+        const block = referenceBlock('build a playground site for web ideas with a get started button');
+        expect(block).toContain('Product or SaaS landing page');
+        expect(block).toContain('never a stock photo');
+        expect(block).toContain('learn from, not to copy');
+    });
+
+    it('fits the domain: a dashboard, a store, a game, a mobile app', () => {
+        expect(referenceBlock('create an analytics dashboard for sales')).toMatch(/Admin or analytics dashboard[\s\S]*data-dense dashboard/i);
+        expect(referenceBlock('build an online store for shoes with a cart')).toContain('Online store');
+        expect(referenceBlock('make a snake game in the browser')).toContain('Browser game');
+        expect(referenceBlock('build a react native expo app for habits')).toMatch(/Mobile app \(React Native with Expo\)[\s\S]*(Native-feeling|mobile)/);
+    });
+
+    it('stays out of small fixes', () => {
+        expect(referenceBlock('fix the typo in the footer')).toBe('');
     });
 });
