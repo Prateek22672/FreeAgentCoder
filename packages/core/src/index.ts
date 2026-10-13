@@ -62,4 +62,5 @@ export {
 } from './providers/router';
 
 export { estimateTokens, truncateMiddle, stripAnsi } from './util/text';
+export { hideSecrets, SECRET_MARKER } from './util/secrets';
 export { lineDiff, type DiffLine } from './util/diff';

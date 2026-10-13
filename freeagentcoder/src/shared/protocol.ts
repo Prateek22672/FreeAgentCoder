@@ -455,6 +455,7 @@ export type ToWebview =
     | { type: 'historyConsent' }
     /** The welcome card: share what the agent learns, or close it. */
     | { type: 'welcome' }
+    | { type: 'crocs' }
     | { type: 'logs'; entries: LogEntry[]; stats: LogStats }
     | { type: 'usage'; sessionTokens: number; contextTokens: number; contextLimit: number }
     | { type: 'reset' }

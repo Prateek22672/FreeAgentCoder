@@ -9,7 +9,7 @@ import { runCommandGraders, type CommandGrader } from './lab/graders';
 import { LabRecorder } from './lab/recorder';
 import * as path from 'node:path';
 import * as vscode from 'vscode';
-import { bestMatches, ModelRouter, PRESETS, tokenize, type SearchHit } from '@agentic/core';
+import { bestMatches, hideSecrets, ModelRouter, PRESETS, tokenize, type SearchHit } from '@agentic/core';
 import { configPath, detectShell, isGitRepo, loadConfig, loadProjectInstructions, repoMap, type AgenticConfig } from '@agentic/core/node';
 import { planFyx, type FyxContext, type FyxPlan } from './fyx/plan';
 import { FYX_MODEL, FyxProvider } from './fyx/provider';
@@ -712,14 +712,14 @@ export class Controller implements vscode.Disposable {
         const explaining = specialist?.id === 'explain';
         const overview = explaining && !test ? await this.projectOverview(cwd) : undefined;
         if (overview?.text) {
-            agentPrompt += `\n\n## The project's own overview (start of the file; read more only if needed)${overview.text}`;
+            agentPrompt += `\n\n## The project's own overview (start of the file; read more only if needed)${hideSecrets(overview.text)}`;
             notes.push(`Read ${overview.path} first, to explain from the project's own description`);
         }
 
         // Files the user @-mentioned go along with the request, so the agent need not spend a step reading them.
         const mentioned = test ? { text: '', included: [] as string[], names: [] as string[] } : await this.mentionedFiles(cwd, prompt);
         if (mentioned.text) {
-            agentPrompt += mentioned.text;
+            agentPrompt += hideSecrets(mentioned.text);
             notes.push(`Included the file${mentioned.names.length === 1 ? '' : 's'} you mentioned: ${mentioned.names.join(', ')}`);
         }
 
@@ -773,7 +773,7 @@ export class Controller implements vscode.Disposable {
                 if (reference) {
                     this.post({ type: 'notice', turnId, level: 'info', message: referenceNote(prompt, prepared.block, library) });
                 }
-                const withDocument = prepared.block ? `${base}\n\n${prepared.block}` : base;
+                const withDocument = prepared.block ? `${base}\n\n${hideSecrets(prepared.block)}` : base;
                 return { agentPrompt: reference ? `${withDocument}\n\n${reference}` : withDocument, images: prepared.images };
             };
         }
@@ -810,6 +810,12 @@ export class Controller implements vscode.Disposable {
      * files into the open folder, sends its prompts one after another, and
      * posts the numbers and the conversation back to the admin page.
      */
+    /** Opens the panel and the CROCS Security popup. */
+    async showCrocs(): Promise<void> {
+        await vscode.commands.executeCommand('freeagentcoder.open');
+        this.post({ type: 'crocs' });
+    }
+
     async runLabTask(): Promise<void> {
         const token = vscode.workspace.getConfiguration('freeagentcoder').get<string>('labToken', '').trim();
         if (!token) {

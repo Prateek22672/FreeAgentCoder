@@ -1,64 +1,80 @@
-# FreeAgentCoder — free AI coding agent for VS Code
+# FreeAgentCoder: free AI coding agent for VS Code (free Copilot alternative)
 
 [![Visual Studio Marketplace](https://img.shields.io/visual-studio-marketplace/v/PrateekKoratala.freeagentcoder?label=Marketplace&color=d97757)](https://marketplace.visualstudio.com/items?itemName=PrateekKoratala.freeagentcoder)
 [![License: MIT](https://img.shields.io/badge/license-MIT-2ea043)](https://github.com/Prateek22672/FreeAgentCoder-Codeloft/blob/main/LICENSE)
 [![Docs](https://img.shields.io/badge/docs-GitHub-6e7681)](https://github.com/Prateek22672/FreeAgentCoder-Codeloft)
 
-**An autonomous AI coding agent and chat that runs on your own free API keys.**
+**An AI coding agent that plans, edits, runs and tests your code, free, on your own free API keys.** No subscription, no account, open source.
 
-FreeAgentCoder plans, writes, runs and verifies code in your project. Add free API keys from Gemini, Groq, OpenRouter or Cohere, and it sends each request to the right model, switching to your next key whenever one hits its limit.
+FreeAgentCoder works inside VS Code like a developer at your side: it reads your project, makes a plan, edits the files, runs your build and tests, and fixes what fails before it says done. It runs on free keys from **Google Gemini, Groq, NVIDIA NIM, Mistral and OpenRouter** (or your own Claude or OpenAI key), switching keys and models whenever one hits its limit. Your first tasks run on a free trial with no key at all.
 
-It is a free alternative to paid AI coding assistants: no subscription, no per-seat fee and no usage metering of ours. The only limits are the free tiers of the keys you bring, and you can add as many keys as you like.
+- 🛡 **Private by design: CROCS Security.** Your chats stay on your computer, your keys stay in your OS keychain, and keys, tokens and passwords are masked before anything reaches a model.
+- ✅ **Done means checked.** Tests, type checks and builds run automatically; web pages are loaded in a hidden browser; nothing is called done on broken code.
+- ⚡ **Fyx saves your tokens.** Git, zip, installs and dev servers run on your machine with **no AI model and no tokens**.
+- 🧠 **Learns from your corrections.** Point out what's wrong once and it remembers.
+- 📄 **Builds from a requirements document.** Attach a PDF or Word spec and it delivers against every requirement.
 
-- **Free to use.** Runs on the free tiers of AI providers with your own keys. No account, no subscription.
-- **Fyx saves your tokens.** Everyday chores (zip a folder, run the project on localhost, git pull, push or commit, install packages, create or move files) are done on your machine by **Fyx**, our built-in task engine, without an AI model: they finish in seconds and use **no tokens**, so your free keys last for real work.
-- **A real agent.** Explores your project, makes a plan, edits files, runs your build and tests, and fixes what breaks.
-- **Every step visible.** A live plan, inline diffs, live terminal output, and one-click undo.
-- **Your keys stay on your device.** Encrypted in VS Code Secret Storage, never uploaded to FreeAgentCoder or anyone else, and sent only to the provider each key belongs to.
-- **Understands what you show it.** Paste screenshots, PDFs, Word, PowerPoint or Excel files, or long text.
-- **Takes corrections seriously.** Point at what's wrong and it fixes exactly that, then remembers the lesson.
+<p align="center"><img src="https://raw.githubusercontent.com/Prateek22672/FreeAgentCoder/main/freeagentcoder/media/screenshots/1-hero.png" alt="FreeAgentCoder in VS Code: a plan, a real file edit shown as a diff, and live status" width="100%"></p>
 
-## Screenshots
+## Get started in a minute
+
+1. **Install** FreeAgentCoder from the Marketplace.
+2. **Open** it from the FreeAgentCoder icon in the left bar (or the button at the top right of any editor).
+3. **Ask:** *"Build a pricing page"*, *"Fix this error"*, *"Explain how this project is structured"*.
+
+Your first tasks run on the **free trial**. For more, add free keys in Settings → API Keys, one from each provider (none asks for a card):
+[Google Gemini](https://aistudio.google.com/apikey) · [Groq](https://console.groq.com/keys) · [NVIDIA NIM](https://build.nvidia.com) · [OpenRouter](https://openrouter.ai/keys)
 
 <table>
   <tr>
-    <td width="50%"><img src="https://raw.githubusercontent.com/Prateek22672/FreeAgentCoder-Codeloft/main/media/screenshots/chat.png" alt="A task running: the plan, a file edit with its diff, and live status"></td>
-    <td width="50%"><img src="https://raw.githubusercontent.com/Prateek22672/FreeAgentCoder-Codeloft/main/media/screenshots/correction.png" alt="Correction mode: a pasted screenshot fixed point by point, with the lesson saved"></td>
+    <td width="50%"><img src="https://raw.githubusercontent.com/Prateek22672/FreeAgentCoder/main/freeagentcoder/media/screenshots/2-verified.png" alt="A finished task: tests and type check passed, files changed, undo and a thumbs up or down"></td>
+    <td width="50%"><img src="https://raw.githubusercontent.com/Prateek22672/FreeAgentCoder/main/freeagentcoder/media/screenshots/3-crocs-security.png" alt="CROCS Security: chats stay local, keys in the OS keychain, secrets hidden from the model"></td>
   </tr>
   <tr>
-    <td align="center"><b>Plans, edits and verifies</b> — every step visible</td>
-    <td align="center"><b>Point out a fix</b> — with a screenshot, and it remembers</td>
+    <td align="center"><b>Finished only when the tests pass</b></td>
+    <td align="center"><b>CROCS Security</b>: your code, your keys, your control</td>
   </tr>
   <tr>
-    <td width="50%"><img src="https://raw.githubusercontent.com/Prateek22672/FreeAgentCoder-Codeloft/main/media/screenshots/keys.png" alt="API keys: stored encrypted on your device, with usage and limits per key"></td>
-    <td width="50%"><img src="https://raw.githubusercontent.com/Prateek22672/FreeAgentCoder-Codeloft/main/media/screenshots/overview.png" alt="Overview: prompts left today, project status and feature switches"></td>
+    <td width="50%"><img src="https://raw.githubusercontent.com/Prateek22672/FreeAgentCoder/main/freeagentcoder/media/screenshots/4-free-keys.png" alt="API keys from Gemini, Groq and NVIDIA, encrypted, with usage per key and automatic fallback"></td>
+    <td width="50%"><img src="https://raw.githubusercontent.com/Prateek22672/FreeAgentCoder/main/freeagentcoder/media/screenshots/5-learns.png" alt="Settings, Learning: lessons from corrections, chores Fyx runs with no model, week-by-week progress"></td>
   </tr>
   <tr>
-    <td align="center"><b>Your keys stay on your device</b> — usage and limits per key</td>
-    <td align="center"><b>Prompts left today</b> — savings and every feature switch</td>
+    <td align="center"><b>Five free providers, one agent</b></td>
+    <td align="center"><b>Correct it once, it remembers</b></td>
   </tr>
   <tr>
-    <td colspan="2" align="center"><img src="https://raw.githubusercontent.com/Prateek22672/FreeAgentCoder-Codeloft/main/media/screenshots/health.png" width="50%" alt="Health: every job, the models serving it, and whether each key is working"></td>
-  </tr>
-  <tr>
-    <td colspan="2" align="center"><b>Health</b> — every job, the models serving it, and whether each key is working right now</td>
+    <td colspan="2" align="center"><img src="https://raw.githubusercontent.com/Prateek22672/FreeAgentCoder/main/freeagentcoder/media/screenshots/6-get-started.png" width="50%" alt="The welcome screen with suggested first tasks"></td>
   </tr>
 </table>
 
-## Quick start
+## Private by design: CROCS Security
 
-1. **Install.** A **Get started** guide opens by itself and shows you where everything is.
-2. **Find it, always on screen.** Click the **FreeAgentCoder icon on the left bar**, the **FreeAgentCoder button at the top right** of any editor (it opens the chat as a tab, which VS Code reopens after a restart), or **FreeAgentCoder** at the bottom right of the status bar.
-3. **Try it straight away.** With no key yet, your first tasks run on the **free trial**, a daily allowance on our keys.
-4. **Add free keys** when you want more. Settings → API Keys lists a direct link for each free provider. The best setup is **one key from each provider**:
-   - Google Gemini: https://aistudio.google.com/apikey
-   - Groq: https://console.groq.com/keys
-   - OpenRouter: https://openrouter.ai/keys
+**CROCS Security by FreeAgentCoder** is how we build it: keep your data on your computer, send a model only what a task needs, and make any sharing your choice. Open it any time from the 🛡 **CROCS** link at the bottom of the chat, or **FreeAgentCoder: CROCS Security** in the Command Palette.
 
-   None of these asks for a card. Optional extras: Mistral (only after choosing its free Experiment plan and verifying a phone number) and Cohere (1,000 calls a month, personal use only). Every key is checked with a real request when you add it, and a key that needs billing is refused with the reason.
+- **Local-first.** Chats (if you choose to save them), settings, lessons and the error log are stored by VS Code on your computer. No account, and no FreeAgentCoder server keeps your work.
+- **Keys in your keychain.** API keys live in VS Code Secret Storage (Windows Credential Manager, macOS Keychain or Linux Secret Service), never in files or logs.
+- **Only what the task needs.** A model sees your request and the files the agent opens for it, not your whole workspace.
+- **Secrets hidden from the model.** API keys, tokens, passwords, connection-string passwords and private keys found in files, command output and attachments are replaced with `[secret hidden by CROCS]` before they are sent. Your files keep the real values, and an edit that would overwrite one is refused.
+- **Encrypted connections.** Requests go over HTTPS straight from VS Code to the provider of the key in use.
+- **Sharing is optional.** Help make it smarter for everyone by sharing what it learns (general lessons and how tasks went, never code, files, prompts or keys), or don't: everything works the same. Change it any time in Settings → Learning.
 
-   **One key per account.** A second key from the same account shares that account's limits, so it adds nothing; add a different provider instead. Provider terms don't allow making extra accounts to get around limits.
-5. **Ask.** Open a project folder and describe what you want, for example *"Explain how this project is structured and how to run it."* Or click **Test my project**.
+CROCS Security is our own approach, not an external certification. Secret masking catches common formats and can miss unusual ones, and providers process what they receive under their own terms (some free tiers may use requests to improve their models). Details below, under [Privacy](#privacy).
+
+## Free GitHub Copilot, Cursor and Claude Code alternative
+
+Copilot, Cursor and Claude Code are excellent and paid. FreeAgentCoder gives you the same agent workflow (plan, edit across files, run commands, test, fix) inside the VS Code you already use, on free keys: no per-seat fee and no usage metering of ours. Bring a Claude or OpenAI key if you have one and it is used alongside the free ones.
+
+## Gemini Code Assist and Antigravity alternative
+
+Already have a free Gemini key? Paste it in and FreeAgentCoder uses every Gemini Flash model on it (3.8, 3.7, 3.6, 3.5 and 2.5), each with its own free daily limit, with no sign-in, licence or separate app.
+
+## Cline, Roo Code, Kilo Code and Continue alternative
+
+Same open-source spirit, built to stay out of your way on free tiers: it warns *before* a task when today's limits look too small, switches to your next key or model when one runs out, stops a loop that repeats the same error instead of burning tokens, and tells you plainly why it stopped. No surprise bills: there is nothing to bill.
+
+## Fix with FreeAgentCoder: fixes the errors your editor reports
+
+Every error in the Problems panel gets a **Fix with FreeAgentCoder** quick fix, and each edit the agent makes comes back with the new type, lint and syntax errors in that file, so they are fixed on the spot.
 
 ## What you can ask it to do
 
@@ -189,11 +205,15 @@ Free-tier limits change often, so check each provider's site. Keys you already h
 - **FreeAgentCoder: Stop Current Task**
 - **FreeAgentCoder: Test My Project**
 - **FreeAgentCoder: Get Started**: reopens the setup guide
+- **FreeAgentCoder: CROCS Security: How Your Data Is Protected**: what stays on your computer, what reaches a provider, and your sharing choice
 
 In the chat box, **Enter** sends, **Shift+Enter** adds a new line, **Esc** stops the current task, and **↑** brings back your last prompt.
 
 ## Privacy
 
+This is the detail behind [CROCS Security](#private-by-design-crocs-security).
+
+- **Secrets are masked before they leave.** API keys (Google, OpenAI, Anthropic, Groq, NVIDIA, OpenRouter, GitHub, GitLab, Slack, Stripe, Hugging Face, AWS access key ids), JWTs, private key blocks, passwords inside connection strings, and literal values of settings named like `PASSWORD`, `SECRET`, `TOKEN` or `API_KEY` are replaced with `[secret hidden by CROCS]` in file contents, command output, mentioned files and attachments before they are sent to any model. The files themselves are not changed, and an edit that would write the placeholder over a real secret is refused. This catches common formats, not every possible one.
 - **Your API keys stay on your device.** They're stored encrypted in VS Code's Secret Storage (your operating system's keychain: Windows Credential Manager, macOS Keychain or Linux Secret Service), are never uploaded to FreeAgentCoder or anyone else, and are sent only to the provider each key belongs to when you run a task. They're never shown again after you save them.
 - No account and no sign-up. With your own keys, nothing goes through a FreeAgentCoder server.
 - Attachments are saved in your project's `.freeagentcoder/` folder, which is git-ignored automatically. Lessons learned from your corrections are stored on this computer only, and you can review or delete them in Settings → Learning.
@@ -202,7 +222,7 @@ In the chat box, **Enter** sends, **Shift+Enter** adds a new line, **Esc** stops
 - Chat history is saved only if you agree, and only on your computer. Turn it off or delete saved chats any time in Settings → History.
 - Errors are logged locally in Settings → Logs. **Copy diagnostics** removes API keys, tokens and your username from paths before copying.
 - Reading images on this computer downloads the reader once (about 6 MB) from a public CDN, and checks it against a fixed checksum before running it. Your image is never part of that: it is read on your machine and never uploaded.
-- **Nothing is collected unless you say yes.** After a few tasks FreeAgentCoder asks, once, whether it may send anonymous counts: how many keys you have and which providers, how many tasks ran and how they ended, short causes for failures such as `gemini:daily-limit`, and, to measure quality, how many tasks you then corrected, how many changed code and passed a check afterwards, and how many model requests and tokens they used. Never your code, prompts, file or project names, keys, or anything identifying you or your machine. It is off until you agree, the question is never asked if you have turned telemetry off in VS Code, and **FreeAgentCoder: Anonymous Usage Data** shows the exact text that would be sent and lets you stop at any time.
+- **Nothing is collected unless you say yes.** The welcome screen asks once. **OK, start using the agent** turns sharing on; **Close** leaves it off, and the question is never asked if you have turned telemetry off in VS Code. With sharing on, FreeAgentCoder sends anonymous counts (how many keys you have and which providers, how many tasks ran and how they ended, short causes for failures such as `gemini:daily-limit`, requests and tokens used) and what it learns: general lessons from your corrections, recurring error patterns, Fyx chore patterns with names replaced by placeholders, and your 👍 / 👎 with the reasons you pick. Names, paths and secrets are removed on your computer first, and lessons are reviewed before they are shared with other users. Never your code, prompts, file or project names, keys, or anything identifying you or your machine. **See exactly what is sent** (in the welcome card, CROCS Security and Settings → Learning) shows the queue, and Settings → Learning turns sharing off at any time.
 - Once a day the extension fetches updated **specialist instructions** — how debugging, building, design and other kinds of work are approached — from the project's site. The same plain download also says which version is newest, so you get one small note when an update is out. It sends nothing about you or your project. Turn off the instructions with the `freeagentcoder.specialistUpdates` setting.
 - The **Plans** page asks the project's site whether a paid tier exists, only when you open it.
 - FreeAgentCoder has no account system and no server that holds your work.

@@ -1,3 +1,4 @@
+import { hideSecrets, writesHiddenSecret, SECRET_MARKER } from '../util/secrets';
 import { ProviderError } from '../providers/errors';
 import { ContextTooLargeError, estimateRequestTokens, type ModelRouter } from '../providers/router';
 import { validateArgs } from '../tools/schema';
@@ -491,7 +492,8 @@ export class Agent {
           role: 'tool',
           toolCallId: call.id,
           name: call.name,
-          content: truncateMiddle(result.content, MAX_RESULT_CHARS),
+          // CROCS: keys, tokens and passwords in files and output never reach the model.
+          content: hideSecrets(truncateMiddle(result.content, MAX_RESULT_CHARS)),
           ...(result.isError ? { isError: true } : {}),
         });
       }
@@ -599,6 +601,16 @@ export class Agent {
     if (errors.length) {
       yield { type: 'tool_start', call, label: call.name };
       return yield* finish(call.name, toolError(`Invalid arguments for ${call.name}: ${errors.join('; ')}.`));
+    }
+
+    if (writesHiddenSecret(args as Record<string, unknown>)) {
+      yield { type: 'tool_start', call, label: call.name };
+      return yield* finish(
+        call.name,
+        toolError(
+          `That text contains ${SECRET_MARKER}, which stands for a real secret you cannot see. Writing it would replace the secret. Leave the lines with secrets unchanged: edit only the other lines (edit_file with start_line and end_line), or ask the user to set the value.`,
+        ),
+      );
     }
 
     let label = call.name;

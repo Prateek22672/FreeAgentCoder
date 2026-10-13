@@ -2,6 +2,7 @@ import './styles.css';
 import { mentionAtCaret } from '../../agent/mentions';
 import { compactNumber } from '../../shared/format';
 import type { AttachmentInput, PermissionMode, SettingsSection, SettingsView, ToWebview } from '../../shared/protocol';
+import { crocsLine, crocsLink, openCrocs, setCrocsSharing } from './crocs';
 import { button, fill, h, iconButton, send } from './dom';
 import { icon, type IconName } from './icons';
 import { freeKeysCard, SettingsPanel, setupGuide } from './settings';
@@ -129,7 +130,7 @@ function shareCard(): HTMLElement {
             h('p', {
                 text: 'When you correct it or a task fails, the lesson (never your code, files or prompts) helps the agent avoid that mistake for every user. Shared lessons come back to you too, so your next tasks go better.',
             }),
-            h('p', { class: 'muted small' }, icon('lock'), ' Stripped of names, paths and secrets before it leaves your computer. ', see),
+            h('p', { class: 'muted small' }, icon('lock'), ' Stripped of names, paths and secrets before it leaves your computer. ', see, ' · ', crocsLink('How CROCS Security protects you')),
             h('div', { class: 'share-actions' }, button('OK, start using the agent', 'primary', () => choose(true), 'check'), close),
             h('p', { class: 'muted small', text: 'Sharing starts only if you choose OK. Change it any time in Settings → Learning.' }),
         ),
@@ -143,6 +144,7 @@ function renderWelcome(): void {
         h('div', { class: 'welcome-mark' }, icon('mark')),
         h('h1', { text: 'FreeAgentCoder' }),
         h('p', { class: 'welcome-sub', text: 'Plans, writes, runs and verifies code in your project using free AI models.' }),
+        welcomeCard ? null : crocsLine(),
         welcomeCard ? shareCard() : null,
         !hasWorkspace
             ? h(
@@ -158,7 +160,7 @@ function renderWelcome(): void {
                   settingsPanel.addKey(provider);
               })
             : null,
-        needsKey ? h('p', { class: 'welcome-note' }, icon('lock'), 'Keys stay on this device, encrypted in VS Code Secret Storage.') : null,
+        needsKey ? h('p', { class: 'welcome-note' }, icon('lock'), 'Keys stay on this device, encrypted in VS Code Secret Storage. ', crocsLink()) : null,
         needsKey ? freeKeysCard() : null,
         h(
             'div',
@@ -272,6 +274,9 @@ function renderFoot(): void {
             }),
         );
     }
+    const shield = h('button', { class: 'foot-link foot-crocs', title: 'CROCS Security: chats stay on this computer, secrets are hidden from the model. Learn more.', attrs: { type: 'button' } }, icon('shield'), 'CROCS');
+    shield.addEventListener('click', () => openCrocs());
+    parts.push(shield);
     foot.replaceChildren(...parts);
 }
 
@@ -712,6 +717,7 @@ function applySettings(): void {
     if (!settings) {
         return;
     }
+    setCrocsSharing(settings.overview.learning.sharing);
     settingsPanel.update(settings);
     renderComposer();
     renderBanner();
@@ -807,6 +813,9 @@ window.addEventListener('message', (event: MessageEvent<ToWebview>) => {
         case 'welcome':
             welcomeCard = true;
             renderWelcome();
+            break;
+        case 'crocs':
+            openCrocs();
             break;
         case 'showSettings':
             openSettings(message.section);

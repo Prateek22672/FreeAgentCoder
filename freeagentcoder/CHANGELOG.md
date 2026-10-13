@@ -4,6 +4,7 @@
 
 ### Added
 
+- **CROCS Security by FreeAgentCoder.** Keys, tokens, passwords and private keys in files, command output and attachments are now masked before anything is sent to a model; the real values stay in your files, and an edit that would overwrite one is refused. A new **Learn more** popup (the 🛡 CROCS link under the chat, or **FreeAgentCoder: CROCS Security** in the Command Palette) explains in plain words what stays on your computer, what reaches the AI provider you chose, and your sharing choice, with the switch right there.
 - **Learning shared across users, if you choose.** A card on the welcome screen asks once. "OK, start using the agent" turns sharing on; "Close" leaves it off. When it is on, the general lessons from your corrections, errors that keep coming back, how each task ended, and Fyx chores you taught (as patterns, with names replaced) are sent. Your code, files and prompts never are. Names, paths and secrets are stripped on your computer first, and "See exactly what is sent" shows the queue. Change it any time in Settings → Learning.
 - **Lessons from other users.** Rules learned from other users' corrections, reviewed before they ship, come back in the daily download. Up to three that fit your request and project are added to it, so a mistake fixed once is avoided everywhere.
 - **Models ranked by real results.** Once there are enough finished tasks, providers that succeed most often for each kind of task are tried first. The free router and the trial still come last.

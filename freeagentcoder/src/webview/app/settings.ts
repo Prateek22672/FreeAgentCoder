@@ -18,6 +18,7 @@ import type {
     ToWebview,
     UsageCounts,
 } from '../../shared/protocol';
+import { crocsLine, crocsLink } from './crocs';
 import { button, h, handleContentClick, iconButton, send } from './dom';
 import { icon, type IconName } from './icons';
 
@@ -179,8 +180,9 @@ function trustCard(): HTMLElement {
             {},
             h('strong', { text: 'Your API keys stay on this device' }),
             h('span', {
-                text: "They're stored encrypted in VS Code Secret Storage (your operating system's keychain), never uploaded to FreeAgentCoder or anyone else, and sent only to the provider each key belongs to when you run a task.",
+                text: "They're stored encrypted in VS Code Secret Storage (your operating system's keychain), never uploaded to FreeAgentCoder or anyone else, and sent only to the provider each key belongs to when you run a task. ",
             }),
+            crocsLink(),
         ),
     );
 }
@@ -1369,6 +1371,7 @@ export class SettingsPanel {
                       (on) => send({ type: 'setSharing', on }),
                   ),
             ...(learning.sharing === 'blocked' ? [] : [h('p', { class: 'small' }, sharingNote)]),
+            crocsLine('Optional and never forced: you can change this any time, and everything works the same without it.', 'left'),
             h(
                 'div',
                 { class: 'tiles' },
