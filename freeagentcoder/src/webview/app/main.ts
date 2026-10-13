@@ -79,11 +79,27 @@ const composer = h(
     h('div', { class: 'composer-bar' }, attachButton, modeButton, modelButton, h('span', { class: 'spacer' }), sendButton),
     fileInput,
 );
+/** The ring of colour that sweeps once around the box when a prompt is sent. */
+const sendGlow = h('div', { class: 'send-glow', attrs: { 'aria-hidden': 'true' } });
+sendGlow.addEventListener('animationend', () => sendGlow.classList.remove('go'));
+function playSendGlow(): void {
+    // Start the sweep at the send button, wherever the box's shape puts it.
+    const box = sendGlow.getBoundingClientRect();
+    const target = sendButton.getBoundingClientRect();
+    if (box.width && target.width) {
+        const dx = target.left + target.width / 2 - (box.left + box.width / 2);
+        const dy = target.top + target.height / 2 - (box.top + box.height / 2);
+        sendGlow.style.setProperty('--start', `${(Math.atan2(dx, -dy) * 180) / Math.PI}deg`);
+    }
+    sendGlow.classList.remove('go');
+    void sendGlow.offsetWidth; // restart the animation when prompts are sent in quick succession
+    sendGlow.classList.add('go');
+}
 const foot = h('div', { class: 'composer-foot' });
 const toast = h('div', { class: 'toast', hidden: true, attrs: { role: 'status' } });
 
 const settingsPanel = new SettingsPanel({ close: closeSettings, toast: showToast });
-app.append(h('div', { class: 'chat' }, header, banner, scroller, h('div', { class: 'composer-wrap' }, composer, foot)), settingsPanel.el, toast);
+app.append(h('div', { class: 'chat' }, header, banner, scroller, h('div', { class: 'composer-wrap' }, h('div', { class: 'composer-shell' }, sendGlow, composer), foot)), settingsPanel.el, toast);
 
 function openSettings(section?: SettingsSection): void {
     closeMenu();
@@ -660,6 +676,7 @@ function submit(): void {
     }
     lastPrompt = text;
     send({ type: 'send', text, attachments: attachments.length ? attachments : undefined, correction: correctionMode || undefined });
+    playSendGlow();
     input.value = '';
     attachments = [];
     correctionMode = false;

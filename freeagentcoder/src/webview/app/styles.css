@@ -433,7 +433,8 @@ select.input { background: var(--vscode-dropdown-background, var(--vscode-input-
 
 /* Composer */
 .composer-wrap { padding: 8px 10px; border-top: 1px solid var(--border-soft); }
-.composer { position: relative; border: 1px solid var(--vscode-input-border, var(--border)); border-radius: 10px; background: var(--vscode-input-background); }
+.composer-shell { position: relative; }
+.composer { z-index: 1; position: relative; border: 1px solid var(--vscode-input-border, var(--border)); border-radius: 10px; background: var(--vscode-input-background); }
 .composer:focus-within { border-color: var(--focus); }
 .composer-input {
     display: block;
@@ -966,3 +967,28 @@ select.input { background: var(--vscode-dropdown-background, var(--vscode-input-
 .crocs-foot { margin-top: 12px !important; font-size: 11px; color: var(--muted); }
 .crocs-foot a { color: var(--accent); }
 .crocs-actions { display: flex; justify-content: flex-end; margin-top: 8px; }
+
+/* Send glow: a ring of colour sweeps once around the box, starting at the send button, then fades. */
+@property --sweep { syntax: '<angle>'; inherits: true; initial-value: 0deg; }
+.send-glow { position: absolute; inset: -2px; border-radius: 12px; pointer-events: none; opacity: 0; --sweep: 0deg; }
+.send-glow::before,
+.send-glow::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    background: conic-gradient(from var(--start, 100deg), #d97757, #f4b740, #4f8cff, #8b6cf6, #e2677f, #d97757);
+    -webkit-mask: conic-gradient(from var(--start, 100deg), #000 var(--sweep), transparent var(--sweep));
+    mask: conic-gradient(from var(--start, 100deg), #000 var(--sweep), transparent var(--sweep));
+}
+.send-glow::after { inset: -3px; filter: blur(9px); opacity: 0.75; }
+.send-glow.go { animation: send-sweep 1.25s cubic-bezier(0.45, 0, 0.2, 1) forwards; }
+@keyframes send-sweep {
+    0% { --sweep: 0deg; opacity: 1; }
+    62% { --sweep: 360deg; opacity: 1; }
+    100% { --sweep: 360deg; opacity: 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+    .send-glow.go { animation: send-fade 0.6s ease-out forwards; --sweep: 360deg; }
+    @keyframes send-fade { 0% { opacity: 0.8; } 100% { opacity: 0; } }
+}
