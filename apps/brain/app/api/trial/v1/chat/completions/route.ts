@@ -1,6 +1,6 @@
 import { poolTargets, recordPoolCall, restPoolKey, restSeconds, type PoolTarget } from '@/lib/keypool';
 import { MODELS, plan } from '@/lib/trialPlan';
-import { addressFrom, allowance, charge, installFrom, note, readExtTrialSettings } from '@/lib/extTrial';
+import { addressFrom, allowance, charge, installFrom, note, readExtTrialSettings, TOKENS_PER_REQUEST } from '@/lib/extTrial';
 
 export const runtime = 'nodejs';
 export const maxDuration = 60;
@@ -109,7 +109,18 @@ export async function POST(request: Request): Promise<Response> {
                 headers: { 'content-type': 'application/json' },
             });
         }
-        return relay(upstream.body, { install, address, provider: target.provider, id: target.id, promptTokens: size, left: allowed.requestsLeft - 1, limit: allowed.limit });
+        // From the bonus, the limit headers describe what is left of it, so the extension does not set the trial aside as spent.
+        const bonusRequests = allowed.fromBonus ? Math.ceil((allowed.bonusLeft ?? 0) / TOKENS_PER_REQUEST) : 0;
+        return relay(upstream.body, {
+            install,
+            address,
+            provider: target.provider,
+            id: target.id,
+            promptTokens: size,
+            left: allowed.fromBonus ? bonusRequests - 1 : allowed.requestsLeft - 1,
+            limit: allowed.fromBonus ? Math.max(1, Math.ceil(settings.bonusTokens / TOKENS_PER_REQUEST)) : allowed.limit,
+            fromBonus: allowed.fromBonus,
+        });
     }
 
     void note('failed', install);
@@ -124,7 +135,7 @@ export async function POST(request: Request): Promise<Response> {
 /** Streams the answer through unchanged, reading the token count on the way, and charges the install when it ends. */
 function relay(
     stream: ReadableStream<Uint8Array>,
-    ctx: { install: string; address: string; provider: string; id: string; promptTokens: number; left: number; limit: number },
+    ctx: { install: string; address: string; provider: string; id: string; promptTokens: number; left: number; limit: number; fromBonus?: boolean },
 ): Response {
     const decoder = new TextDecoder();
     let tail = '';
@@ -135,7 +146,7 @@ function relay(
         if (settled) return;
         settled = true;
         void recordPoolCall(ctx.id, ok);
-        if (ok) void charge(ctx.install, ctx.address, reported || ctx.promptTokens + Math.ceil(chars / 4), ctx.provider);
+        if (ok) void charge(ctx.install, ctx.address, reported || ctx.promptTokens + Math.ceil(chars / 4), ctx.provider, ctx.fromBonus);
         else void note('failed', ctx.install);
     };
     const counted = stream.pipeThrough(

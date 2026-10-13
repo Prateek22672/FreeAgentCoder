@@ -454,7 +454,8 @@ export type ToWebview =
     | { type: 'history'; mode: HistoryMode; chats: ChatSummary[]; currentId: string }
     | { type: 'historyConsent' }
     /** The welcome card: share what the agent learns, or close it. */
-    | { type: 'welcome' }
+    | { type: 'welcome'; update: boolean; version: string; sharing: LearningView['sharing']; bonus: { offered: number; claimed: boolean; left: number } }
+    | { type: 'bonus'; ok: boolean; tokens: number; reason?: string }
     | { type: 'crocs' }
     | { type: 'logs'; entries: LogEntry[]; stats: LogStats }
     | { type: 'usage'; sessionTokens: number; contextTokens: number; contextLimit: number }
@@ -509,6 +510,7 @@ export type FromWebview =
     | { type: 'deleteLesson'; id: string }
     | { type: 'forgetShortcut'; prompt: string }
     | { type: 'welcomeChoice'; share: boolean }
+    | { type: 'claimBonus' }
     | { type: 'setSharing'; on: boolean }
     | { type: 'showShared' }
     | { type: 'rate'; turnId: string; good: boolean; reasons: string[] };

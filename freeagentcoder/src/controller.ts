@@ -313,9 +313,7 @@ export class Controller implements vscode.Disposable {
     private async dispatch(message: FromWebview): Promise<void> {
         switch (message.type) {
             case 'ready': {
-                if (this.telemetry.needsWelcome()) {
-                    this.sink?.post({ type: 'welcome' });
-                }
+                void this.maybeWelcome();
                 // Snapshot synchronously so live events can't be replayed twice.
                 const replay = [...this.transcript];
                 for (const event of replay) {
@@ -406,9 +404,17 @@ export class Controller implements vscode.Disposable {
                 return;
             }
             case 'welcomeChoice':
-                await this.telemetry.decide(message.share === true);
+                await this.context.globalState.update(WELCOME_SEEN, WELCOME_VERSION);
+                if (this.telemetry.state !== 'blocked') {
+                    await this.telemetry.decide(message.share === true);
+                }
                 this.scheduleSettings(true);
                 return;
+            case 'claimBonus': {
+                const result = await this.claimBonus();
+                this.post({ type: 'bonus', ...result });
+                return;
+            }
             case 'setSharing':
                 await this.telemetry.decide(message.on === true);
                 this.toast(message.on ? 'Thanks: what FreeAgentCoder learns now helps every user, and theirs helps you.' : 'Sharing is off. Nothing more is sent.', 'info');
@@ -1748,10 +1754,56 @@ export class Controller implements vscode.Disposable {
             }
         }
         // No key of their own yet: the free trial, so the first task works straight away.
-        if (!result.length && vscode.workspace.getConfiguration('freeagentcoder').get<boolean>('freeTrial', true) && !this.usage.invalidReason(TRIAL_PROVIDER)) {
-            result.push({ id: TRIAL_PROVIDER, provider: TRIAL_PROVIDER, label: 'FreeAgentCoder free trial', secret: `fact_${this.trialId()}` });
+        // With keys of their own and a claimed bonus, the trial stays last in line: it carries a task on when every key is spent.
+        const trialOn = vscode.workspace.getConfiguration('freeagentcoder').get<boolean>('freeTrial', true) && !this.usage.invalidReason(TRIAL_PROVIDER);
+        if (trialOn && (!result.length || this.context.globalState.get<boolean>(BONUS_CLAIMED))) {
+            result.push({ id: TRIAL_PROVIDER, provider: TRIAL_PROVIDER, label: result.length ? 'FreeAgentCoder bonus' : 'FreeAgentCoder free trial', secret: `fact_${this.trialId()}` });
         }
         return result;
+    }
+
+    /**
+     * The welcome card: on a fresh install, and once after a release that has
+     * one, so everyone sees what changed, the sharing choice and the bonus.
+     */
+    private async maybeWelcome(): Promise<void> {
+        const seen = this.context.globalState.get<string>(WELCOME_SEEN);
+        if (seen === WELCOME_VERSION) {
+            return;
+        }
+        const bonus = await this.bonusStatus();
+        this.sink?.post({
+            type: 'welcome',
+            update: seen !== undefined || this.context.globalState.get<string>('freeagentcoder.trialId') !== undefined || !this.telemetry.needsWelcome(),
+            version: WELCOME_VERSION,
+            sharing: this.telemetry.state,
+            bonus,
+        });
+    }
+
+    private async bonusStatus(): Promise<{ offered: number; claimed: boolean; left: number }> {
+        const claimed = this.context.globalState.get<boolean>(BONUS_CLAIMED) === true;
+        try {
+            const response = await fetch(`${SITE_URL}/api/trial/claim`, { headers: { authorization: `Bearer fact_${this.trialId()}` }, signal: AbortSignal.timeout(6_000) });
+            const body = (await response.json()) as { tokens?: number; offered?: number };
+            return { offered: Number(body.offered) || 0, claimed, left: Number(body.tokens) || 0 };
+        } catch {
+            return { offered: 0, claimed, left: 0 };
+        }
+    }
+
+    private async claimBonus(): Promise<{ ok: boolean; tokens: number; reason?: string }> {
+        try {
+            const response = await fetch(`${SITE_URL}/api/trial/claim`, { method: 'POST', headers: { authorization: `Bearer fact_${this.trialId()}` }, signal: AbortSignal.timeout(10_000) });
+            const body = (await response.json()) as { ok?: boolean; tokens?: number; reason?: string };
+            if (body.ok) {
+                await this.context.globalState.update(BONUS_CLAIMED, true);
+                this.scheduleSettings(true);
+            }
+            return { ok: body.ok === true, tokens: Number(body.tokens) || 0, reason: body.reason };
+        } catch (error) {
+            return { ok: false, tokens: 0, reason: `Could not reach FreeAgentCoder: ${errorMessage(error)}. Try again in a moment.` };
+        }
     }
 
     /** A random id for the free trial alone, so its daily allowance can be counted. Not linked to anything else. */
@@ -2152,6 +2204,10 @@ function referenceNote(prompt: string, documentText: string, library: RemoteRefe
 
 /** The part of a project overview sent with an "explain" request: about 1,500 tokens. */
 const OVERVIEW_CHARS = 6_000;
+/** The release whose welcome card is shown once; bump it when a release has news worth a card. */
+const WELCOME_VERSION = '0.6.1';
+const WELCOME_SEEN = 'freeagentcoder.welcomeSeen';
+const BONUS_CLAIMED = 'freeagentcoder.bonusClaimed';
 /** The main code files sent with an explain request: about 3K tokens in all, 1K at most per file. */
 const MAIN_FILES_CHARS = 12_000;
 const MAIN_FILE_CHARS = 4_000;

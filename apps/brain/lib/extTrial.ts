@@ -29,6 +29,10 @@ export interface ExtTrialSettings {
     requestsPerAddress: number;
     /** Model requests for everyone together per day. */
     dailyCap: number;
+    /** The one-time welcome bonus, in tokens: used when the daily allowance or the user's own keys run out. 0 turns it off. */
+    bonusTokens: number;
+    /** Bonuses handed out across everyone per day, so a wave of fresh installs cannot drain the pool. */
+    bonusesPerDay: number;
 }
 
 export const DEFAULT_EXT_TRIAL: ExtTrialSettings = {
@@ -38,6 +42,8 @@ export const DEFAULT_EXT_TRIAL: ExtTrialSettings = {
     tokensPerInstall: 260_000,
     requestsPerAddress: 78,
     dailyCap: 975,
+    bonusTokens: 300_000,
+    bonusesPerDay: 300,
 };
 
 const SETTINGS = 'pb:exttrial:settings';
@@ -62,7 +68,14 @@ export async function readExtTrialSettings(): Promise<ExtTrialSettings> {
 export async function writeExtTrialSettings(input: ExtTrialSettings): Promise<string | undefined> {
     if (settingsNeedStore) return 'Not saved: this deployment has no storage connected.';
     const whole = (n: number, max: number) => Number.isFinite(n) && n >= 0 && n <= max;
-    if (!whole(input.requestsPerInstall, 10_000) || !whole(input.requestsPerAddress, 100_000) || !whole(input.dailyCap, 1_000_000) || !whole(input.tokensPerInstall, 100_000_000)) {
+    if (
+        !whole(input.requestsPerInstall, 10_000) ||
+        !whole(input.requestsPerAddress, 100_000) ||
+        !whole(input.dailyCap, 1_000_000) ||
+        !whole(input.tokensPerInstall, 100_000_000) ||
+        !whole(input.bonusTokens, 10_000_000) ||
+        !whole(input.bonusesPerDay, 100_000)
+    ) {
         return 'Each limit must be a whole number, zero or more.';
     }
     const clean: ExtTrialSettings = {
@@ -71,6 +84,8 @@ export async function writeExtTrialSettings(input: ExtTrialSettings): Promise<st
         tokensPerInstall: Math.round(input.tokensPerInstall),
         requestsPerAddress: Math.round(input.requestsPerAddress),
         dailyCap: Math.round(input.dailyCap),
+        bonusTokens: Math.round(input.bonusTokens),
+        bonusesPerDay: Math.round(input.bonusesPerDay),
     };
     await store.put(SETTINGS, JSON.stringify(clean), TEN_YEARS);
     return undefined;
@@ -95,6 +110,43 @@ export interface Allowance {
     requestsLeft: number;
     tokensLeft: number;
     limit: number;
+    /** Served from the welcome bonus: the daily allowance is spent (or the user's own keys are). */
+    fromBonus?: boolean;
+    bonusLeft?: number;
+}
+
+const bonusKey = (install: string) => `pb:exttrial:bonus:${hashOf(install)}`;
+const BONUS_TTL = 180 * 24 * 60 * 60;
+/** About how many tokens one agent request uses, to show a bonus as requests. */
+export const TOKENS_PER_REQUEST = 8_000;
+
+export async function bonusLeft(install: string): Promise<number> {
+    const b = await store.counts(bonusKey(install));
+    return Math.max(0, (b.t ?? 0) - (b.used ?? 0));
+}
+
+/**
+ * The one-time welcome bonus. One per install, one per network address in 30
+ * days (so reinstalling does not mint more), and a cap on how many are given
+ * out each day. Claiming it is never tied to sharing anything.
+ */
+export async function claimBonus(install: string, address: string, settings: ExtTrialSettings): Promise<{ ok: boolean; tokens: number; reason?: string }> {
+    if (!settings.enabled || settings.bonusTokens <= 0) return { ok: false, tokens: 0, reason: 'The welcome bonus is not available right now.' };
+    const left = await bonusLeft(install);
+    const who = hashOf(install);
+    if (!(await store.firstIn(`pb:exttrial:bonusclaimed:${who}`, BONUS_TTL))) {
+        return left > 0 ? { ok: true, tokens: left } : { ok: false, tokens: 0, reason: 'This install has already used its welcome bonus.' };
+    }
+    const day = today();
+    const given = await store.counts(`pb:exttrial:day:${day}`);
+    if ((given.bonuses ?? 0) >= settings.bonusesPerDay) {
+        return { ok: false, tokens: 0, reason: 'Today\u2019s welcome bonuses are all claimed. Try again tomorrow.' };
+    }
+    if (!(await store.firstIn(`pb:exttrial:bonusaddr:${address}`, 30 * 24 * 60 * 60))) {
+        return { ok: false, tokens: 0, reason: 'A welcome bonus was already claimed on this network recently.' };
+    }
+    await Promise.all([store.addCounts(bonusKey(install), { t: settings.bonusTokens }, BONUS_TTL), store.addCounts(`pb:exttrial:day:${day}`, { bonuses: 1 }, DAY_TTL)]);
+    return { ok: true, tokens: settings.bonusTokens };
 }
 
 const resetNote = 'It resets at 00:00 UTC. Add your own free Gemini or Groq key in Settings → API Keys to keep going now.';
@@ -111,6 +163,14 @@ export async function allowance(install: string, address: string, settings: ExtT
     const tokensLeft = Math.max(0, settings.tokensPerInstall - (mine.t ?? 0));
     const base = { requestsLeft, tokensLeft, limit: settings.requestsPerInstall };
     if (!settings.enabled) return { ...base, ok: false, code: 'trial_off', reason: 'The FreeAgentCoder free trial is switched off. Add your own free key in Settings → API Keys.' };
+    if ((all.requests ?? 0) >= settings.dailyCap) {
+        return { ...base, ok: false, code: 'trial_closed', reason: `FreeAgentCoder free trial: the shared allowance per day is used up for everyone today. ${resetNote}` };
+    }
+    // The daily allowance is spent (or this install has its own keys and they are): the welcome bonus carries on.
+    if (requestsLeft <= 0 || tokensLeft <= 0 || (net.r ?? 0) >= settings.requestsPerAddress) {
+        const bonus = settings.bonusTokens > 0 ? await bonusLeft(install) : 0;
+        if (bonus > 0) return { ...base, ok: true, fromBonus: true, bonusLeft: bonus };
+    }
     if (requestsLeft <= 0 || tokensLeft <= 0) {
         return { ...base, ok: false, code: 'trial_daily_limit', reason: `FreeAgentCoder free trial: today's allowance per day is used up. ${resetNote}` };
     }
@@ -124,11 +184,13 @@ export async function allowance(install: string, address: string, settings: ExtT
 }
 
 /** Counts one answered request against the install, the address and the day. */
-export async function charge(install: string, address: string, tokens: number, provider: string): Promise<void> {
+export async function charge(install: string, address: string, tokens: number, provider: string, fromBonus = false): Promise<void> {
     const day = today();
     const who = hashOf(install);
     await Promise.all([
-        store.addCounts(`pb:exttrial:i:${day}:${who}`, { r: 1, t: tokens }, ONE_DAY),
+        fromBonus
+            ? store.addCounts(bonusKey(install), { used: tokens }, BONUS_TTL).then(() => store.addCounts(`pb:exttrial:day:${day}`, { bonusTokens: tokens }, DAY_TTL))
+            : store.addCounts(`pb:exttrial:i:${day}:${who}`, { r: 1, t: tokens }, ONE_DAY),
         store.addCounts(`pb:exttrial:a:${day}:${address}`, { r: 1 }, ONE_DAY),
         store.addCounts(`pb:exttrial:day:${day}`, { requests: 1, tokens, [`p:${provider}`]: 1 }, DAY_TTL),
         store.addMember(`pb:exttrial:users:${day}`, who, DAY_TTL),

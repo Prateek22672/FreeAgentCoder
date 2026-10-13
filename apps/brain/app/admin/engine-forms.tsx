@@ -258,6 +258,8 @@ export function ExtTrial({ settings, days, poolKeys }: { settings: ExtTrialSetti
         ['tokensPerInstall', 'Tokens per person, a day', settings.tokensPerInstall, 'Stops one huge project draining it'],
         ['requestsPerAddress', 'Requests per network, a day', settings.requestsPerAddress, 'Stops resets by reinstalling'],
         ['dailyCap', 'Requests for everyone, a day', settings.dailyCap, 'Keep it under the pool\u2019s free quota'],
+        ['bonusTokens', 'Welcome bonus, tokens', settings.bonusTokens, 'One time per install; used when limits or keys run out. 0 turns it off'],
+        ['bonusesPerDay', 'Bonuses given out, a day', settings.bonusesPerDay, 'Caps new claims across everyone'],
     ];
     return (
         <div className="col-span-full grid gap-4">

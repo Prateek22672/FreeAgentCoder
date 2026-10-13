@@ -992,3 +992,20 @@ select.input { background: var(--vscode-dropdown-background, var(--vscode-input-
     .send-glow.go { animation: send-fade 0.6s ease-out forwards; --sweep: 360deg; }
     @keyframes send-fade { 0% { opacity: 0.8; } 100% { opacity: 0; } }
 }
+
+/* The welcome popup: what is new, the bonus, and the sharing choice. */
+.welcome-dialog { max-width: 440px; }
+.welcome-news { list-style: none; margin: 4px 0 12px; padding: 0; display: grid; gap: 6px; }
+.welcome-news li { display: flex; gap: 8px; align-items: flex-start; }
+.welcome-news .icon { flex: none; width: 14px; height: 14px; margin-top: 2px; color: var(--ok, #3fb950); }
+.welcome-bonus { display: flex; align-items: center; gap: 10px; margin: 10px 0 12px; padding: 10px 12px; border-radius: 9px; border: 1px solid color-mix(in srgb, var(--accent) 55%, transparent); background: color-mix(in srgb, var(--accent) 10%, transparent); }
+.welcome-gift { font-size: 22px; line-height: 1; }
+.welcome-bonus-text { flex: 1; min-width: 0; display: grid; gap: 2px; font-size: 12px; }
+.welcome-bonus-text strong { font-size: 13px; }
+.welcome-claimed { display: inline-flex; align-items: center; gap: 4px; color: var(--ok, #3fb950); font-weight: 600; font-size: 12px; }
+.welcome-claimed .icon { width: 13px; height: 13px; }
+.welcome-share h3 { margin: 6px 0 4px; font-size: 12px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); }
+.welcome-share p { margin: 0 0 6px; }
+.welcome-share .small .icon { width: 11px; height: 11px; vertical-align: -1px; }
+.welcome-foot { margin-top: 6px !important; font-size: 11px; }
+.welcome-close { font-size: 12px; }

@@ -64,6 +64,8 @@ export async function saveExtTrialAction(_state: FormState | undefined, form: Fo
         tokensPerInstall: Number(form.get('tokensPerInstall')),
         requestsPerAddress: Number(form.get('requestsPerAddress')),
         dailyCap: Number(form.get('dailyCap')),
+        bonusTokens: Number(form.get('bonusTokens')),
+        bonusesPerDay: Number(form.get('bonusesPerDay')),
     });
     if (error) return { error };
     revalidatePath('/admin');

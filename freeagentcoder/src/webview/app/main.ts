@@ -3,6 +3,7 @@ import { mentionAtCaret } from '../../agent/mentions';
 import { compactNumber } from '../../shared/format';
 import type { AttachmentInput, PermissionMode, SettingsSection, SettingsView, ToWebview } from '../../shared/protocol';
 import { crocsLine, crocsLink, openCrocs, setCrocsSharing } from './crocs';
+import { bonusClaimed, openWelcome } from './welcome';
 import { button, fill, h, iconButton, send } from './dom';
 import { icon, type IconName } from './icons';
 import { freeKeysCard, SettingsPanel, setupGuide } from './settings';
@@ -120,39 +121,6 @@ function modelName(ref: string): string {
     return colon > 0 ? (ref.slice(colon + 1).split('/').pop() ?? ref) : ref;
 }
 
-/** Shown until answered: share what the agent learns ("OK, start using the agent") or not ("Close"). */
-let welcomeCard = false;
-
-function shareCard(): HTMLElement {
-    const choose = (share: boolean) => {
-        welcomeCard = false;
-        send({ type: 'welcomeChoice', share });
-        renderWelcome();
-        if (share) {
-            input.focus();
-        }
-    };
-    const see = h('button', { class: 'link-button', attrs: { type: 'button' }, text: 'See exactly what is sent' });
-    see.addEventListener('click', () => send({ type: 'showShared' }));
-    const close = h('button', { class: 'link-button share-close', attrs: { type: 'button' }, text: 'Close' });
-    close.addEventListener('click', () => choose(false));
-    return h(
-        'div',
-        { class: 'card share-card' },
-        h('div', { class: 'card-head' }, icon('spark'), h('span', { class: 'card-title', text: 'Make FreeAgentCoder smarter, for you and everyone' })),
-        h(
-            'div',
-            { class: 'card-body' },
-            h('p', {
-                text: 'When you correct it or a task fails, the lesson (never your code, files or prompts) helps the agent avoid that mistake for every user. Shared lessons come back to you too, so your next tasks go better.',
-            }),
-            h('p', { class: 'muted small' }, icon('lock'), ' Stripped of names, paths and secrets before it leaves your computer. ', see, ' · ', crocsLink('How CROCS Security protects you')),
-            h('div', { class: 'share-actions' }, button('OK, start using the agent', 'primary', () => choose(true), 'check'), close),
-            h('p', { class: 'muted small', text: 'Sharing starts only if you choose OK. Change it any time in Settings → Learning.' }),
-        ),
-    );
-}
-
 function renderWelcome(): void {
     const needsKey = settings !== undefined && settings.usableKeys === 0;
     fill(
@@ -160,8 +128,7 @@ function renderWelcome(): void {
         h('div', { class: 'welcome-mark' }, icon('mark')),
         h('h1', { text: 'FreeAgentCoder' }),
         h('p', { class: 'welcome-sub', text: 'Plans, writes, runs and verifies code in your project using free AI models.' }),
-        welcomeCard ? null : crocsLine(),
-        welcomeCard ? shareCard() : null,
+        crocsLine(),
         !hasWorkspace
             ? h(
                   'div',
@@ -828,8 +795,14 @@ window.addEventListener('message', (event: MessageEvent<ToWebview>) => {
             showHistoryConsent();
             break;
         case 'welcome':
-            welcomeCard = true;
-            renderWelcome();
+            openWelcome(message, (share) => {
+                if (share) {
+                    input.focus();
+                }
+            });
+            break;
+        case 'bonus':
+            bonusClaimed(message);
             break;
         case 'crocs':
             openCrocs();
