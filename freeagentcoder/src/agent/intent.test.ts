@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { asksForSomethingNew, isGeneralQuestion } from './intent';
+import { asksForSomethingNew, isGeneralQuestion, isSmallTalk } from './intent';
 
 describe('asksForSomethingNew', () => {
     it('is true for requests to make something new', () => {
@@ -24,6 +24,20 @@ describe('isGeneralQuestion', () => {
     it('is false for anything about the project, a file or the conversation', () => {
         for (const q of ['explain my project', 'what does main.ts do?', 'why is the build failing', 'how do I run this', 'why did you do that?', 'what is in src/app', 'create a todo app']) {
             expect(isGeneralQuestion(q)).toBe(false);
+        }
+    });
+});
+
+describe('isSmallTalk', () => {
+    it('catches greetings, thanks and bare punctuation', () => {
+        for (const text of ['hi', 'Hi!', 'hello there', 'hey dude', '.', '?', '👍', 'thanks so much', 'ok', 'good morning', 'how are you?', 'what can you do']) {
+            expect(isSmallTalk(text)).toBe(true);
+        }
+    });
+
+    it('leaves real requests to the agent', () => {
+        for (const text of ['hi, fix the login bug', 'thanks, now add tests', 'ok run the build', 'hello world app in python', 'make it dark']) {
+            expect(isSmallTalk(text)).toBe(false);
         }
     });
 });

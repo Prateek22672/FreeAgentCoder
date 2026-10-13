@@ -83,6 +83,10 @@ export interface RunOptions {
   tools?: string[];
   /** How hard reasoning models think this turn. */
   effort?: 'low' | 'medium' | 'high';
+  /** A system prompt for this turn only, e.g. a short one for small talk. The conversation keeps the turn. */
+  system?: string;
+  /** Resend only this many earlier exchanges (user requests and what followed) this turn. Default: all. */
+  history?: number;
 }
 
 export type AgentEvent =
@@ -213,6 +217,8 @@ export class Agent {
   /** The tools and reasoning effort of the turn being run. */
   private turnSchemas: ToolSchema[];
   private turnEffort?: RunOptions['effort'];
+  private turnSystem?: string;
+  private turnHistory?: number;
 
   constructor(private readonly opts: AgentOptions) {
     this.workspace = opts.workspace;
@@ -262,6 +268,8 @@ export class Agent {
     const only = options.tools ? new Set(options.tools) : undefined;
     this.turnSchemas = only ? this.schemas.filter((t) => only.has(t.name)) : this.schemas;
     this.turnEffort = options.effort;
+    this.turnSystem = options.system;
+    this.turnHistory = options.history;
     try {
       if (options.fresh && this.messages.length) {
         const before = this.contextTokens();
@@ -281,6 +289,8 @@ export class Agent {
       this.running = false;
       this.turnSchemas = this.schemas;
       this.turnEffort = undefined;
+      this.turnSystem = undefined;
+      this.turnHistory = undefined;
     }
   }
 
@@ -347,8 +357,8 @@ export class Agent {
         const strong = strongSteps > 0;
         if (strong) strongSteps--;
         const stream = this.router.stream({
-          system: this.systemPrompt,
-          messages: requestView(this.messages),
+          system: this.turnSystem ?? this.systemPrompt,
+          messages: requestView(this.turnHistory === undefined ? this.messages : recentExchanges(this.messages, this.turnHistory)),
           tools: this.turnSchemas,
           signal,
           effort: strong ? 'high' : this.turnEffort,
@@ -838,4 +848,11 @@ export class Agent {
 /** Arguments with their keys in a fixed order, so the same call written twice compares equal. */
 function sortedArgs(args: Record<string, unknown>): Record<string, unknown> {
   return Object.fromEntries(Object.keys(args).sort().map((k) => [k, args[k]]));
+}
+
+/** The current request plus the `exchanges` user requests before it, each with what followed. Cut only at a user message, so tool calls keep their results and the request starts with the user. */
+export function recentExchanges(messages: Message[], exchanges: number): Message[] {
+  const starts = messages.flatMap((m, i) => (m.role === 'user' ? [i] : []));
+  const from = starts[Math.max(0, starts.length - 1 - exchanges)] ?? 0;
+  return messages.slice(from);
 }

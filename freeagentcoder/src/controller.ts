@@ -1,4 +1,4 @@
-import { asksForSomethingNew, isGeneralQuestion } from './agent/intent';
+import { asksForSomethingNew, CHAT_SYSTEM, isGeneralQuestion, isSmallTalk } from './agent/intent';
 import { toolsFor } from './agent/toolsets';
 import { chorePattern, isShareableRule, type Outcome } from './learning/fleet';
 import { FleetSender } from './learning/fleetSender';
@@ -575,7 +575,7 @@ export class Controller implements vscode.Disposable {
         }
         this.turnModel = { provider: '', model: '' };
         // A question about the world, not this project: answered from knowledge, with no tools and no project context.
-        const general = !test && !correction && !attachments.length && isGeneralQuestion(prompt);
+        const general = !test && !correction && !attachments.length && (isSmallTalk(prompt) || isGeneralQuestion(prompt));
         const selected = parseModelChoice(this.model);
         // The kind of work sets the method. Follow-ups and corrections keep the method they already have.
         const specialist =
@@ -682,7 +682,7 @@ export class Controller implements vscode.Disposable {
             );
         }
 
-        const lessons = followUp ? [] : this.memory.forPrompt(cwd, prompt);
+        const lessons = followUp || general ? [] : this.memory.forPrompt(cwd, prompt);
         if (lessons.length) {
             agentPrompt += `\n\n${lessonsBlock(lessons)}`;
         }
@@ -796,7 +796,9 @@ export class Controller implements vscode.Disposable {
             fresh: !followUp && !correction,
             knownFiles: [...mentioned.included, ...(overview?.included ?? [])],
             tools: toolsFor({ tier, general, explain: explaining, newBuild: asksForSomethingNew(prompt), test }),
-            rate: this.fleet.sharing && !test,
+            // A greeting or a general question: a tiny prompt and only the last couple of exchanges, not the coding agent's whole setup.
+            chat: general ? { system: CHAT_SYSTEM, history: 2 } : undefined,
+            rate: this.fleet.sharing && !test && !general,
         });
     }
 

@@ -18,7 +18,7 @@
 - **A little glow when you send.** A ring of colour sweeps once around the chat box from the send button and fades, so every prompt feels received. With reduced motion turned on in your system, it is a short fade instead.
 - **Tells you how long is left.** On a long task, a friendly line under the status says what is happening and roughly how much longer it will take, from the plan's progress so far.
 - **Every new site or app is designed, not plain.** Anything new with a screen, even a small one, now starts from one of the design references in the library: the closest by topic, otherwise one for the same platform (web or mobile), varied so sites do not all look alike. Before, small builds and requests that matched no reference got none and came out as a bare page.
-- **Simple questions cost far less.** A general question is answered in one step with no tools or project files (about 1,500 tokens instead of 7,000+). "Explain my project" starts with an overview of the project, so it answers in one or two steps.
+- **Simple questions and small talk cost far less.** "hi", "thanks" or "." now takes about 250 tokens instead of 2,200, and a general question usually well under 1,000 instead of 7,000+: they get a short friendly answer from a tiny prompt with only the last couple of exchanges, not the coding agent's whole setup. "Explain my project" starts with an overview of the project, so it answers in one or two steps.
 - **Tools that fit the task.** Explaining code uses only reading tools; a new build does not search the project first. Tool descriptions are shorter, which saves tokens on every step.
 - **Cleaner answers from some models.** Citation marks like 【3†source】 become plain file:line references.
 

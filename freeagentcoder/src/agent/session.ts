@@ -72,6 +72,8 @@ export interface TurnPlan {
     knownFiles?: string[];
     /** The tools this kind of task uses (see toolsFor); undefined means all. */
     tools?: string[];
+    /** Small talk or a general question: this system prompt and only the last few exchanges. */
+    chat?: { system: string; history: number };
     /** Ask for a thumbs up or down at the end (the user shares what the agent learns). */
     rate?: boolean;
 }
@@ -375,6 +377,8 @@ export class AgentSession implements vscode.Disposable {
                     tools: plan.tools,
                     // Quick tasks need little thinking; deep tasks keep each provider's own default.
                     effort: plan.tier === 'fast' ? 'low' : undefined,
+                    system: plan.chat?.system,
+                    history: plan.chat?.history,
                 });
                 steps += outcome.steps;
                 reason = outcome.reason;
@@ -458,7 +462,7 @@ export class AgentSession implements vscode.Disposable {
         input: string,
         turnId: string,
         images?: ImagePart[],
-        turnOptions: { fresh?: boolean; knownFiles?: string[]; tools?: string[]; effort?: 'low' | 'medium' | 'high' } = {},
+        turnOptions: { fresh?: boolean; knownFiles?: string[]; tools?: string[]; effort?: 'low' | 'medium' | 'high'; system?: string; history?: number } = {},
     ): Promise<{ reason: TurnEndReason; steps: number; error?: string }> {
         let reason: TurnEndReason = 'error';
         let steps = 0;
