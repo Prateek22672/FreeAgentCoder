@@ -408,6 +408,9 @@ export class Controller implements vscode.Disposable {
                 if (this.telemetry.state !== 'blocked') {
                     await this.telemetry.decide(message.share === true);
                 }
+                if (message.share !== true) {
+                    await this.fleet.discard();
+                }
                 this.scheduleSettings(true);
                 return;
             case 'claimBonus': {
@@ -417,7 +420,11 @@ export class Controller implements vscode.Disposable {
             }
             case 'setSharing':
                 await this.telemetry.decide(message.on === true);
-                this.toast(message.on ? 'Thanks: what FreeAgentCoder learns now helps every user, and theirs helps you.' : 'Sharing is off. Nothing more is sent.', 'info');
+                if (message.on !== true) {
+                    // Off means nothing more leaves: what was waiting to be sent is deleted too.
+                    await this.fleet.discard();
+                }
+                this.toast(message.on ? 'Thanks: what FreeAgentCoder learns now helps every user, and theirs helps you.' : 'Sharing is off. Nothing more is sent, and anything waiting to be sent was deleted. Your bonus tokens are kept.', 'info');
                 this.scheduleSettings(true);
                 return;
             case 'showShared': {

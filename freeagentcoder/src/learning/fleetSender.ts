@@ -41,6 +41,12 @@ export class FleetSender {
         return { v: 1, install: '(a random id made on this install)', extension: String(this.context.extension.packageJSON.version ?? ''), ...this.queue };
     }
 
+    /** Sharing was turned off: what was queued and not yet sent is deleted, so nothing more ever leaves. */
+    async discard(): Promise<void> {
+        this.queue = emptyQueue();
+        await this.context.globalState.update(QUEUE, this.queue);
+    }
+
     async flush(force = false): Promise<void> {
         if (!this.sharing || !queueSize(this.queue)) {
             return;
