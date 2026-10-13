@@ -42,4 +42,15 @@ describe('the downloaded library', () => {
         expect(referenceBlock('design a dark smart parking dashboard', '', library)).toContain('learn from, not to copy');
         expect(referenceBlock('fix the smart parking slot count bug', '', library)).toBe('');
     });
+
+    it('always picks a design for a new thing with a screen, for the same platform', () => {
+        const designs = [
+            ...library,
+            { id: 'agency', kind: 'design' as const, name: 'Kinetic Brutalist Agency Portfolio', tags: ['next.js', 'marketing agency', 'kinetic typography'], points: ['Oversized type that moves with the scroll.'] },
+            { id: 'habits', kind: 'design' as const, name: 'Habit tracker mobile app', tags: ['react native', 'expo', 'mobile ui'], points: ['Thumb-reach bottom actions.'] },
+        ];
+        expect(referenceBlock('build a playground site for web ideas', '', designs)).toContain('learn from, not to copy');
+        expect(referenceBlock('make an android app to plan meals', '', designs)).toContain('Thumb-reach bottom actions.');
+        expect(referenceBlock('make a todo website', '', designs)).not.toContain('Thumb-reach');
+    });
 });

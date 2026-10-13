@@ -12,6 +12,7 @@
 
 ### Improved
 
+- **Every new site or app is designed, not plain.** Anything new with a screen, even a small one, now starts from one of the design references in the library: the closest by topic, otherwise one for the same platform (web or mobile), varied so sites do not all look alike. Before, small builds and requests that matched no reference got none and came out as a bare page.
 - **Simple questions cost far less.** A general question is answered in one step with no tools or project files (about 1,500 tokens instead of 7,000+). "Explain my project" starts with an overview of the project, so it answers in one or two steps.
 - **Tools that fit the task.** Explaining code uses only reading tools; a new build does not search the project first. Tool descriptions are shorter, which saves tokens on every step.
 - **Cleaner answers from some models.** Citation marks like 【3†source】 become plain file:line references.

@@ -71,7 +71,36 @@ export const SPEC_METHOD = [
     '6. Finish with EXPLAIN.md: the request flow, a requirement → file → how table, and a demo script. Say plainly anything not done.',
 ].join('\n');
 
-const DESIGN_REQUEST = /\b(?:website|web\s*site|landing|home\s*page|portfolio|dashboard|ui|ux|design|redesign|frontend|front-end|interface|theme|layout)\b/i;
+const DESIGN_REQUEST = /\b(?:website|web\s*site|web\s*page|landing|home\s*page|portfolio|dashboard|ui|ux|design|redesign|frontend|front-end|interface|theme|layout|look|styl(?:e|es|ing)|beautiful|modern|premium)\b/i;
+/** Something new that people will look at: a design reference sets its level of craft. */
+const NEW_UI = /\b(?:build|create|make|develop|generate|design)\b[\s\S]{0,60}?\b(?:app|application|site|page|game|store|shop|blog|playground|portfolio)\b/i;
+const MOBILE = /\b(?:mobile|android|ios|iphone|react\s*native|expo|flutter|phone\s+app)\b/i;
+
+/** Work on how something looks, or a new thing with a screen. */
+export function wantsDesign(text: string): boolean {
+    return DESIGN_REQUEST.test(text) || NEW_UI.test(text);
+}
+
+/**
+ * The design reference for a request: the closest by topic, else one for the
+ * same platform (mobile or web), varied by the request so every site does not
+ * come out alike. Never none when the library has any: a plain page is what
+ * happens without one.
+ */
+function designFor(text: string, designs: RemoteReference[]): RemoteReference[] {
+    const best = bestMatches(designs, text, (r) => r, 1);
+    if (best.length || !designs.length) {
+        return best;
+    }
+    const isMobile = (r: RemoteReference) => MOBILE.test(`${r.name} ${r.tags.join(' ')}`);
+    const platform = designs.filter((r) => isMobile(r) === MOBILE.test(text));
+    const pool = platform.length ? platform : designs;
+    let hash = 0;
+    for (const ch of text.trim().toLowerCase()) {
+        hash = (hash * 31 + ch.charCodeAt(0)) >>> 0;
+    }
+    return [pool[hash % pool.length]!];
+}
 
 export interface Matched {
     blueprints: { name: string; points: string[] }[];
@@ -91,14 +120,7 @@ export function matchLibrary(text: string, library: RemoteReference[] = []): Mat
         2,
     );
     const blueprints = remote.length ? remote : blueprintsFor(text);
-    const designs = DESIGN_REQUEST.test(text)
-        ? bestMatches(
-              library.filter((r) => r.kind === 'design'),
-              text,
-              (r) => r,
-              1,
-          )
-        : [];
+    const designs = wantsDesign(text) ? designFor(text, library.filter((r) => r.kind === 'design')) : [];
     return { blueprints, designs };
 }
 

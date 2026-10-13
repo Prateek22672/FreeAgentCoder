@@ -2,7 +2,7 @@ import { asksForSomethingNew, isGeneralQuestion } from './agent/intent';
 import { toolsFor } from './agent/toolsets';
 import { chorePattern, isShareableRule, type Outcome } from './learning/fleet';
 import { FleetSender } from './learning/fleetSender';
-import { isSpec, matchLibrary, referenceBlock } from './agent/references';
+import { isSpec, matchLibrary, referenceBlock, wantsDesign } from './agent/references';
 import type { RemoteReference } from './agent/remoteConfig';
 import { mkdir, readdir, readFile, writeFile } from 'node:fs/promises';
 import { runCommandGraders, type CommandGrader } from './lab/graders';
@@ -726,7 +726,8 @@ export class Controller implements vscode.Disposable {
         this.learning = correction && this.features.learning ? { prompt, evidence: '' } : undefined;
 
         // Complex work gets the know-how that fits it: the spec method for a requirements document, and the blueprints for its kind of project.
-        const withReferences = tier === 'deep' && !followUp && !test;
+        // Anything new with a screen gets a design reference too, however small, so it is designed rather than plain.
+        const withReferences = !followUp && !test && (tier === 'deep' || (asksForSomethingNew(prompt) && wantsDesign(prompt)));
         if (withReferences && !attachments.length) {
             const reference = referenceBlock(prompt, '', this.remoteConfig.references);
             if (reference) {
