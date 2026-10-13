@@ -121,6 +121,20 @@ function modelName(ref: string): string {
     return colon > 0 ? (ref.slice(colon + 1).split('/').pop() ?? ref) : ref;
 }
 
+/** A welcome bonus not yet claimed: one click on the welcome screen. */
+let bonusOffer: number | undefined;
+function bonusChip(): HTMLElement | null {
+    if (!bonusOffer) {
+        return null;
+    }
+    const chip = h('button', { class: 'bonus-chip', attrs: { type: 'button' } }, h('span', { text: '🎁' }), `Claim your ${compactNumber(bonusOffer)} bonus tokens`);
+    chip.addEventListener('click', () => {
+        chip.setAttribute('disabled', '');
+        send({ type: 'claimBonus' });
+    });
+    return h('div', { class: 'bonus-row' }, chip);
+}
+
 function renderWelcome(): void {
     const needsKey = settings !== undefined && settings.usableKeys === 0;
     fill(
@@ -129,6 +143,7 @@ function renderWelcome(): void {
         h('h1', { text: 'FreeAgentCoder' }),
         h('p', { class: 'welcome-sub', text: 'Plans, writes, runs and verifies code in your project using free AI models.' }),
         crocsLine(),
+        bonusChip(),
         !hasWorkspace
             ? h(
                   'div',
@@ -803,6 +818,15 @@ window.addEventListener('message', (event: MessageEvent<ToWebview>) => {
             break;
         case 'bonus':
             bonusClaimed(message);
+            if (bonusOffer) {
+                bonusOffer = undefined;
+                renderWelcome();
+                showToast(message.ok ? `${compactNumber(message.tokens)} bonus tokens added. They kick in when your keys or the daily trial run out.` : (message.reason ?? 'The bonus could not be claimed right now.'), message.ok ? 'info' : 'error');
+            }
+            break;
+        case 'bonusOffer':
+            bonusOffer = message.tokens;
+            renderWelcome();
             break;
         case 'crocs':
             openCrocs();

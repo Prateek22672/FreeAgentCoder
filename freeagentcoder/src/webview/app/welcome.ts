@@ -13,11 +13,7 @@ import { icon } from './icons';
 
 type Welcome = Extract<ToWebview, { type: 'welcome' }>;
 
-const NEWS = [
-    'Simple questions and small talk use about 90% fewer tokens.',
-    'CROCS Security hides keys and passwords from the model.',
-    'Sites, decks and documents are checked before they are called done.',
-];
+const NEWS = ['90% fewer tokens on simple questions', 'Keys and passwords hidden from the model', 'Sites, decks and docs checked before “done”'];
 
 let open: HTMLElement | undefined;
 let bonusRow: HTMLElement | undefined;
@@ -71,37 +67,28 @@ export function openWelcome(data: Welcome, onDone: (share: boolean) => void): vo
         h(
             'div',
             { class: 'crocs-head' },
-            h('span', { class: 'crocs-badge' }, icon('spark')),
+            h('span', { class: 'crocs-badge welcome-mark' }, icon('mark')),
             h(
                 'div',
                 {},
-                h('h2', { attrs: { id: 'welcome-title' }, text: data.update ? `What’s new in FreeAgentCoder ${data.version}` : 'Welcome to FreeAgentCoder' }),
-                h('div', { class: 'crocs-sub', text: data.update ? 'Your keys, chats and settings are kept.' : 'A free AI coding agent that plans, edits, runs and tests your code.' }),
+                h('h2', { attrs: { id: 'welcome-title' }, text: data.update ? `What’s new in ${data.version}` : 'Welcome to FreeAgentCoder' }),
+                h('div', { class: 'crocs-sub', text: data.update ? 'Your keys, chats and settings are kept.' : 'Plans, edits, runs and tests your code, free.' }),
             ),
         ),
         data.update ? h('ul', { class: 'welcome-news' }, ...NEWS.map((line) => h('li', {}, icon('check'), h('span', { text: line })))) : null,
         bonusRow,
         blocked
             ? null
-            : h(
-                  'section',
-                  { class: 'welcome-share' },
-                  h('h3', { text: sharingOn ? 'You are helping make it smarter' : 'Make FreeAgentCoder smarter, for you and everyone' }),
-                  h('p', {
-                      class: 'muted',
-                      text: sharingOn
-                          ? 'Thank you: the lessons from your corrections help every user, and theirs come back to you. Never your code, files or prompts.'
-                          : 'When you correct it or a task fails, the lesson (never your code, files or prompts) helps the agent avoid that mistake for every user, and shared lessons come back to you.',
-                  }),
-                  h('p', { class: 'muted small' }, icon('lock'), ' Names, paths and secrets are removed on your computer first. ', see),
-              ),
+            : sharingOn
+              ? h('p', { class: 'welcome-shared' }, icon('check'), 'You share what it learns, so it improves for everyone. Thank you!')
+              : h(
+                    'section',
+                    { class: 'welcome-share' },
+                    h('p', { text: 'Share what it learns from your corrections, so it gets better for everyone? Never your code, files or prompts.' }),
+                    h('p', { class: 'muted small' }, see),
+                ),
         h('div', { class: 'share-actions' }, primary, sharingOn || blocked ? null : close),
-        h(
-            'p',
-            { class: 'muted small welcome-foot' },
-            sharingOn || blocked ? 'Change sharing any time in Settings → Learning. ' : 'Sharing starts only if you choose OK. Change it any time in Settings → Learning. ',
-            crocsLink('How CROCS Security protects you'),
-        ),
+        h('p', { class: 'muted small welcome-foot' }, sharingOn || blocked ? '' : 'Sharing starts only if you choose OK. ', crocsLink('How CROCS Security protects you')),
     );
     const overlay = h('div', { class: 'crocs-overlay' }, dialog);
     document.body.append(overlay);
@@ -125,7 +112,7 @@ function renderBonus(bonus: Welcome['bonus']): HTMLElement | undefined {
                 h('strong', { text: state.claimed ? `${amount} bonus tokens are yours` : `${amount} bonus tokens, free` }),
                 h('span', {
                     class: 'muted',
-                    text: state.error ?? 'Used automatically when your own keys or today’s free trial run out, so a task can carry on. Runs through the FreeAgentCoder trial; what you send is not stored.',
+                    text: state.error ?? 'Kicks in when your keys or the daily trial run out.',
                 }),
             ),
             state.claimed

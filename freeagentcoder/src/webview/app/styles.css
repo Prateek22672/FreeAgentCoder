@@ -1009,3 +1009,8 @@ select.input { background: var(--vscode-dropdown-background, var(--vscode-input-
 .welcome-share .small .icon { width: 11px; height: 11px; vertical-align: -1px; }
 .welcome-foot { margin-top: 6px !important; font-size: 11px; }
 .welcome-close { font-size: 12px; }
+.welcome-mark .icon { width: 20px; height: 20px; }
+.welcome-shared { display: flex; gap: 8px; align-items: flex-start; margin: 4px 0 10px !important; }
+.welcome-shared .icon { flex: none; width: 14px; height: 14px; margin-top: 2px; color: var(--ok, #3fb950); }
+.bonus-chip { display: inline-flex; align-items: center; gap: 6px; margin: 0 auto 12px; padding: 6px 12px; border-radius: 999px; border: 1px solid color-mix(in srgb, var(--accent) 55%, transparent); background: color-mix(in srgb, var(--accent) 10%, transparent); color: var(--fg); font: inherit; font-size: 12px; cursor: pointer; }
+.bonus-chip:hover { border-color: var(--accent); }

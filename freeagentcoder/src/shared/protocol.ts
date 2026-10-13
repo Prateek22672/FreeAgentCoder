@@ -456,6 +456,7 @@ export type ToWebview =
     /** The welcome card: share what the agent learns, or close it. */
     | { type: 'welcome'; update: boolean; version: string; sharing: LearningView['sharing']; bonus: { offered: number; claimed: boolean; left: number } }
     | { type: 'bonus'; ok: boolean; tokens: number; reason?: string }
+    | { type: 'bonusOffer'; tokens: number }
     | { type: 'crocs' }
     | { type: 'logs'; entries: LogEntry[]; stats: LogStats }
     | { type: 'usage'; sessionTokens: number; contextTokens: number; contextLimit: number }

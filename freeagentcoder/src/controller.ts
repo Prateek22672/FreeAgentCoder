@@ -1769,6 +1769,13 @@ export class Controller implements vscode.Disposable {
     private async maybeWelcome(): Promise<void> {
         const seen = this.context.globalState.get<string>(WELCOME_SEEN);
         if (seen === WELCOME_VERSION) {
+            // The popup was answered; a bonus not yet claimed stays one click away on the welcome screen.
+            if (!this.context.globalState.get<boolean>(BONUS_CLAIMED)) {
+                const bonus = await this.bonusStatus();
+                if (bonus.offered > 0 && bonus.left === 0) {
+                    this.sink?.post({ type: 'bonusOffer', tokens: bonus.offered });
+                }
+            }
             return;
         }
         const bonus = await this.bonusStatus();
