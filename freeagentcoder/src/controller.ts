@@ -1,4 +1,4 @@
-import { asksForSomethingNew, CHAT_SYSTEM, isGeneralQuestion, isSmallTalk } from './agent/intent';
+import { asksForSomethingNew, CHAT_SYSTEM, isGeneralQuestion, isSmallTalk, QUESTION_SYSTEM } from './agent/intent';
 import { toolsFor } from './agent/toolsets';
 import { chorePattern, isShareableRule, type Outcome } from './learning/fleet';
 import { FleetSender } from './learning/fleetSender';
@@ -10,7 +10,7 @@ import { LabRecorder } from './lab/recorder';
 import * as path from 'node:path';
 import * as vscode from 'vscode';
 import { bestMatches, hideSecrets, ModelRouter, PRESETS, tokenize, type SearchHit } from '@agentic/core';
-import { configPath, detectShell, isGitRepo, loadConfig, loadProjectInstructions, repoMap, type AgenticConfig } from '@agentic/core/node';
+import { configPath, detectShell, isGitRepo, keyFiles, loadConfig, loadProjectInstructions, repoMap, type AgenticConfig } from '@agentic/core/node';
 import { planFyx, type FyxContext, type FyxPlan } from './fyx/plan';
 import { FYX_MODEL, FyxProvider } from './fyx/provider';
 import { LearnedCommands, sharedChore } from './fyx/learned';
@@ -715,6 +715,13 @@ export class Controller implements vscode.Disposable {
             agentPrompt += `\n\n## The project's own overview (start of the file; read more only if needed)${hideSecrets(overview.text)}`;
             notes.push(`Read ${overview.path} first, to explain from the project's own description`);
         }
+        // And its main code files, so the answer comes from the code in one step instead of several steps of exploring.
+        const mainFiles = explaining && !test ? await this.mainFilesBlock(cwd) : undefined;
+        if (mainFiles?.text) {
+            agentPrompt += `
+
+## The project's main code files (already read for you: answer from these, and open others only if the question needs them)${hideSecrets(mainFiles.text)}`;
+        }
 
         // Files the user @-mentioned go along with the request, so the agent need not spend a step reading them.
         const mentioned = test ? { text: '', included: [] as string[], names: [] as string[] } : await this.mentionedFiles(cwd, prompt);
@@ -794,10 +801,10 @@ export class Controller implements vscode.Disposable {
             test,
             checks,
             fresh: !followUp && !correction,
-            knownFiles: [...mentioned.included, ...(overview?.included ?? [])],
+            knownFiles: [...mentioned.included, ...(overview?.included ?? []), ...(mainFiles?.included ?? [])],
             tools: toolsFor({ tier, general, explain: explaining, newBuild: asksForSomethingNew(prompt), test }),
             // A greeting or a general question: a tiny prompt and only the last couple of exchanges, not the coding agent's whole setup.
-            chat: general ? { system: CHAT_SYSTEM, history: 2 } : undefined,
+            chat: general ? { system: isSmallTalk(prompt) ? CHAT_SYSTEM : QUESTION_SYSTEM, history: 2 } : undefined,
             rate: this.fleet.sharing && !test && !general,
         });
     }
@@ -1209,6 +1216,27 @@ export class Controller implements vscode.Disposable {
             }
         }
         return undefined;
+    }
+
+    /** The project's most-used code files, cut to a budget: what an explanation should come from. */
+    private async mainFilesBlock(cwd: string): Promise<{ text: string; included: string[] } | undefined> {
+        const files = await keyFiles(cwd, 4).catch(() => []);
+        let left = MAIN_FILES_CHARS;
+        const chosen: { path: string; content: string }[] = [];
+        for (const file of files) {
+            if (left < 800) {
+                break;
+            }
+            const content = file.content.slice(0, Math.min(left, MAIN_FILE_CHARS));
+            chosen.push({ path: file.path, content });
+            left -= content.length;
+        }
+        if (!chosen.length) {
+            return undefined;
+        }
+        const block = mentionBlock(chosen);
+        // Only files sent whole count as read; a cut one must be opened before it is edited.
+        return { text: block.text, included: block.included.filter((p) => files.find((f) => f.path === p)?.content.length === chosen.find((c) => c.path === p)?.content.length) };
     }
 
     private async mentionedFiles(cwd: string, prompt: string): Promise<{ text: string; included: string[]; names: string[] }> {
@@ -2124,6 +2152,9 @@ function referenceNote(prompt: string, documentText: string, library: RemoteRefe
 
 /** The part of a project overview sent with an "explain" request: about 1,500 tokens. */
 const OVERVIEW_CHARS = 6_000;
+/** The main code files sent with an explain request: about 3K tokens in all, 1K at most per file. */
+const MAIN_FILES_CHARS = 12_000;
+const MAIN_FILE_CHARS = 4_000;
 
 /** The shared lessons that fit a request: its stack, or several of its words. At most three, to stay cheap. */
 function sharedLessonsFor(text: string, lessons: { text: string; stack: string }[]): { text: string; stack: string }[] {

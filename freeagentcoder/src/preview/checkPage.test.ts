@@ -104,6 +104,12 @@ describe('where a page is served from', () => {
 });
 
 describe('the probe', () => {
+    it('reports text that never becomes visible', () => {
+        const html = '<script type="application/json" id="__fac_probe">{"layout":[],"hidden":"79% of the page text stays invisible"}</script>';
+        expect(readProbe(html).hidden).toBe('79% of the page text stays invisible');
+        expect(probeScript()).toContain('stays invisible');
+    });
+
     it('is read back from the page it ran in', () => {
         const html = '<html><body><p>x</p></body><script type="application/json" id="__fac_probe">{"layout":["wide"],"result":"{\\"a\\":1}"}</script></html>';
         expect(readProbe(html)).toEqual({ layout: ['wide'], scriptResult: '{"a":1}', scriptError: undefined });

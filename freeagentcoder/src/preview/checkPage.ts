@@ -68,9 +68,46 @@ export function probeScript(script?: string): string {
     }
     return layout;
   };
+  // Scroll through the page as a visitor would, so scroll-triggered reveals get their chance to run.
+  const sweep = async () => {
+    const height = document.documentElement.scrollHeight;
+    for (let y = 0; y < height; y += Math.max(300, window.innerHeight * 0.8)) {
+      window.scrollTo(0, y);
+      await new Promise((resolve) => setTimeout(resolve, 120));
+    }
+    window.scrollTo(0, 0);
+    await new Promise((resolve) => setTimeout(resolve, 700));
+  };
+  // Text that is laid out but never becomes visible: usually a reveal animation that never runs.
+  const invisible = () => {
+    let shown = 0, hidden = 0, first = '';
+    for (const el of document.querySelectorAll('h1, h2, h3, h4, p, li, a, button, td, label, figcaption, blockquote')) {
+      const text = (el.textContent || '').trim();
+      if (text.length < 3 || el.closest('[aria-hidden="true"], details:not([open]), [hidden]')) continue;
+      const box = el.getBoundingClientRect();
+      if (box.width === 0 && box.height === 0) continue; // display: none, such as a closed menu: intended
+      let opacity = 1, node = el, gone = false;
+      while (node && node !== document.documentElement) {
+        const style = getComputedStyle(node);
+        opacity *= Number(style.opacity);
+        if (style.visibility === 'hidden') gone = true;
+        node = node.parentElement;
+      }
+      if (gone || opacity < 0.05) {
+        hidden += text.length;
+        if (!first) first = name(el.closest('section, header, main, footer, article, div') || el);
+      } else {
+        shown += text.length;
+      }
+    }
+    return hidden > 200 && hidden > (shown + hidden) * 0.3
+      ? Math.round((hidden / (shown + hidden)) * 100) + '% of the page text stays invisible (opacity 0 or visibility hidden) even after scrolling through the page, starting at ' + first + '. A reveal animation probably never runs: make content visible by default and let the script only add the animation.'
+      : '';
+  };
   const start = async () => {
     await new Promise((resolve) => setTimeout(resolve, 400));
-    const data = { layout: measure() };
+    await sweep();
+    const data = { layout: measure(), hidden: invisible() };
     try {
       const value = ${run};
       if (${script ? 'true' : 'false'}) data.result = value === undefined ? 'undefined' : JSON.stringify(value);
@@ -84,15 +121,16 @@ export function probeScript(script?: string): string {
 }
 
 /** What the probe left in the page. */
-export function readProbe(html: string): { layout: string[]; scriptResult?: string; scriptError?: string } {
+export function readProbe(html: string): { layout: string[]; hidden?: string; scriptResult?: string; scriptError?: string } {
     const raw = new RegExp(`<script[^>]*id="${PROBE_ID}"[^>]*>([\\s\\S]*?)</script>`, 'i').exec(html)?.[1];
     if (!raw) {
         return { layout: [] };
     }
     try {
-        const data = JSON.parse(raw) as { layout?: unknown; result?: unknown; error?: unknown };
+        const data = JSON.parse(raw) as { layout?: unknown; hidden?: unknown; result?: unknown; error?: unknown };
         return {
             layout: Array.isArray(data.layout) ? data.layout.filter((item): item is string => typeof item === 'string').slice(0, 4) : [],
+            ...(typeof data.hidden === 'string' && data.hidden ? { hidden: data.hidden.slice(0, 500) } : {}),
             scriptResult: typeof data.result === 'string' ? data.result.slice(0, 2_000) : undefined,
             scriptError: typeof data.error === 'string' ? data.error.slice(0, 500) : undefined,
         };
@@ -240,7 +278,12 @@ export async function checkPage(browser: string, url: string, signal?: AbortSign
         if (!stdout.trim() && !consoleOutput.errors.length) {
             consoleOutput.errors.push('The page did not load: the browser returned nothing.');
         }
-        return { ...consoleOutput, ...dom, ...readProbe(stdout) };
+        const { hidden, ...probe } = readProbe(stdout);
+        // Content a visitor never sees is as broken as an error.
+        if (hidden) {
+            consoleOutput.errors.push(hidden);
+        }
+        return { ...consoleOutput, ...dom, ...probe };
     } finally {
         // The browser can hold its profile for a moment after it exits.
         void fs.rm(profile, { recursive: true, force: true, maxRetries: 3, retryDelay: 300 }).catch(() => undefined);

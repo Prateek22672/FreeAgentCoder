@@ -124,9 +124,8 @@ export function shortDef(line: string): string {
   return head.length > 60 ? `${head.slice(0, 57)}…` : head;
 }
 
-/** Ranked files with their definitions, as text no longer than `budget` characters. */
-export function formatRepoMap(files: MapFile[], budget = 6_000): string {
-  if (files.length < 4) return '';
+/** Files ranked by how much the rest of the project uses them: entry points and shared modules first, tests and views last. */
+function rankFiles(files: MapFile[]): { f: MapFile; used: number; score: number }[] {
   // Who uses each file: an import of its name, or (for languages that import namespaces) a mention of its class.
   const imports = new Map<string, Set<number>>();
   const mentions = files.map((f) => classNames(f.text));
@@ -149,6 +148,13 @@ export function formatRepoMap(files: MapFile[], budget = 6_000): string {
       return { f, used, score };
     })
     .sort((a, b) => b.score - a.score);
+  return ranked;
+}
+
+/** Ranked files with their definitions, as text no longer than `budget` characters. */
+export function formatRepoMap(files: MapFile[], budget = 6_000): string {
+  if (files.length < 4) return '';
+  const ranked = rankFiles(files);
 
   const lines: string[] = [];
   let used = 0;
@@ -167,4 +173,11 @@ export function formatRepoMap(files: MapFile[], budget = 6_000): string {
 
 export async function repoMap(root: string, budget = 6_000): Promise<string> {
   return formatRepoMap(await collect(root), budget);
+}
+
+/** The project's most important code files with their contents, best first: what an explanation should start from. */
+export async function keyFiles(root: string, limit = 4): Promise<{ path: string; content: string }[]> {
+  return rankFiles(await collect(root))
+    .slice(0, limit)
+    .map(({ f }) => ({ path: f.path, content: f.text }));
 }

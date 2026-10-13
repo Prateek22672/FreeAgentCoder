@@ -1,5 +1,6 @@
 import { bestMatches } from '@agentic/core';
 import { BUILT_IN_DESIGNS, DOMAIN_BLUEPRINTS } from './domains';
+import { asksForSomethingNew } from './intent';
 import type { RemoteReference } from './remoteConfig';
 
 /**
@@ -120,7 +121,9 @@ export function matchLibrary(text: string, library: RemoteReference[] = []): Mat
         (r) => r,
         2,
     );
-    const blueprints = remote.length ? remote : blueprintsFor(text);
+    // How a kind of project is built helps when building one, not when fixing a bug in it ("cart.js" is not a store).
+    const building = asksForSomethingNew(text) || isSpec(text);
+    const blueprints = remote.length ? remote : blueprintsFor(text).filter((b) => building || !DOMAIN_BLUEPRINTS.includes(b));
     // The downloaded designs and the built-in ones compete on fit; the built-in ones mean there is always one.
     const designs = wantsDesign(text) ? designFor(text, [...library.filter((r) => r.kind === 'design'), ...BUILT_IN_DESIGNS]) : [];
     return { blueprints, designs };

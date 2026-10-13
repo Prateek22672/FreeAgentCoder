@@ -20,9 +20,10 @@ const LANDING: Blueprint = {
     points: [
         'Sections in this order, each with one job: nav (logo, 3-5 links, one primary button); hero (a specific headline of 6-10 words, one supporting line, primary and secondary buttons, and a real product visual: a framed screenshot, code sample or illustrated UI, never a stock photo); logos or numbers for proof; 3-6 features as cards with an icon, a short title and one line each; a "how it works" in 3 steps; pricing in 2-3 tiers with the recommended one highlighted; FAQ as accordions; a closing call to action; a footer with columns.',
         'Copy is specific to this product: what it does, for whom, why it is better. No lorem ipsum, no "Welcome to our website", no "Get Started (0)".',
+        'Details that read as professional: icons as inline SVG (or one icon set such as Lucide), never emoji; card counts that fill their rows (3 or 6 in a row of 3, 4 as 2x2); the hero visual built in HTML and CSS (a mock window, chart or code card) when there is no screenshot.',
         'A design system first: CSS custom properties for colours, a type scale (e.g. 14/16/20/28/44/64 px), a 4 or 8 px spacing scale, 2-3 radii, one shadow style; then every section uses them.',
         'Layout on a max-width container (1120-1280 px) with generous vertical rhythm (96-128 px between sections on desktop); a 12-column grid that collapses to one column on phones.',
-        'Motion with restraint: elements fade and rise 12-16 px as they scroll into view (IntersectionObserver), hover lifts on cards, smooth anchor scrolling; honour prefers-reduced-motion.',
+        'Motion with restraint: elements fade and rise 12-16 px as they scroll into view (IntersectionObserver), hover lifts on cards, smooth anchor scrolling; honour prefers-reduced-motion. Content is visible by default: put the reveal markers in the HTML, have the script add the hidden starting state (a class on <html>) only once it runs, and observe after the elements exist, so nothing stays invisible if the script fails.',
         'Accessible and fast: semantic landmarks, real buttons and links, visible focus, alt text, contrast of 4.5:1, images sized and lazy-loaded, fonts with display=swap.',
         'Meta title and description, Open Graph tags, a favicon, and a mobile menu that works.',
     ],

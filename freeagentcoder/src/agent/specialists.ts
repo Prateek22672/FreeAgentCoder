@@ -117,6 +117,7 @@ const EXPLAIN: Specialist = {
     minTier: 'fast',
     method: [
         'Answer from the code, not from general knowledge: read the relevant files and cite them as path:line.',
+        'Read the main files together in one reply (the ones the overview or code map points to, usually 2-5) before answering, so every claim is checked. Never write "not shown": read the file or leave it out, and do not repeat what a README says about files you have not opened.',
         'Lead with the direct answer in a sentence or two, then the detail.',
         'Change nothing unless the user asks.',
     ],
