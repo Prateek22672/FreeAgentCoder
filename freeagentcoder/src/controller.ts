@@ -802,7 +802,7 @@ export class Controller implements vscode.Disposable {
             checks,
             fresh: !followUp && !correction,
             knownFiles: [...mentioned.included, ...(overview?.included ?? []), ...(mainFiles?.included ?? [])],
-            tools: toolsFor({ tier, general, explain: explaining, newBuild: asksForSomethingNew(prompt), test }),
+            tools: toolsFor({ tier, general, explain: explaining, newBuild: asksForSomethingNew(prompt), test, documents: playbooks.some((p) => p.id === 'documents'), visual: asksForSomethingNew(prompt) && wantsDesign(prompt) }),
             // A greeting or a general question: a tiny prompt and only the last couple of exchanges, not the coding agent's whole setup.
             chat: general ? { system: isSmallTalk(prompt) ? CHAT_SYSTEM : QUESTION_SYSTEM, history: 2 } : undefined,
             rate: this.fleet.sharing && !test && !general,

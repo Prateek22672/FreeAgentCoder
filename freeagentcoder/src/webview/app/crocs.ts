@@ -121,7 +121,7 @@ export function openCrocs(): void {
             h(
                 'p',
                 { class: 'muted' },
-                'To answer, your request and the files the agent reads go to the provider of the key in use (Google Gemini, Groq, NVIDIA, Mistral, Cohere, OpenRouter, or your own OpenAI or Anthropic key). That provider processes them under its own terms, and some free tiers may use requests to improve their models, so check its data policy before working on sensitive code. The free trial passes requests through our server to those providers; it counts them and does not store what they say. Looking up library docs sends only the library name and topic.',
+                'To answer, your request and the files the agent reads go to the provider of the key in use (Google Gemini, Groq, NVIDIA, Mistral, Cohere, OpenRouter, or your own OpenAI or Anthropic key). That provider processes them under its own terms, and some free tiers may use requests to improve their models, so check its data policy before working on sensitive code. The free trial passes requests through our server to those providers; it counts them and does not store what they say. Looking up library docs sends only the library name and topic, and finding a photo for a document sends only the search words (to Wikimedia Commons or Openverse).',
             ),
         ),
         h(

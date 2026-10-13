@@ -12,7 +12,7 @@ type PdfJsModule = Pick<typeof import('unpdf'), 'getResolvedPDFJS'>;
  * which keeps opening the panel fast. Outside the build (tests, scripts) the
  * package is loaded directly.
  */
-async function loadPdfJs(): Promise<PdfJsModule> {
+export async function loadPdfJs(): Promise<PdfJsModule> {
     const bundled = path.join(__dirname, 'pdf.js');
     if (existsSync(bundled)) {
         return createRequire(__filename)(bundled) as PdfJsModule;

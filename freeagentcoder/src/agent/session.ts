@@ -1,4 +1,5 @@
 import { promises as fs } from 'node:fs';
+import { checkDocumentTool } from '../attachments/docCheck';
 import * as path from 'node:path';
 import * as vscode from 'vscode';
 import {
@@ -897,7 +898,7 @@ export class AgentSession implements vscode.Disposable {
                     return [editorInstructions({ python: /\bPython\b|Jupyter/.test(snapshot) }), snapshot].filter(Boolean).join('\n\n');
                 })(),
                 maxSteps: MAX_STEPS,
-                extraTools: [checkPageTool(this.options.previews), getProblemsTool()],
+                extraTools: [checkPageTool(this.options.previews), getProblemsTool(), checkDocumentTool],
                 afterEdit: editorProblemsAfterEdit(cwd, () => vscode.workspace.getConfiguration('freeagentcoder').get<boolean>('editorErrorsAfterEdit', true)),
             });
             this.local = local;

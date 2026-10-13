@@ -30,6 +30,9 @@ export const ALL_TOOLS = [
     'check_page',
     'get_problems',
 ];
+/** Only for work with a visual result: a found photo, and a check of the finished deck or document. */
+const VISUAL_TOOLS = ['find_image'];
+const DOCUMENT_TOOLS = ['find_image', 'check_document'];
 
 export interface TaskShape {
     tier: Tier;
@@ -39,6 +42,10 @@ export interface TaskShape {
     /** Making something new rather than changing what is there. */
     newBuild?: boolean;
     test?: boolean;
+    /** Making a deck, document, report or PDF. */
+    documents?: boolean;
+    /** Making something people look at: a site, an app screen. */
+    visual?: boolean;
 }
 
 /** The tool names for a task; undefined means all of them. */
@@ -52,8 +59,9 @@ export function toolsFor(task: TaskShape): string[] | undefined {
     if (task.explain) {
         return READ_TOOLS;
     }
+    const extra = task.documents ? DOCUMENT_TOOLS : task.visual ? VISUAL_TOOLS : [];
     if (task.tier === 'fast') {
-        return QUICK_TOOLS;
+        return [...QUICK_TOOLS, ...extra];
     }
-    return task.newBuild ? ALL_TOOLS.filter((t) => !NOT_FOR_NEW.has(t)) : undefined;
+    return [...(task.newBuild ? ALL_TOOLS.filter((t) => !NOT_FOR_NEW.has(t)) : ALL_TOOLS), ...extra];
 }

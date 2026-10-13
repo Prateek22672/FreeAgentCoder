@@ -10,6 +10,7 @@ import { buildRouter, type AgenticConfig } from './config';
 import { environmentTool } from './environment';
 import { fetchUrlTool } from './fetch-url';
 import { libraryDocsTool } from './library-docs';
+import { findImageTool } from './find-image';
 import { LocalWorkspace } from './local-workspace';
 import { isGitRepo, loadProjectInstructions } from './project';
 import { detectShell, processTool, ProcessRegistry, runCommandTool, type ShellInfo } from './shell';
@@ -18,6 +19,7 @@ export { LocalWorkspace } from './local-workspace';
 export { detectShell, killTree, ProcessRegistry, runCommandTool, processTool, type ShellInfo } from './shell';
 export { fetchUrlTool, htmlToText } from './fetch-url';
 export { libraryDocsTool } from './library-docs';
+export { findImageTool } from './find-image';
 export { formatRepoMap, importedNames, keyFiles, repoMap } from './repo-map';
 export { environmentTool, inspectEnvironment, TOOLCHAINS, type CommandRunner, type ToolchainCheck } from './environment';
 export {
@@ -100,6 +102,7 @@ export async function createLocalAgent(opts: LocalAgentOptions): Promise<LocalAg
       processTool(processes),
       fetchUrlTool,
       libraryDocsTool,
+      findImageTool,
       environmentTool,
       ...(opts.extraTools ?? []),
     ],
