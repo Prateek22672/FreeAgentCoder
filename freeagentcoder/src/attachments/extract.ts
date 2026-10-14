@@ -4,6 +4,9 @@
  * XML walk, and text-like files via built-in decoders.
  */
 
+import { IMAGE_MIME_TYPES as SHARED_IMAGE_TYPES, OFFICE_EXTENSIONS, TEXT_EXTENSIONS } from '../shared/formats';
+import { allParts, extractEmail, extractEpub, extractLegacyText, extractOdf, extractZip, isEncryptedOffice, isEpub, isOdf, looksLikeEmail } from './formats';
+import { legacyOfficeText } from './legacy';
 import { extractOoxml, isZip, type OoxmlFormat } from './ooxml';
 import { extractPdf } from './pdf';
 import { decodeText, htmlToText, rtfToText } from './text';
@@ -16,21 +19,7 @@ export type ExtractResult =
 const DEFAULT_MAX_CHARS = 400_000;
 
 const IMAGE_EXTENSIONS = ['.png', '.jpg', '.jpeg', '.webp', '.gif'];
-const IMAGE_MIME_TYPES = ['image/png', 'image/jpeg', 'image/jpg', 'image/webp', 'image/gif'];
-
-const OFFICE_EXTENSIONS = ['.pdf', '.docx', '.pptx', '.xlsx'];
-
-const TEXT_EXTENSIONS = [
-    '.txt', '.text', '.md', '.markdown', '.csv', '.tsv', '.json', '.jsonl', '.yaml', '.yml', '.xml', '.html', '.htm',
-    '.rtf', '.log', '.ini', '.cfg', '.conf', '.toml', '.env', '.properties', '.rst', '.adoc', '.tex', '.srt', '.vtt',
-    // Common source files
-    '.js', '.mjs', '.cjs', '.jsx', '.ts', '.mts', '.cts', '.tsx', '.py', '.ipynb', '.java', '.kt', '.kts', '.scala',
-    '.groovy', '.gradle', '.c', '.h', '.cc', '.cpp', '.cxx', '.hpp', '.hh', '.cs', '.fs', '.go', '.rs', '.rb', '.php',
-    '.swift', '.m', '.mm', '.dart', '.lua', '.r', '.pl', '.pm', '.ex', '.exs', '.erl', '.hs', '.clj', '.ml', '.elm',
-    '.jl', '.zig', '.sh', '.bash', '.zsh', '.fish', '.ps1', '.psm1', '.bat', '.cmd', '.sql', '.graphql', '.gql',
-    '.proto', '.css', '.scss', '.sass', '.less', '.vue', '.svelte', '.astro', '.tf', '.hcl', '.dockerfile',
-    '.diff', '.patch', '.lock',
-];
+const IMAGE_MIME_TYPES = SHARED_IMAGE_TYPES;
 
 const TEXT_BASENAMES = new Set(['dockerfile', 'makefile', 'license', 'readme', 'changelog', 'gemfile', 'procfile', '.gitignore', '.env', '.editorconfig']);
 
@@ -105,20 +94,58 @@ export async function extractDocument(
             return await fromPdf(bytes, maxChars);
         }
         if (isZip(bytes)) {
-            const hint = (['docx', 'pptx', 'xlsx'] as const).find((f) => f === declared) as OoxmlFormat | undefined;
+            const ooxmlHint = ({ docm: 'docx', dotx: 'docx', pptm: 'pptx', potx: 'pptx', xlsm: 'xlsx', xltx: 'xlsx' } as Record<string, OoxmlFormat>)[declared ?? ''] ?? declared;
+            const hint = (['docx', 'pptx', 'xlsx'] as const).find((f) => f === ooxmlHint) as OoxmlFormat | undefined;
             const result = extractOoxml(bytes, hint);
-            if (result.kind === 'unsupported') {
+            if (result.kind === 'text') {
+                return finish(result.format, result.text, maxChars, { pages: result.pages, note: result.note });
+            }
+            // Not Office Open XML: OpenDocument, EPUB, or any other archive.
+            const parts = allParts(bytes, (f) => /\.(?:xml|opf|x?html?|ncx)$/i.test(f) || f === 'mimetype');
+            if (isOdf(parts)) {
+                const odf = extractOdf(parts);
+                return finish(odf.format, odf.text, maxChars, { pages: odf.pages });
+            }
+            if (isEpub(parts)) {
+                const epub = extractEpub(parts);
+                return finish('epub', epub.text, maxChars, { pages: epub.pages });
+            }
+            if (hint) {
                 return result;
             }
-            return finish(result.format, result.text, maxChars, { pages: result.pages, note: result.note });
+            const archive = extractZip(bytes, maxChars, (inner, data) => {
+                const nested = extractOoxml(data);
+                if (nested.kind === 'text') {
+                    return nested.text;
+                }
+                const odfParts = allParts(data, (f) => f === 'content.xml' || f === 'mimetype');
+                return isOdf(odfParts) ? extractOdf(odfParts).text : undefined;
+            });
+            return finish('zip', archive.text, maxChars, { note: archive.note });
         }
         if (isOleCompound(bytes)) {
-            return {
-                kind: 'unsupported',
-                reason: ['docx', 'pptx', 'xlsx'].includes(declared ?? '')
-                    ? 'This Office file is password-protected (encrypted). Remove the password and attach it again.'
-                    : 'Legacy Office formats (.doc, .xls, .ppt) are not supported. Save it as .docx, .xlsx or .pptx, or as PDF.',
-            };
+            if (isEncryptedOffice(bytes)) {
+                return { kind: 'unsupported', reason: 'This Office file is password-protected (encrypted). Remove the password and attach it again.' };
+            }
+            // The real structure first; the rough text recovery only when the structure is not one we know.
+            let structured: { format: string; text: string } | undefined;
+            try {
+                structured = legacyOfficeText(bytes);
+            } catch (error) {
+                return { kind: 'unsupported', reason: error instanceof Error ? error.message : String(error) };
+            }
+            if (structured?.text.trim()) {
+                return finish(structured.format, structured.text, maxChars, {
+                    note: 'Read from an old Office format: the text and table values are exact, but formatting is not kept. Save it as .docx, .xlsx or .pptx for the full structure.',
+                });
+            }
+            const text = extractLegacyText(bytes);
+            if (!text.trim()) {
+                return { kind: 'unsupported', reason: 'No readable text was found in this old Office file. Save it as .docx, .xlsx or .pptx, or as PDF, and attach it again.' };
+            }
+            return finish(declared ?? 'doc', text, maxChars, {
+                note: 'Read from an old Office format: the words are there, but tables, numbering and layout are not. Save it as .docx, .xlsx or .pptx for an exact read.',
+            });
         }
         if (isImageFile(name, mimeType) || looksLikeImage(bytes)) {
             return { kind: 'unsupported', reason: 'This is an image, not a text document. Attach it as an image instead.' };
@@ -129,6 +156,9 @@ export async function extractDocument(
             return { kind: 'unsupported', reason: `"${baseName(name) || 'This file'}" looks like a binary file, so no text could be extracted.` };
         }
         const format = declared ?? 'text';
+        if (format === 'eml' || (!ext && looksLikeEmail(decoded.text))) {
+            return finish('eml', extractEmail(decoded.text), maxChars);
+        }
         if (format === 'html' || format === 'htm' || (!ext && /^\s*<(!doctype html|html)\b/i.test(decoded.text))) {
             return finish('html', htmlToText(decoded.text), maxChars);
         }

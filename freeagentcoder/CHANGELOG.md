@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.6.2 — Reads every file
+
+### Improved
+
+- **Word documents read completely.** Numbered lists keep their numbers (1., 2., a., iv.), links keep their address, pictures and charts are named with their description, and page headers, footers and comments are included.
+- **PowerPoint charts and Excel formulas.** A chart's data comes through as a table, and a formula whose result was never saved (a workbook written by a script) shows the formula.
+- **New formats.** OpenDocument (.odt, .ods, .odp from LibreOffice and Google Docs), EPUB books, ZIP archives (the file list plus the text of the files inside), e-mail (.eml, with its attachments listed), and the old Office formats read properly by their structure: .doc, .xls (with dates and formula results), .ppt slide by slide, and Outlook .msg.
+- **The file picker accepts everything the reader reads**, including code files, notebooks and e-mail; before, some could only be dragged in.
+
 ## 0.6.1 — Learns from everyone
 
 ### Added

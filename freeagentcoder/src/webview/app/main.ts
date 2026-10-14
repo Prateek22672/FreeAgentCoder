@@ -1,6 +1,7 @@
 import './styles.css';
 import { mentionAtCaret } from '../../agent/mentions';
 import { compactNumber } from '../../shared/format';
+import { PICKER_ACCEPT } from '../../shared/formats';
 import type { AttachmentInput, PermissionMode, SettingsSection, SettingsView, ToWebview } from '../../shared/protocol';
 import { crocsLine, crocsLink, openCrocs, setCrocsSharing } from './crocs';
 import { bonusClaimed, openWelcome } from './welcome';
@@ -34,7 +35,7 @@ let usage = { sessionTokens: 0, contextTokens: 0, contextLimit: 0 };
 let attachments: AttachmentInput[] = [];
 let correctionMode = false;
 
-const ACCEPT = 'image/png,image/jpeg,image/webp,image/gif,.pdf,.docx,.pptx,.xlsx,.txt,.md,.markdown,.csv,.tsv,.json,.yaml,.yml,.xml,.html,.htm,.rtf,.log';
+const ACCEPT = PICKER_ACCEPT;
 const MAX_ATTACHMENTS = 10;
 const MAX_FILE_BYTES = 25 * 1024 * 1024;
 const LONG_PASTE_CHARS = 4_000;

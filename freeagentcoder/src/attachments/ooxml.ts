@@ -1,6 +1,7 @@
 /** DOCX / PPTX / XLSX text extraction (fflate unzip + a light XML walk). */
 
 import { unzipSync } from 'fflate';
+import { markdownTable } from './formats';
 import { childElements, findAll, findFirst, firstChild, isElement, parseXml, type XmlElement } from './xml';
 
 export type OoxmlFormat = 'docx' | 'pptx' | 'xlsx';
@@ -78,6 +79,20 @@ function readRels(parts: Parts, partPath: string, typeSuffix?: string): Map<stri
     return map;
 }
 
+/** Relationship id -> URL, for external targets such as hyperlinks. */
+function readExternalRels(parts: Parts, partPath: string): Map<string, string> {
+    const slash = partPath.lastIndexOf('/');
+    const dir = slash === -1 ? '' : partPath.slice(0, slash);
+    const root = readXml(parts, `${dir ? dir + '/' : ''}_rels/${partPath.slice(slash + 1)}.rels`);
+    const map = new Map<string, string>();
+    for (const rel of root ? findAll(root, 'Relationship') : []) {
+        if (rel.attrs.Id && rel.attrs.Target && rel.attrs.TargetMode === 'External') {
+            map.set(rel.attrs.Id, rel.attrs.Target);
+        }
+    }
+    return map;
+}
+
 function resolvePartPath(baseDir: string, target: string): string {
     const segments = target.startsWith('/') ? [] : baseDir.split('/').filter(Boolean);
     for (const seg of target.split('/')) {
@@ -90,30 +105,90 @@ function resolvePartPath(baseDir: string, target: string): string {
     return segments.join('/');
 }
 
-function cellText(text: string): string {
-    return text.replace(/\s*\n\s*/g, ' ').replace(/\|/g, '\\|').trim();
-}
-
-function markdownTable(rows: string[][]): string {
-    const width = Math.max(0, ...rows.map((r) => r.length));
-    if (width === 0) {
-        return '';
-    }
-    const lines = rows.map((r) => `| ${Array.from({ length: width }, (_, i) => cellText(r[i] ?? '')).join(' | ')} |`);
-    lines.splice(1, 0, `|${' --- |'.repeat(width)}`);
-    return lines.join('\n');
-}
 
 // ---------------------------------------------------------------- DOCX
 
 interface DocxStyles {
     headingLevel: Map<string, number>;
     listStyles: Set<string>;
+    /** numId -> level -> number format ("decimal", "lowerLetter", "bullet", ...). */
+    numbering?: Map<string, Map<number, string>>;
+    /** Hyperlink relationship ids -> URLs. */
+    links?: Map<string, string>;
+    /** Running counters for numbered lists: "numId:level" -> count. */
+    counters?: Map<string, number>;
+    /** List styles that carry their own numbering ("List Number"): styleId -> numId. */
+    styleNumbers?: Map<string, string>;
+}
+
+function readNumbering(parts: Parts): Map<string, Map<number, string>> {
+    const root = readXml(parts, 'word/numbering.xml');
+    const abstract = new Map<string, Map<number, string>>();
+    for (const a of root ? findAll(root, 'abstractNum') : []) {
+        const levels = new Map<number, string>();
+        for (const lvl of childElements(a, 'lvl')) {
+            levels.set(Number(lvl.attrs.ilvl ?? 0), firstChild(lvl, 'numFmt')?.attrs.val ?? 'decimal');
+        }
+        abstract.set(a.attrs.abstractNumId ?? '', levels);
+    }
+    const nums = new Map<string, Map<number, string>>();
+    for (const n of root ? findAll(root, 'num') : []) {
+        const ref = firstChild(n, 'abstractNumId')?.attrs.val;
+        const levels = ref !== undefined ? abstract.get(ref) : undefined;
+        if (n.attrs.numId && levels) {
+            nums.set(n.attrs.numId, levels);
+        }
+    }
+    return nums;
+}
+
+function roman(n: number): string {
+    const table: [number, string][] = [[1000, 'm'], [900, 'cm'], [500, 'd'], [400, 'cd'], [100, 'c'], [90, 'xc'], [50, 'l'], [40, 'xl'], [10, 'x'], [9, 'ix'], [5, 'v'], [4, 'iv'], [1, 'i']];
+    let out = '';
+    for (const [v, s] of table) {
+        while (n >= v) {
+            out += s;
+            n -= v;
+        }
+    }
+    return out;
+}
+
+/** The marker a list item shows: "1.", "b.", "iv." or "-" for bullets. */
+function listMarker(styles: DocxStyles, numId: string | undefined, ilvl: number): string {
+    const format = numId ? styles.numbering?.get(numId)?.get(ilvl) : undefined;
+    if (!format || format === 'bullet' || format === 'none' || !numId || numId === '0') {
+        return '-';
+    }
+    const counters = (styles.counters ??= new Map());
+    const key = `${numId}:${ilvl}`;
+    const n = (counters.get(key) ?? 0) + 1;
+    counters.set(key, n);
+    // A higher level starting again resets the deeper ones.
+    for (const k of [...counters.keys()]) {
+        const [id, level] = k.split(':');
+        if (id === numId && Number(level) > ilvl) {
+            counters.delete(k);
+        }
+    }
+    switch (format) {
+        case 'lowerLetter':
+            return `${String.fromCharCode(96 + (((n - 1) % 26) + 1))}.`;
+        case 'upperLetter':
+            return `${String.fromCharCode(64 + (((n - 1) % 26) + 1))}.`;
+        case 'lowerRoman':
+            return `${roman(n)}.`;
+        case 'upperRoman':
+            return `${roman(n).toUpperCase()}.`;
+        default:
+            return `${n}.`;
+    }
 }
 
 function readDocxStyles(parts: Parts): DocxStyles {
     const headingLevel = new Map<string, number>();
     const listStyles = new Set<string>();
+    const styleNumbers = new Map<string, string>();
     const root = readXml(parts, 'word/styles.xml');
     for (const style of root ? findAll(root, 'style') : []) {
         const id = style.attrs.styleId;
@@ -132,10 +207,16 @@ function readDocxStyles(parts: Parts): DocxStyles {
         }
         if (/^list (bullet|number)/.test(name) || findFirst(style, 'numPr')) {
             listStyles.add(id);
+            const styleNum = findFirst(style, 'numId')?.attrs.val;
+            if (styleNum) {
+                styleNumbers.set(id, styleNum);
+            }
         }
     }
-    return { headingLevel, listStyles };
+    return { headingLevel, listStyles, styleNumbers };
 }
+
+let docxLinks: Map<string, string> | undefined;
 
 /** Inline text of a paragraph or table cell, in document order. */
 function docxInlineText(el: XmlElement): string {
@@ -177,6 +258,25 @@ function docxInlineText(el: XmlElement): string {
             case 'p':
                 out += (out && !out.endsWith('\n') ? '\n' : '') + docxInlineText(child);
                 break;
+            case 'hyperlink': {
+                const text = docxInlineText(child);
+                const url = child.attrs.id ? docxLinks?.get(child.attrs.id) : undefined;
+                out += url && url !== text.trim() ? `[${text}](${url})` : text;
+                break;
+            }
+            case 'drawing':
+            case 'pict': {
+                const props = findFirst(child, 'docPr');
+                const description = (props?.attrs.descr || props?.attrs.title || '').trim();
+                const chart = findFirst(child, 'chart');
+                out += chart ? `[Chart${description ? `: ${description}` : ''}]` : `[Image${description ? `: ${description}` : ''}]`;
+                // Text boxes inside the drawing still carry text.
+                const box = findFirst(child, 'txbxContent');
+                if (box) {
+                    out += ` ${docxInlineText(box)}`;
+                }
+                break;
+            }
             default:
                 out += docxInlineText(child);
         }
@@ -188,7 +288,7 @@ function docxBlocks(container: XmlElement, styles: DocxStyles, out: string[]): v
     for (const el of childElements(container)) {
         if (el.name === 'p') {
             const text = docxInlineText(el).trim();
-            if (!text) {
+            if (!text || /^\[(?:Image|Chart)\]$/.test(text) && !findFirst(el, 'docPr')) {
                 continue;
             }
             const pPr = firstChild(el, 'pPr');
@@ -201,7 +301,8 @@ function docxBlocks(container: XmlElement, styles: DocxStyles, out: string[]): v
                 out.push(`${'#'.repeat(Math.min(level, 6))} ${text.replace(/\n+/g, ' ')}`);
             } else if (numPr || (styleId && styles.listStyles.has(styleId))) {
                 const ilvl = Number((numPr && firstChild(numPr, 'ilvl')?.attrs.val) ?? 0) || 0;
-                out.push(`${'  '.repeat(Math.min(ilvl, 8))}- ${text}`);
+                const numId = (numPr ? firstChild(numPr, 'numId')?.attrs.val : undefined) ?? (styleId ? styles.styleNumbers?.get(styleId) : undefined);
+                out.push(`${'  '.repeat(Math.min(ilvl, 8))}${listMarker(styles, numId, ilvl)} ${text}`);
             } else {
                 out.push(text);
             }
@@ -245,13 +346,56 @@ function docxNotes(parts: Parts, path: string, noteName: string, prefix: string,
     return out;
 }
 
+/** The distinct text of the page headers or footers. */
+function docxHeaderFooter(parts: Parts, kind: 'header' | 'footer', styles: DocxStyles): string {
+    const seen = new Set<string>();
+    for (const name of Object.keys(parts).filter((p) => new RegExp(`^word/${kind}\\d*\\.xml$`).test(p)).sort()) {
+        const root = readXml(parts, name);
+        const blocks: string[] = [];
+        const part = root && findFirst(root, kind === 'header' ? 'hdr' : 'ftr');
+        if (part) {
+            docxBlocks(part, styles, blocks);
+        }
+        const text = blocks.join(' ').replace(/\s+/g, ' ').trim();
+        if (text && !/^(?:page\s*)?\d+$/i.test(text)) {
+            seen.add(text);
+        }
+    }
+    return [...seen].join(' | ');
+}
+
+function docxComments(parts: Parts, styles: DocxStyles): string[] {
+    const root = readXml(parts, 'word/comments.xml');
+    return (root ? findAll(root, 'comment') : [])
+        .map((c) => {
+            const blocks: string[] = [];
+            docxBlocks(c, styles, blocks);
+            const text = blocks.join(' ').trim();
+            return text ? `- ${c.attrs.author ? `${c.attrs.author}: ` : ''}${text}` : '';
+        })
+        .filter(Boolean);
+}
+
 function extractDocx(parts: Parts): string {
-    const styles = readDocxStyles(parts);
+    const styles: DocxStyles = { ...readDocxStyles(parts), numbering: readNumbering(parts), counters: new Map() };
+    docxLinks = readExternalRels(parts, 'word/document.xml');
     const doc = readXml(parts, 'word/document.xml');
     const body = doc && findFirst(doc, 'body');
     const blocks: string[] = [];
     if (body) {
         docxBlocks(body, styles, blocks);
+    }
+    const header = docxHeaderFooter(parts, 'header', styles);
+    const footer = docxHeaderFooter(parts, 'footer', styles);
+    if (header) {
+        blocks.unshift(`Page header: ${header}`);
+    }
+    if (footer) {
+        blocks.push(`Page footer: ${footer}`);
+    }
+    const comments = docxComments(parts, styles);
+    if (comments.length) {
+        blocks.push(`Comments:\n${comments.join('\n')}`);
     }
     const notes = [
         ...docxNotes(parts, 'word/footnotes.xml', 'footnote', '', styles),
@@ -269,7 +413,8 @@ function joinBlocks(blocks: string[]): string {
     let out = '';
     blocks.forEach((block, i) => {
         if (i > 0) {
-            const isList = /^\s*- /.test(block) && /^\s*- /.test(blocks[i - 1]);
+            const item = /^\s*(?:-|\d+\.|[a-zA-Z]\.|[ivxlcdm]+\.) /i;
+        const isList = item.test(block) && item.test(blocks[i - 1]);
             out += isList ? '\n' : '\n\n';
         }
         out += block;
@@ -296,6 +441,29 @@ function drawingParagraphs(txBody: XmlElement): string[] {
 
 interface ShapeText { placeholder?: string; text: string }
 
+/** A chart part as a title and a Markdown table of its series. */
+export function chartText(root: XmlElement | undefined): string {
+    if (!root) {
+        return '';
+    }
+    const strings = (el: XmlElement | undefined) => (el ? findAll(el, 'pt').map((pt) => firstChild(pt, 'v')?.children.filter((c): c is string => typeof c === 'string').join('') ?? '') : []);
+    const titleEl = findFirst(root, 'title');
+    const title = titleEl ? findAll(titleEl, 't').map((t) => t.children.filter((c): c is string => typeof c === 'string').join('')).join('').trim() : '';
+    const series = findAll(root, 'ser').map((ser) => ({
+        name: strings(firstChild(ser, 'tx'))[0] ?? 'Series',
+        categories: strings(firstChild(ser, 'cat')),
+        values: strings(firstChild(ser, 'val') ?? firstChild(ser, 'yVal')),
+    }));
+    if (!series.length) {
+        return title ? `Chart: ${title}` : '';
+    }
+    const categories = series[0]!.categories.length ? series[0]!.categories : series[0]!.values.map((_, i) => String(i + 1));
+    const rows = [['', ...series.map((s) => s.name)], ...categories.map((c, i) => [c, ...series.map((s) => s.values[i] ?? '')])];
+    return `Chart${title ? `: ${title}` : ''}\n${markdownTable(rows)}`;
+}
+
+let slideCharts: ((rId: string) => string) | undefined;
+
 function collectShapes(tree: XmlElement, out: ShapeText[]): void {
     for (const el of childElements(tree)) {
         if (el.name === 'sp') {
@@ -309,6 +477,13 @@ function collectShapes(tree: XmlElement, out: ShapeText[]): void {
             collectShapes(el, out);
         } else if (el.name === 'graphicFrame') {
             const tbl = findFirst(el, 'tbl');
+            const chart = findFirst(el, 'chart');
+            if (chart && slideCharts) {
+                const text = slideCharts(chart.attrs.id ?? '');
+                if (text) {
+                    out.push({ text });
+                }
+            }
             if (tbl) {
                 const rows = childElements(tbl, 'tr').map((tr) =>
                     childElements(tr, 'tc').map((tc) => {
@@ -351,6 +526,8 @@ function extractPptx(parts: Parts): { text: string; slides: number } {
     }
 
     const sections = slidePaths.map((path, index) => {
+        const charts = readRels(parts, path, '/chart');
+        slideCharts = (rId) => chartText(readXml(parts, charts.get(rId) ?? ''));
         const shapes = slideShapes(readXml(parts, path));
         const isTitle = (s: ShapeText) => s.placeholder === 'title' || s.placeholder === 'ctrTitle';
         const lines: string[] = [];
@@ -480,7 +657,11 @@ function extractXlsx(parts: Parts, maxRows: number): { text: string; note?: stri
                 }
                 next = col + 1;
                 const v = firstChild(c, 'v');
-                const raw = v ? v.children.filter((x): x is string => typeof x === 'string').join('') : '';
+                const f = firstChild(c, 'f');
+                const formula = f ? f.children.filter((x): x is string => typeof x === 'string').join('') : '';
+                const saved = v ? v.children.filter((x): x is string => typeof x === 'string').join('') : '';
+                // A formula with no saved result (the file was written by a script, not Excel) shows the formula.
+                const raw = saved !== '' ? saved : formula ? `=${formula}` : '';
                 let value: string;
                 switch (c.attrs.t) {
                     case 's':

@@ -57,7 +57,7 @@ export function checkPptx(bytes: Uint8Array): DocReport {
             const ph = findFirst(shape, 'ph');
             const text = textOf(shape).trim();
             words += text ? text.split(/\s+/).length : 0;
-            if (shape.name !== 'sp') visuals++;
+            if (shape.name !== 'sp') {visuals++;}
             if (shape.name === 'sp' && ph && !text && !['sldNum', 'dt', 'ftr', 'hdr'].includes(ph.attrs.type ?? '')) {
                 problems.push(`Slide ${n}: an empty ${ph.attrs.type ?? 'content'} placeholder shows "Click to add…" in PowerPoint. Fill it or delete it.`);
             }
@@ -88,13 +88,13 @@ export function checkPptx(bytes: Uint8Array): DocReport {
                     }
                     if (!ph?.attrs.type?.match(/sldNum|dt|ftr/)) {
                         chars += text.length;
-                        if (sizes.length && Math.max(...sizes) < 1200) smallChars += text.length;
+                        if (sizes.length && Math.max(...sizes) < 1200) {smallChars += text.length;}
                     }
                 }
             }
         }
-        if (chars > 80 && smallChars / chars > 0.5) smallSlides.push(n);
-        if (tree) pictures += findAll(tree, 'pic').length;
+        if (chars > 80 && smallChars / chars > 0.5) {smallSlides.push(n);}
+        if (tree) {pictures += findAll(tree, 'pic').length;}
         if (words < 4 && !visuals) {
             problems.push(`Slide ${n} is nearly empty: add its content or a visual, or remove it.`);
         } else if (words > 110) {
@@ -122,7 +122,7 @@ export function checkDocx(bytes: Uint8Array): DocReport {
         const text = textOf(p).trim();
         const hasContent = text || findFirst(p, 'drawing') || findFirst(p, 'pict') || findFirst(p, 'br');
         const style = findFirst(p, 'pStyle')?.attrs.val ?? '';
-        if (/heading|title/i.test(style)) headings++;
+        if (/heading|title/i.test(style)) {headings++;}
         if (!hasContent) {
             blankRun++;
             continue;
@@ -133,14 +133,14 @@ export function checkDocx(bytes: Uint8Array): DocReport {
         }
         blankRun = 0;
         words += text.split(/\s+/).filter(Boolean).length;
-        if (PLACEHOLDER_TEXT.test(text)) problems.push(`Placeholder text left in: "${text.slice(0, 60)}".`);
+        if (PLACEHOLDER_TEXT.test(text)) {problems.push(`Placeholder text left in: "${text.slice(0, 60)}".`);}
     }
-    if (blankRuns) problems.push(`${blankRuns} gap${blankRuns === 1 ? '' : 's'} made of empty paragraphs (up to ${longestBlank} in a row): set paragraph spacing or a page break instead.`);
-    if (words > 600 && headings === 0) problems.push('A long document with no headings: add Heading 1 and 2 styles so it can be scanned (and gets a table of contents).');
+    if (blankRuns) {problems.push(`${blankRuns} gap${blankRuns === 1 ? '' : 's'} made of empty paragraphs (up to ${longestBlank} in a row): set paragraph spacing or a page break instead.`);}
+    if (words > 600 && headings === 0) {problems.push('A long document with no headings: add Heading 1 and 2 styles so it can be scanned (and gets a table of contents).');}
     for (const tbl of body ? findAll(body, 'tbl') : []) {
         const cells = findAll(tbl, 'tc');
         const empty = cells.filter((c) => !textOf(c).trim()).length;
-        if (cells.length >= 4 && empty / cells.length > 0.4) problems.push(`A table has ${empty} of ${cells.length} cells empty: fill them or remove the empty rows and columns.`);
+        if (cells.length >= 4 && empty / cells.length > 0.4) {problems.push(`A table has ${empty} of ${cells.length} cells empty: fill them or remove the empty rows and columns.`);}
     }
     const images = body ? findAll(body, 'drawing').length : 0;
     return { kind: 'docx', summary: `${words} words, ${headings} headings, ${images} images, ${body ? findAll(body, 'tbl').length : 0} tables`, problems: dedupe(problems) };
@@ -157,12 +157,12 @@ export async function checkPdf(bytes: Uint8Array): Promise<DocReport> {
         const page = await doc.getPage(n);
         const text = (await page.getTextContent()).items.map((i: any) => i.str ?? '').join(' ').trim();
         const ops = (await page.getOperatorList()).fnArray.length;
-        if (text.length < 15 && ops < 25) blank.push(n);
-        else if (text.length < 60 && ops < 60) sparse++;
-        if (PLACEHOLDER_TEXT.test(text)) problems.push(`Page ${n}: placeholder text left in.`);
+        if (text.length < 15 && ops < 25) {blank.push(n);}
+        else if (text.length < 60 && ops < 60) {sparse++;}
+        if (PLACEHOLDER_TEXT.test(text)) {problems.push(`Page ${n}: placeholder text left in.`);}
         page.cleanup();
     }
-    if (blank.length) problems.push(`Blank page${blank.length === 1 ? '' : 's'}: ${blank.join(', ')}. Remove them or the page breaks that make them.`);
+    if (blank.length) {problems.push(`Blank page${blank.length === 1 ? '' : 's'}: ${blank.join(', ')}. Remove them or the page breaks that make them.`);}
     const pages = doc.numPages;
     await task.destroy().catch(() => undefined);
     return { kind: 'pdf', summary: `${pages} pages${sparse ? `, ${sparse} with very little on them` : ''}`, problems: dedupe(problems) };
@@ -187,7 +187,7 @@ export const checkDocumentTool: Tool<{ path: string }> = {
     async prepare(args, ctx) {
         const file = ctx.workspace.resolve(args.path);
         const ext = path.extname(file).toLowerCase();
-        if (!['.pptx', '.docx', '.pdf'].includes(ext)) return toolError('check_document reads .pptx, .docx and .pdf files.');
+        if (!['.pptx', '.docx', '.pdf'].includes(ext)) {return toolError('check_document reads .pptx, .docx and .pdf files.');}
         return {
             run: async () => {
                 try {
