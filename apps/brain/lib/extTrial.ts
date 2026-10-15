@@ -216,6 +216,9 @@ export interface ExtTrialDay {
     refusedClosed: number;
     refusedOff: number;
     failed: number;
+    /** Welcome bonuses claimed, and tokens spent from bonuses, that day. */
+    bonuses: number;
+    bonusTokens: number;
     providers: Record<string, number>;
 }
 
@@ -242,6 +245,8 @@ export async function extTrialStats(days = 7): Promise<ExtTrialDay[]> {
             refusedClosed: counts.refused_closed ?? 0,
             refusedOff: counts.refused_off ?? 0,
             failed: counts.failed ?? 0,
+            bonuses: counts.bonuses ?? 0,
+            bonusTokens: counts.bonusTokens ?? 0,
             providers,
         });
     }

@@ -59,7 +59,10 @@ export default async function AdminPage() {
         <Shell>
             <div className="flex items-start justify-between gap-4">
                 <h1 className="text-2xl font-semibold tracking-tight">FreeAgentCoder</h1>
-                <a href="/admin/learning" className="ml-auto mr-3 rounded-md border border-line px-3 py-1.5 text-[13px] text-muted hover:border-accent hover:text-fg">
+                <a href="/admin/system" className="ml-auto mr-3 rounded-md border border-accent px-3 py-1.5 text-[13px] text-fg hover:bg-accent/10">
+                    System
+                </a>
+                <a href="/admin/learning" className="mr-3 rounded-md border border-line px-3 py-1.5 text-[13px] text-muted hover:border-accent hover:text-fg">
                     Learning
                 </a>
                 <a href="/admin/references" className="mr-3 rounded-md border border-line px-3 py-1.5 text-[13px] text-muted hover:border-accent hover:text-fg">

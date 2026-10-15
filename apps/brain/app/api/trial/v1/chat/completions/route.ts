@@ -1,4 +1,5 @@
 import { poolTargets, recordPoolCall, restPoolKey, restSeconds, type PoolTarget } from '@/lib/keypool';
+import { logEvent } from '@/lib/events';
 import { MODELS, plan } from '@/lib/trialPlan';
 import { addressFrom, allowance, charge, installFrom, note, readExtTrialSettings, TOKENS_PER_REQUEST } from '@/lib/extTrial';
 
@@ -90,6 +91,7 @@ export async function POST(request: Request): Promise<Response> {
         } catch {
             if (request.signal.aborted) return error('Cancelled.', 499, 'aborted');
             void recordPoolCall(target.id, false);
+            void logEvent(`trial:${target.provider}`, 'warn', `${target.provider} could not be reached`);
             last = { status: 502, text: `${target.provider} could not be reached` };
             continue;
         }
@@ -98,7 +100,11 @@ export async function POST(request: Request): Promise<Response> {
             if (retryable(upstream.status, detail)) {
                 void recordPoolCall(target.id, false);
                 if (upstream.status === 429 || /rate limit|quota/i.test(detail)) {
-                    void restPoolKey(target.id, restSeconds(upstream.headers.get('retry-after'), detail));
+                    const seconds = restSeconds(upstream.headers.get('retry-after'), detail);
+                    void restPoolKey(target.id, seconds);
+                    void logEvent(`pool:${target.provider}`, 'info', `Key ${target.id.slice(0, 6)} rate-limited; resting ${seconds >= 3600 ? `${Math.round(seconds / 3600)} h` : `${seconds} s`}`);
+                } else {
+                    void logEvent(`trial:${target.provider}`, 'warn', `${upstream.status}: ${detail}`);
                 }
                 last = { status: upstream.status, text: detail };
                 continue;
@@ -124,6 +130,7 @@ export async function POST(request: Request): Promise<Response> {
     }
 
     void note('failed', install);
+    void logEvent('trial', 'error', `No model answered after ${MAX_ATTEMPTS} tries: ${last?.status ?? ''} ${last?.text ?? ''}`);
     const busy = last?.status === 429;
     return error(
         busy ? 'The free trial’s models are busy right now. Try again in a minute, or add your own free key.' : `The free trial could not get an answer (${last?.text || 'no model answered'}).`,
