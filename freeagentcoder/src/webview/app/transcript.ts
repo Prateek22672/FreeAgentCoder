@@ -993,19 +993,22 @@ class PlanCard {
         );
     }
 
+    /** The plan as a live workflow: numbered steps joined by a line, the current one pulsing, and Done at the end. */
     update(todos: TodoView[]): void {
         const done = todos.filter((t) => t.status === 'completed').length;
         this.count.textContent = `${done} of ${todos.length} done`;
         this.fill.style.width = `${todos.length ? (done / todos.length) * 100 : 0}%`;
+        const finished = todos.length > 0 && done === todos.length;
         this.items.replaceChildren(
-            ...todos.map((todo) =>
+            ...todos.map((todo, i) =>
                 h(
                     'li',
-                    { class: `todo ${todo.status}` },
-                    todo.status === 'completed' ? icon('check') : todo.status === 'in_progress' ? h('span', { class: 'spinner small' }) : h('span', { class: 'todo-dot' }),
+                    { class: `todo ${todo.status}`, attrs: { 'aria-label': `Step ${i + 1}, ${todo.status.replace('_', ' ')}: ${todo.content}` } },
+                    h('span', { class: 'step-node' }, todo.status === 'completed' ? icon('check') : h('span', { text: String(i + 1) })),
                     h('span', { class: 'todo-text', text: todo.content }),
                 ),
             ),
+            h('li', { class: `todo step-end${finished ? ' completed' : ''}` }, h('span', { class: 'step-node' }, icon('check')), h('span', { class: 'todo-text', text: finished ? 'Done' : 'Done when every step is checked' })),
         );
     }
 }

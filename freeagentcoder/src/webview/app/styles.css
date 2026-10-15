@@ -333,14 +333,26 @@ details[open] > summary .caret { transform: rotate(90deg); }
 .plan-count { color: var(--muted); font-size: 11px; }
 .progress { height: 3px; margin: 0 10px; overflow: hidden; border-radius: 2px; background: var(--surface-3); }
 .progress-fill { height: 100%; border-radius: 2px; background: var(--accent); transition: width 0.3s ease; }
-.plan-items { display: flex; flex-direction: column; gap: 4px; margin: 0; padding: 8px 10px; list-style: none; font-size: 12.5px; }
-.todo { display: flex; align-items: flex-start; gap: 8px; }
-.todo > .icon, .todo > .spinner, .todo-dot { margin-top: 3px; }
-.todo > .icon { width: 12px; height: 12px; color: var(--ok); }
-.todo-dot { flex: none; width: 12px; height: 12px; border: 1.5px solid var(--border); border-radius: 50%; }
+/* The plan as a live workflow: nodes joined by a line, green when done, the current one pulsing. */
+.plan-items { display: flex; flex-direction: column; gap: 0; margin: 0; padding: 10px 10px 6px; list-style: none; font-size: 12.5px; }
+.todo { position: relative; display: flex; align-items: flex-start; gap: 10px; padding-bottom: 10px; }
+.todo::before { content: ''; position: absolute; left: 9px; top: 20px; bottom: 0; width: 2px; border-radius: 1px; background: var(--border); }
+.todo:last-child::before { display: none; }
+.todo.completed::before { background: color-mix(in srgb, var(--ok) 70%, transparent); }
+.step-node { position: relative; z-index: 1; flex: none; display: grid; place-items: center; width: 20px; height: 20px; border-radius: 50%; border: 1.5px solid var(--border); background: var(--surface-2, var(--bg)); color: var(--muted); font-size: 10.5px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.step-node .icon { width: 11px; height: 11px; }
+.todo.completed .step-node { border-color: var(--ok); background: color-mix(in srgb, var(--ok) 16%, var(--bg)); color: var(--ok); }
+.todo.in_progress .step-node { border-color: var(--accent); color: var(--accent); animation: step-pulse 1.6s ease-out infinite; }
+.todo .todo-text { padding-top: 1px; }
+.step-end .step-node { border-style: dashed; }
+.step-end:not(.completed) .todo-text { color: var(--muted); font-style: italic; }
+.step-end.completed .todo-text { color: var(--ok); font-weight: 600; text-decoration: none; }
+@keyframes step-pulse { 0% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--accent) 55%, transparent); } 100% { box-shadow: 0 0 0 7px transparent; } }
+@media (prefers-reduced-motion: reduce) { .todo.in_progress .step-node { animation: none; } }
 .todo.completed .todo-text { color: var(--muted); text-decoration: line-through; text-decoration-color: color-mix(in srgb, var(--muted) 60%, transparent); }
 .todo.in_progress .todo-text { font-weight: 600; }
 .plan.ended .spinner { border-top-color: var(--border); animation: none; }
+.plan.ended .todo.in_progress .step-node { animation: none; }
 
 .card.approval { border-color: color-mix(in srgb, var(--warn) 55%, transparent); background: color-mix(in srgb, var(--warn) 6%, var(--surface-2)); }
 .card.approval .card-head > .icon { color: var(--warn); }
