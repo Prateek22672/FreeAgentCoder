@@ -8,21 +8,21 @@ import { getKeyUrl } from '../shared/site';
 export const KEY_PROVIDERS = ['gemini', 'groq', 'nvidia', 'openrouter', 'mistral', 'cohere', 'openai', 'anthropic'];
 
 /** Fast first: Groq answers in a second or two, and small requests fit its free tier. Cohere last: 1,000 calls a month. */
-const FAST_ORDER = ['groq', 'gemini', 'nvidia', 'mistral', 'openrouter', 'cohere', 'trial'];
+export const FAST_ORDER = ['groq', 'gemini', 'nvidia', 'mistral', 'openrouter', 'cohere', 'trial'];
 /**
  * Strongest first: Gemini's 1M-token context carries long, multi-file work. OpenRouter's free router comes last:
  * it hands each request to whichever free model is idle, and those repeat the same mistakes on real builds.
  */
-const DEEP_ORDER = ['gemini', 'nvidia', 'mistral', 'groq', 'cohere', 'openrouter', 'trial'];
+export const DEEP_ORDER = ['gemini', 'nvidia', 'mistral', 'groq', 'cohere', 'openrouter', 'trial'];
 /** Paid keys are only routed automatically when no free key is active. */
-const PAID_ORDER = ['anthropic', 'openai'];
+export const PAID_ORDER = ['anthropic', 'openai'];
 
 /**
  * Models per provider and tier, best first. Free limits are per model, so when
  * one is busy or out of quota the same key carries on with the next before the
  * work moves to another provider.
  */
-const TIER_MODELS: Record<string, Record<Tier, string[]>> = {
+export const TIER_MODELS: Record<string, Record<Tier, string[]>> = {
     groq: { fast: ['openai/gpt-oss-120b', 'qwen/qwen3.8-27b'], deep: ['openai/gpt-oss-120b', 'qwen/qwen3.8-27b'] },
     cerebras: { fast: ['gpt-oss-120b'], deep: ['gpt-oss-120b'] },
     gemini: {

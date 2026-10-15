@@ -1,0 +1,1674 @@
+[
+  {
+    "id": "chat",
+    "title": "Small talk and general questions",
+    "kind": "models",
+    "purpose": "Greetings, thanks, and questions about the world rather than the project: answered at once from knowledge, with no project context.",
+    "handles": [
+      "hi, thanks, ok",
+      "What is the difference between REST and GraphQL?",
+      "How does a hash map work?"
+    ],
+    "outcomeKinds": [
+      "question"
+    ],
+    "chain": [
+      {
+        "provider": "groq",
+        "label": "Groq",
+        "models": [
+          "openai/gpt-oss-120b",
+          "qwen/qwen3.8-27b"
+        ]
+      },
+      {
+        "provider": "gemini",
+        "label": "Gemini",
+        "models": [
+          "gemini-3.5-flash-lite",
+          "gemini-3.1-flash-lite",
+          "gemini-2.5-flash-lite"
+        ]
+      },
+      {
+        "provider": "nvidia",
+        "label": "NVIDIA",
+        "models": [
+          "nvidia/nemotron-3-super-120b-a12b",
+          "nvidia/nemotron-3.5-lightning-30b-a3b"
+        ]
+      },
+      {
+        "provider": "mistral",
+        "label": "Mistral",
+        "models": [
+          "mistral-small-latest"
+        ]
+      },
+      {
+        "provider": "openrouter",
+        "label": "OpenRouter",
+        "models": [
+          "openrouter/free"
+        ]
+      },
+      {
+        "provider": "cohere",
+        "label": "Cohere",
+        "models": [
+          "command-a-plus-05-2026"
+        ]
+      },
+      {
+        "provider": "trial",
+        "label": "Free trial",
+        "models": [
+          "fast"
+        ]
+      }
+    ],
+    "chainNote": "Fast models first. Your own Claude or OpenAI key is only used first when no free key is active; otherwise it waits at the end of the chain.",
+    "effort": {
+      "reasoning": "Low",
+      "level": 1,
+      "steps": "1 step",
+      "note": "Answered in a single request; the conversation resent is cut to the last 2 exchanges."
+    },
+    "tools": {
+      "count": 0,
+      "names": [],
+      "note": "None: nothing to read or change."
+    },
+    "context": [
+      "A short system prompt of about 150 tokens",
+      "Your message",
+      "The last 2 exchanges only"
+    ],
+    "approach": [
+      "Recognise small talk or a general question (no project words in it)",
+      "Reply in 1 to 3 warm sentences, or a structured answer with a comparison and an example for a question",
+      "Never claim to have looked at files"
+    ],
+    "checks": [
+      "None needed: nothing is changed"
+    ],
+    "tokens": {
+      "typical": "200 to 900",
+      "note": "Measured: \"hi\" 224 tokens, \"REST vs GraphQL\" 919 (before 0.6.1: 2,191 and 13,823)."
+    },
+    "strengths": [
+      "About 90% cheaper than running the full agent",
+      "Warm and natural, matches your tone and language"
+    ],
+    "weaknesses": [
+      "Cannot see your project, so it answers in general terms",
+      "A question that is secretly about the project can be misjudged"
+    ],
+    "improvements": [
+      "Offer to run the full agent when the answer mentions \"your project\""
+    ]
+  },
+  {
+    "id": "fyx",
+    "title": "Fyx: chores with no model",
+    "kind": "no-model",
+    "purpose": "Everyday chores run by the extension itself: git, zip, installing packages, starting a dev server, creating or moving files.",
+    "handles": [
+      "zip the site folder",
+      "git pull",
+      "run the website locally",
+      "install the dependencies"
+    ],
+    "outcomeKinds": [],
+    "chain": [],
+    "chainNote": "No model, no key, no tokens. Anything it cannot do is handed to the Auto chain.",
+    "effort": {
+      "reasoning": "None",
+      "level": 0,
+      "steps": "1 to 3 commands",
+      "note": "A fixed plan per chore; every command still asks permission."
+    },
+    "tools": {
+      "count": 1,
+      "names": [
+        "run_command"
+      ],
+      "note": "Runs the planned shell commands."
+    },
+    "context": [
+      "Your request",
+      "Which tools your project has (package manager, git)"
+    ],
+    "approach": [
+      "Match the request to a known chore or a chore learned from you or from other users (approved)",
+      "Fill in names from your request",
+      "Run the commands and report"
+    ],
+    "checks": [
+      "Exit codes of each command"
+    ],
+    "tokens": {
+      "typical": "0",
+      "note": "It runs in seconds and uses no tokens."
+    },
+    "strengths": [
+      "Instant and free; saves your keys for real work",
+      "Learns new chores from corrections"
+    ],
+    "weaknesses": [
+      "Only chores it knows; unusual phrasing falls through to a model"
+    ],
+    "improvements": [
+      "More chores from the shared Fyx patterns you approve on the Learning page"
+    ]
+  },
+  {
+    "id": "quick",
+    "title": "Quick tasks",
+    "kind": "models",
+    "purpose": "Small, clear requests: a one-line fix, a rename, a short edit, running one command.",
+    "handles": [
+      "rename this variable",
+      "add a null check in cart.js",
+      "run the tests"
+    ],
+    "outcomeKinds": [
+      "quick"
+    ],
+    "chain": [
+      {
+        "provider": "groq",
+        "label": "Groq",
+        "models": [
+          "openai/gpt-oss-120b",
+          "qwen/qwen3.8-27b"
+        ]
+      },
+      {
+        "provider": "gemini",
+        "label": "Gemini",
+        "models": [
+          "gemini-3.5-flash-lite",
+          "gemini-3.1-flash-lite",
+          "gemini-2.5-flash-lite"
+        ]
+      },
+      {
+        "provider": "nvidia",
+        "label": "NVIDIA",
+        "models": [
+          "nvidia/nemotron-3-super-120b-a12b",
+          "nvidia/nemotron-3.5-lightning-30b-a3b"
+        ]
+      },
+      {
+        "provider": "mistral",
+        "label": "Mistral",
+        "models": [
+          "mistral-small-latest"
+        ]
+      },
+      {
+        "provider": "openrouter",
+        "label": "OpenRouter",
+        "models": [
+          "openrouter/free"
+        ]
+      },
+      {
+        "provider": "cohere",
+        "label": "Cohere",
+        "models": [
+          "command-a-plus-05-2026"
+        ]
+      },
+      {
+        "provider": "trial",
+        "label": "Free trial",
+        "models": [
+          "fast"
+        ]
+      }
+    ],
+    "chainNote": "Groq first (answers in a second or two), then Gemini lite, NVIDIA, Mistral. Your own Claude or OpenAI key is only used first when no free key is active; otherwise it waits at the end of the chain.",
+    "effort": {
+      "reasoning": "Low",
+      "level": 1,
+      "steps": "1 to 5 steps",
+      "note": "Reasoning kept low for speed; no plan, no exploring."
+    },
+    "tools": {
+      "count": 8,
+      "names": [
+        "read_file",
+        "edit_file",
+        "write_file",
+        "list_dir",
+        "glob",
+        "grep",
+        "search_code",
+        "run_command"
+      ],
+      "note": "Read, search, edit and one command; nothing else is offered, to save tokens."
+    },
+    "context": [
+      "The agent instructions (about 1.5K tokens)",
+      "The tools above",
+      "The 4 most likely files named up front",
+      "Lessons that match"
+    ],
+    "approach": [
+      "Act at once with the fewest calls",
+      "Edit by line numbers",
+      "Run the project check if it has one"
+    ],
+    "checks": [
+      "The editor's errors on the changed file come back with each edit"
+    ],
+    "tokens": {
+      "typical": "3K to 15K",
+      "note": "First request about 2.2 to 3K tokens."
+    },
+    "strengths": [
+      "Fast: Groq replies in about a second",
+      "Cheap"
+    ],
+    "weaknesses": [
+      "Small context per request on Groq: a large file moves the task to another provider"
+    ],
+    "improvements": [
+      "Learned order from real outcomes once a provider has 20+ tasks"
+    ]
+  },
+  {
+    "id": "explain",
+    "title": "Explaining a project",
+    "kind": "models",
+    "purpose": "Understanding code: how something works, what a project is, where a feature lives. Changes nothing.",
+    "handles": [
+      "explain my project",
+      "how does login work?",
+      "where is the order total calculated?"
+    ],
+    "outcomeKinds": [
+      "explain"
+    ],
+    "chain": [
+      {
+        "provider": "groq",
+        "label": "Groq",
+        "models": [
+          "openai/gpt-oss-120b",
+          "qwen/qwen3.8-27b"
+        ]
+      },
+      {
+        "provider": "gemini",
+        "label": "Gemini",
+        "models": [
+          "gemini-3.5-flash-lite",
+          "gemini-3.1-flash-lite",
+          "gemini-2.5-flash-lite"
+        ]
+      },
+      {
+        "provider": "nvidia",
+        "label": "NVIDIA",
+        "models": [
+          "nvidia/nemotron-3-super-120b-a12b",
+          "nvidia/nemotron-3.5-lightning-30b-a3b"
+        ]
+      },
+      {
+        "provider": "mistral",
+        "label": "Mistral",
+        "models": [
+          "mistral-small-latest"
+        ]
+      },
+      {
+        "provider": "openrouter",
+        "label": "OpenRouter",
+        "models": [
+          "openrouter/free"
+        ]
+      },
+      {
+        "provider": "cohere",
+        "label": "Cohere",
+        "models": [
+          "command-a-plus-05-2026"
+        ]
+      },
+      {
+        "provider": "trial",
+        "label": "Free trial",
+        "models": [
+          "fast"
+        ]
+      }
+    ],
+    "chainNote": "Same fast chain; the project overview and main files travel with the request, so it usually answers in one step.",
+    "effort": {
+      "reasoning": "Low",
+      "level": 1,
+      "steps": "1 to 3 steps",
+      "note": "Answers from the code already supplied."
+    },
+    "tools": {
+      "count": 6,
+      "names": [
+        "read_file",
+        "list_dir",
+        "glob",
+        "grep",
+        "search_code",
+        "library_docs"
+      ],
+      "note": "Read-only tools. It cannot edit."
+    },
+    "context": [
+      "The project's README (first 6,000 characters)",
+      "The 4 most-used code files (up to 12,000 characters)",
+      "A code map when the project is large"
+    ],
+    "approach": [
+      "Answer from the code, not from general knowledge: read the relevant files and cite them as path:line.",
+      "Read the main files together in one reply (the ones the overview or code map points to, usually 2-5) before answering, so every claim is checked. Never write \"not shown\": read the file or leave it out, and do not repeat what a README says about files you have not opened.",
+      "Lead with the direct answer in a sentence or two, then the detail.",
+      "Change nothing unless the user asks."
+    ],
+    "checks": [
+      "The answer cites the files it came from.",
+      "No files were changed."
+    ],
+    "tokens": {
+      "typical": "3.6K to 6K",
+      "note": "Measured: 3,648 tokens in 1 step (before: 9,900 in 5 steps)."
+    },
+    "strengths": [
+      "Cites path:line for each claim",
+      "One step on small and medium projects"
+    ],
+    "weaknesses": [
+      "Very large projects still need several reads",
+      "Binary and generated files are skipped"
+    ],
+    "improvements": [
+      "Keep a cached project summary so repeat questions cost less"
+    ]
+  },
+  {
+    "id": "build",
+    "title": "Building new things",
+    "kind": "models",
+    "purpose": "A new site, app, API or feature, from nothing: structure, files, running and checking it.",
+    "handles": [
+      "build a playground site with a get started button",
+      "create a REST API for tasks",
+      "make a snake game"
+    ],
+    "outcomeKinds": [
+      "build"
+    ],
+    "chain": [
+      {
+        "provider": "gemini",
+        "label": "Gemini",
+        "models": [
+          "gemini-3.8-flash",
+          "gemini-3.7-flash",
+          "gemini-3.6-flash",
+          "gemini-3.5-flash",
+          "gemini-2.5-flash"
+        ]
+      },
+      {
+        "provider": "nvidia",
+        "label": "NVIDIA",
+        "models": [
+          "nvidia/nemotron-3-ultra-550b-a55b",
+          "nvidia/nemotron-3-super-120b-a12b",
+          "z-ai/glm-5.3"
+        ]
+      },
+      {
+        "provider": "mistral",
+        "label": "Mistral",
+        "models": [
+          "mistral-medium-latest"
+        ]
+      },
+      {
+        "provider": "groq",
+        "label": "Groq",
+        "models": [
+          "openai/gpt-oss-120b",
+          "qwen/qwen3.8-27b"
+        ]
+      },
+      {
+        "provider": "cohere",
+        "label": "Cohere",
+        "models": [
+          "command-a-plus-05-2026"
+        ]
+      },
+      {
+        "provider": "openrouter",
+        "label": "OpenRouter",
+        "models": [
+          "openrouter/free"
+        ]
+      },
+      {
+        "provider": "trial",
+        "label": "Free trial",
+        "models": [
+          "deep"
+        ]
+      }
+    ],
+    "chainNote": "Strongest first: Gemini's 1M-token context carries multi-file work, then NVIDIA Nemotron Ultra, Mistral. OpenRouter's free router last. Your own Claude or OpenAI key is only used first when no free key is active; otherwise it waits at the end of the chain.",
+    "effort": {
+      "reasoning": "Provider default",
+      "level": 2,
+      "steps": "5 to 15 steps",
+      "note": "Plans with a todo list, writes whole files, then checks them."
+    },
+    "tools": {
+      "count": 12,
+      "names": [
+        "read_file",
+        "write_file",
+        "edit_file",
+        "list_dir",
+        "glob",
+        "todo_write",
+        "run_command",
+        "process",
+        "fetch_url",
+        "library_docs",
+        "inspect_environment",
+        "check_page"
+      ],
+      "note": "Everything except project search (nothing to search yet)."
+    },
+    "context": [
+      "The agent instructions",
+      "The matching playbook (web, python, mobile, .NET, documents...)",
+      "A proven structure for the domain (landing, dashboard, store, auth...)",
+      "A design reference for anything with a screen",
+      "Your lessons"
+    ],
+    "approach": [
+      "Understand the project before adding to it: its structure, the patterns it already uses for similar things, and how it is run and tested.",
+      "Plan the change as concrete steps with todo_write, ending with how it will be verified.",
+      "Build it end to end — data, logic, interface, wiring — rather than a front with nothing behind it. Never leave a placeholder that looks finished.",
+      "Follow the project’s existing conventions for naming, structure and error handling.",
+      "Handle the failure cases a real user will hit: empty input, no network, a slow response, a missing permission.",
+      "Run it, and the project’s checks, before finishing."
+    ],
+    "checks": [
+      "It works end to end, with nothing faked.",
+      "The project’s own checks pass.",
+      "The report says how to use it and what is left to do.",
+      "Web pages load in a hidden browser: errors, cut-off layout, invisible content",
+      "Build, type check and tests when the project has them"
+    ],
+    "tokens": {
+      "typical": "30K to 80K",
+      "note": "Measured: a landing page 56K tokens; it writes real files, so it costs more than a fix."
+    },
+    "strengths": [
+      "Starts from how strong projects are built, not a blank page",
+      "Cannot finish on a broken build"
+    ],
+    "weaknesses": [
+      "Free models vary in craft; the design reference lifts the floor, not the ceiling",
+      "Long builds can hit a free daily limit mid-way (it switches keys, but not always enough)"
+    ],
+    "improvements": [
+      "More domain structures (Flutter, payments, education)",
+      "Compare screenshots with the design reference"
+    ]
+  },
+  {
+    "id": "change",
+    "title": "Changing existing code",
+    "kind": "models",
+    "purpose": "Features and edits in a project that already exists: add, update, wire up, extend.",
+    "handles": [
+      "add a dark mode toggle",
+      "add pagination to the orders list",
+      "connect the form to the API"
+    ],
+    "outcomeKinds": [
+      "change"
+    ],
+    "chain": [
+      {
+        "provider": "gemini",
+        "label": "Gemini",
+        "models": [
+          "gemini-3.8-flash",
+          "gemini-3.7-flash",
+          "gemini-3.6-flash",
+          "gemini-3.5-flash",
+          "gemini-2.5-flash"
+        ]
+      },
+      {
+        "provider": "nvidia",
+        "label": "NVIDIA",
+        "models": [
+          "nvidia/nemotron-3-ultra-550b-a55b",
+          "nvidia/nemotron-3-super-120b-a12b",
+          "z-ai/glm-5.3"
+        ]
+      },
+      {
+        "provider": "mistral",
+        "label": "Mistral",
+        "models": [
+          "mistral-medium-latest"
+        ]
+      },
+      {
+        "provider": "groq",
+        "label": "Groq",
+        "models": [
+          "openai/gpt-oss-120b",
+          "qwen/qwen3.8-27b"
+        ]
+      },
+      {
+        "provider": "cohere",
+        "label": "Cohere",
+        "models": [
+          "command-a-plus-05-2026"
+        ]
+      },
+      {
+        "provider": "openrouter",
+        "label": "OpenRouter",
+        "models": [
+          "openrouter/free"
+        ]
+      },
+      {
+        "provider": "trial",
+        "label": "Free trial",
+        "models": [
+          "deep"
+        ]
+      }
+    ],
+    "chainNote": "Strongest first, with the code map of the project up front.",
+    "effort": {
+      "reasoning": "Provider default",
+      "level": 2,
+      "steps": "5 to 20 steps",
+      "note": "Explore, plan, edit, verify."
+    },
+    "tools": {
+      "count": 15,
+      "names": [
+        "read_file",
+        "write_file",
+        "edit_file",
+        "list_dir",
+        "glob",
+        "grep",
+        "todo_write",
+        "search_code",
+        "run_command",
+        "process",
+        "fetch_url",
+        "library_docs",
+        "inspect_environment",
+        "check_page",
+        "get_problems"
+      ],
+      "note": "All tools, including project search."
+    },
+    "context": [
+      "The agent instructions",
+      "The playbook for the project's stack",
+      "A code map: the most-used files and what they define",
+      "Files the request names",
+      "Your lessons and approved shared lessons"
+    ],
+    "approach": [
+      "Find the relevant code with search, not folder by folder",
+      "Read only what is needed",
+      "Edit by line, then run the project's own checks",
+      "Fix what the editor reports on each edit"
+    ],
+    "checks": [
+      "The project's tests, type check or build must pass after the last edit before it can finish"
+    ],
+    "tokens": {
+      "typical": "20K to 60K",
+      "note": "Depends on how many files it must read."
+    },
+    "strengths": [
+      "Edits by line number avoid most \"text not found\" retries",
+      "Reads only the files that matter"
+    ],
+    "weaknesses": [
+      "Projects with no tests can only be checked by build or page load"
+    ],
+    "improvements": [
+      "Remember which files each feature touches between tasks"
+    ]
+  },
+  {
+    "id": "fix",
+    "title": "Debugging",
+    "kind": "models",
+    "purpose": "Something is broken: reproduce it, find the cause, fix it, prove it.",
+    "handles": [
+      "fix the bug: total() returns NaN for an empty cart",
+      "the login page shows a 500",
+      "tests are failing"
+    ],
+    "outcomeKinds": [
+      "fix"
+    ],
+    "chain": [
+      {
+        "provider": "gemini",
+        "label": "Gemini",
+        "models": [
+          "gemini-3.8-flash",
+          "gemini-3.7-flash",
+          "gemini-3.6-flash",
+          "gemini-3.5-flash",
+          "gemini-2.5-flash"
+        ]
+      },
+      {
+        "provider": "nvidia",
+        "label": "NVIDIA",
+        "models": [
+          "nvidia/nemotron-3-ultra-550b-a55b",
+          "nvidia/nemotron-3-super-120b-a12b",
+          "z-ai/glm-5.3"
+        ]
+      },
+      {
+        "provider": "mistral",
+        "label": "Mistral",
+        "models": [
+          "mistral-medium-latest"
+        ]
+      },
+      {
+        "provider": "groq",
+        "label": "Groq",
+        "models": [
+          "openai/gpt-oss-120b",
+          "qwen/qwen3.8-27b"
+        ]
+      },
+      {
+        "provider": "cohere",
+        "label": "Cohere",
+        "models": [
+          "command-a-plus-05-2026"
+        ]
+      },
+      {
+        "provider": "openrouter",
+        "label": "OpenRouter",
+        "models": [
+          "openrouter/free"
+        ]
+      },
+      {
+        "provider": "trial",
+        "label": "Free trial",
+        "models": [
+          "deep"
+        ]
+      }
+    ],
+    "chainNote": "Strongest first. When the same error repeats, the next steps go to the strongest model available with an instruction to fix the root cause.",
+    "effort": {
+      "reasoning": "High on repeated errors",
+      "level": 3,
+      "steps": "5 to 15 steps",
+      "note": "After an error repeats twice (even with other steps between), 2 steps run on the strongest model; after 5 repeats it stops instead of burning tokens."
+    },
+    "tools": {
+      "count": 15,
+      "names": [
+        "read_file",
+        "write_file",
+        "edit_file",
+        "list_dir",
+        "glob",
+        "grep",
+        "todo_write",
+        "search_code",
+        "run_command",
+        "process",
+        "fetch_url",
+        "library_docs",
+        "inspect_environment",
+        "check_page",
+        "get_problems"
+      ],
+      "note": "All tools."
+    },
+    "context": [
+      "The agent instructions",
+      "The debugging method",
+      "The error text and likely files"
+    ],
+    "approach": [
+      "Reproduce it first. Find or write the smallest command, test or input that shows the failure, and run it. If you cannot reproduce it, say so and ask for what you need — do not guess at a fix.",
+      "Find the cause, not the symptom. Read the code path the failure goes through and state in one sentence why it happens before changing anything.",
+      "Make the smallest change that removes the cause. Do not refactor, rename or restyle anything else on the way.",
+      "Add a test that failed before the fix and passes after it, where the project has tests.",
+      "Run the reproduction again and show it passing."
+    ],
+    "checks": [
+      "The reproduction was run before and after, and now passes.",
+      "The cause is stated in one sentence in the report.",
+      "Nothing unrelated to the bug was changed."
+    ],
+    "tokens": {
+      "typical": "25K to 45K",
+      "note": "Measured 32K to 46K on the cart bug."
+    },
+    "strengths": [
+      "Reproduces first and proves the fix",
+      "Escalates to the strongest model on a stubborn error"
+    ],
+    "weaknesses": [
+      "If the bug cannot be reproduced it says so and asks, which costs a turn"
+    ],
+    "improvements": [
+      "Run the failing test automatically as the very first step"
+    ]
+  },
+  {
+    "id": "design",
+    "title": "Interface design",
+    "kind": "models",
+    "purpose": "How something looks: layout, spacing, type, colour, responsiveness, accessibility.",
+    "handles": [
+      "redesign the pricing page",
+      "make the dashboard look professional",
+      "fix the layout on phones"
+    ],
+    "outcomeKinds": [
+      "design"
+    ],
+    "chain": [
+      {
+        "provider": "gemini",
+        "label": "Gemini",
+        "models": [
+          "gemini-3.8-flash",
+          "gemini-3.7-flash",
+          "gemini-3.6-flash",
+          "gemini-3.5-flash",
+          "gemini-2.5-flash"
+        ]
+      },
+      {
+        "provider": "nvidia",
+        "label": "NVIDIA",
+        "models": [
+          "nvidia/nemotron-3-ultra-550b-a55b",
+          "nvidia/nemotron-3-super-120b-a12b",
+          "z-ai/glm-5.3"
+        ]
+      },
+      {
+        "provider": "mistral",
+        "label": "Mistral",
+        "models": [
+          "mistral-medium-latest"
+        ]
+      },
+      {
+        "provider": "groq",
+        "label": "Groq",
+        "models": [
+          "openai/gpt-oss-120b",
+          "qwen/qwen3.8-27b"
+        ]
+      },
+      {
+        "provider": "cohere",
+        "label": "Cohere",
+        "models": [
+          "command-a-plus-05-2026"
+        ]
+      },
+      {
+        "provider": "openrouter",
+        "label": "OpenRouter",
+        "models": [
+          "openrouter/free"
+        ]
+      },
+      {
+        "provider": "trial",
+        "label": "Free trial",
+        "models": [
+          "deep"
+        ]
+      }
+    ],
+    "chainNote": "Strongest first. A design reference (downloaded library first, then 8 built-in styles) travels with the request.",
+    "effort": {
+      "reasoning": "Provider default",
+      "level": 2,
+      "steps": "5 to 15 steps",
+      "note": "Design system first, then screens, then the page check."
+    },
+    "tools": {
+      "count": 15,
+      "names": [
+        "read_file",
+        "write_file",
+        "edit_file",
+        "list_dir",
+        "glob",
+        "grep",
+        "todo_write",
+        "search_code",
+        "run_command",
+        "process",
+        "fetch_url",
+        "library_docs",
+        "inspect_environment",
+        "check_page",
+        "get_problems"
+      ],
+      "note": "All tools, plus find_image for real photos."
+    },
+    "context": [
+      "The design method",
+      "One design reference with tokens (colours, type, spacing)",
+      "Domain structure for the kind of site"
+    ],
+    "approach": [
+      "Read the existing design first: the component library, tokens or CSS variables, spacing scale and one or two similar screens. Match them; do not introduce a second style.",
+      "Reuse existing components before writing new ones.",
+      "Build for small screens as well as large: check the layout at phone width, and that nothing overflows horizontally.",
+      "Keep it accessible: real buttons and labels, visible focus, text contrast that passes, images with alt text.",
+      "Where the project can run, start it and check the result rather than assuming it looks right."
+    ],
+    "checks": [
+      "Uses the project’s existing components and tokens.",
+      "Checked at phone width with no horizontal overflow.",
+      "Interactive elements are reachable by keyboard and labelled.",
+      "The page check scrolls the page and fails on text that never becomes visible"
+    ],
+    "tokens": {
+      "typical": "40K to 70K",
+      "note": "Writes CSS and markup; largest outputs of any role."
+    },
+    "strengths": [
+      "Starts from a real visual system",
+      "Checks phone width and accessibility"
+    ],
+    "weaknesses": [
+      "No visual judgement of the final picture yet: it checks structure, not taste"
+    ],
+    "improvements": [
+      "Screenshot comparison against the reference for a second opinion"
+    ]
+  },
+  {
+    "id": "refactor",
+    "title": "Refactoring",
+    "kind": "models",
+    "purpose": "Improve structure without changing behaviour.",
+    "handles": [
+      "split this 800-line file",
+      "rename the service layer",
+      "remove the duplicate code"
+    ],
+    "outcomeKinds": [
+      "refactor"
+    ],
+    "chain": [
+      {
+        "provider": "gemini",
+        "label": "Gemini",
+        "models": [
+          "gemini-3.8-flash",
+          "gemini-3.7-flash",
+          "gemini-3.6-flash",
+          "gemini-3.5-flash",
+          "gemini-2.5-flash"
+        ]
+      },
+      {
+        "provider": "nvidia",
+        "label": "NVIDIA",
+        "models": [
+          "nvidia/nemotron-3-ultra-550b-a55b",
+          "nvidia/nemotron-3-super-120b-a12b",
+          "z-ai/glm-5.3"
+        ]
+      },
+      {
+        "provider": "mistral",
+        "label": "Mistral",
+        "models": [
+          "mistral-medium-latest"
+        ]
+      },
+      {
+        "provider": "groq",
+        "label": "Groq",
+        "models": [
+          "openai/gpt-oss-120b",
+          "qwen/qwen3.8-27b"
+        ]
+      },
+      {
+        "provider": "cohere",
+        "label": "Cohere",
+        "models": [
+          "command-a-plus-05-2026"
+        ]
+      },
+      {
+        "provider": "openrouter",
+        "label": "OpenRouter",
+        "models": [
+          "openrouter/free"
+        ]
+      },
+      {
+        "provider": "trial",
+        "label": "Free trial",
+        "models": [
+          "deep"
+        ]
+      }
+    ],
+    "chainNote": "Strongest first.",
+    "effort": {
+      "reasoning": "Provider default",
+      "level": 2,
+      "steps": "8 to 25 steps",
+      "note": "Tests before and after."
+    },
+    "tools": {
+      "count": 15,
+      "names": [
+        "read_file",
+        "write_file",
+        "edit_file",
+        "list_dir",
+        "glob",
+        "grep",
+        "todo_write",
+        "search_code",
+        "run_command",
+        "process",
+        "fetch_url",
+        "library_docs",
+        "inspect_environment",
+        "check_page",
+        "get_problems"
+      ],
+      "note": "All tools."
+    },
+    "context": [
+      "The refactoring method",
+      "A code map",
+      "The files involved"
+    ],
+    "approach": [
+      "The rule: behaviour does not change. If a change would alter what the program does, stop and ask.",
+      "Run the existing tests before touching anything, and record which pass. If there are none for this code, write a few that pin down current behaviour first.",
+      "Move in small steps, running the tests after each one. Never combine a refactor with a feature or a fix.",
+      "Update every caller of anything renamed or moved — search the whole project, not just the open file."
+    ],
+    "checks": [
+      "The same tests pass after as before.",
+      "No behaviour changed, or every change was agreed with the user.",
+      "No caller was left pointing at an old name."
+    ],
+    "tokens": {
+      "typical": "30K to 80K",
+      "note": "Reads a lot before changing anything."
+    },
+    "strengths": [
+      "Behaviour is checked by tests before and after"
+    ],
+    "weaknesses": [
+      "Without tests it can only check that the build still passes"
+    ],
+    "improvements": [
+      "Offer to write characterisation tests first when none exist"
+    ]
+  },
+  {
+    "id": "data",
+    "title": "Data and machine learning",
+    "kind": "models",
+    "purpose": "Datasets, training scripts, notebooks, metrics.",
+    "handles": [
+      "train a churn classifier",
+      "clean this CSV",
+      "plot the monthly revenue"
+    ],
+    "outcomeKinds": [
+      "data"
+    ],
+    "chain": [
+      {
+        "provider": "gemini",
+        "label": "Gemini",
+        "models": [
+          "gemini-3.8-flash",
+          "gemini-3.7-flash",
+          "gemini-3.6-flash",
+          "gemini-3.5-flash",
+          "gemini-2.5-flash"
+        ]
+      },
+      {
+        "provider": "nvidia",
+        "label": "NVIDIA",
+        "models": [
+          "nvidia/nemotron-3-ultra-550b-a55b",
+          "nvidia/nemotron-3-super-120b-a12b",
+          "z-ai/glm-5.3"
+        ]
+      },
+      {
+        "provider": "mistral",
+        "label": "Mistral",
+        "models": [
+          "mistral-medium-latest"
+        ]
+      },
+      {
+        "provider": "groq",
+        "label": "Groq",
+        "models": [
+          "openai/gpt-oss-120b",
+          "qwen/qwen3.8-27b"
+        ]
+      },
+      {
+        "provider": "cohere",
+        "label": "Cohere",
+        "models": [
+          "command-a-plus-05-2026"
+        ]
+      },
+      {
+        "provider": "openrouter",
+        "label": "OpenRouter",
+        "models": [
+          "openrouter/free"
+        ]
+      },
+      {
+        "provider": "trial",
+        "label": "Free trial",
+        "models": [
+          "deep"
+        ]
+      }
+    ],
+    "chainNote": "Strongest first. Training runs are smoke-tested on a tiny sample, never run in full.",
+    "effort": {
+      "reasoning": "Provider default",
+      "level": 2,
+      "steps": "6 to 20 steps",
+      "note": "Baseline first, then the real model, with real metrics."
+    },
+    "tools": {
+      "count": 15,
+      "names": [
+        "read_file",
+        "write_file",
+        "edit_file",
+        "list_dir",
+        "glob",
+        "grep",
+        "todo_write",
+        "search_code",
+        "run_command",
+        "process",
+        "fetch_url",
+        "library_docs",
+        "inspect_environment",
+        "check_page",
+        "get_problems"
+      ],
+      "note": "All tools."
+    },
+    "context": [
+      "The data method",
+      "The Python environment hints (venv, uv)",
+      "Shapes and a few rows, never whole datasets"
+    ],
+    "approach": [
+      "Make it reproducible: fix random seeds, pin versions, and never train or evaluate on data the model has already seen.",
+      "Look at the data before modelling it: shape, types, missing values, class balance. Say what you found.",
+      "Start with the simplest baseline and report its score, so any improvement means something.",
+      "Keep training small enough to run here. Anything needing a GPU or hours of compute: write it, test it on a tiny sample, and say what the full run needs.",
+      "Report metrics on a held-out set, with the number, not a description of it."
+    ],
+    "checks": [
+      "Seeds are fixed and the split is held out.",
+      "A baseline score and the new score are both reported.",
+      "It was run end to end, at least on a small sample."
+    ],
+    "tokens": {
+      "typical": "30K to 70K",
+      "note": "Varies with how much exploration the dataset needs."
+    },
+    "strengths": [
+      "Fixed seeds, held-out data and a baseline by default"
+    ],
+    "weaknesses": [
+      "Cannot judge model quality on your real data without running it"
+    ],
+    "improvements": [
+      "A reusable experiment template (config, metrics, saved pipeline)"
+    ]
+  },
+  {
+    "id": "documents",
+    "title": "Decks, documents and PDFs",
+    "kind": "models",
+    "purpose": "PowerPoint, Word and PDF files built by script, designed and checked.",
+    "handles": [
+      "make a 12-slide deck on Nepal floods",
+      "write a project report as a PDF",
+      "build a pricing sheet in Excel"
+    ],
+    "outcomeKinds": [],
+    "chain": [
+      {
+        "provider": "gemini",
+        "label": "Gemini",
+        "models": [
+          "gemini-3.8-flash",
+          "gemini-3.7-flash",
+          "gemini-3.6-flash",
+          "gemini-3.5-flash",
+          "gemini-2.5-flash"
+        ]
+      },
+      {
+        "provider": "nvidia",
+        "label": "NVIDIA",
+        "models": [
+          "nvidia/nemotron-3-ultra-550b-a55b",
+          "nvidia/nemotron-3-super-120b-a12b",
+          "z-ai/glm-5.3"
+        ]
+      },
+      {
+        "provider": "mistral",
+        "label": "Mistral",
+        "models": [
+          "mistral-medium-latest"
+        ]
+      },
+      {
+        "provider": "groq",
+        "label": "Groq",
+        "models": [
+          "openai/gpt-oss-120b",
+          "qwen/qwen3.8-27b"
+        ]
+      },
+      {
+        "provider": "cohere",
+        "label": "Cohere",
+        "models": [
+          "command-a-plus-05-2026"
+        ]
+      },
+      {
+        "provider": "openrouter",
+        "label": "OpenRouter",
+        "models": [
+          "openrouter/free"
+        ]
+      },
+      {
+        "provider": "trial",
+        "label": "Free trial",
+        "models": [
+          "deep"
+        ]
+      }
+    ],
+    "chainNote": "Strongest first.",
+    "effort": {
+      "reasoning": "Provider default",
+      "level": 2,
+      "steps": "6 to 15 steps",
+      "note": "One build script, then check_document until it finds nothing."
+    },
+    "tools": {
+      "count": 14,
+      "names": [
+        "read_file",
+        "write_file",
+        "edit_file",
+        "list_dir",
+        "glob",
+        "todo_write",
+        "run_command",
+        "process",
+        "fetch_url",
+        "library_docs",
+        "inspect_environment",
+        "check_page",
+        "find_image",
+        "check_document"
+      ],
+      "note": "Build tools plus find_image (real photos with credits) and check_document."
+    },
+    "context": [
+      "The documents playbook (palette, grid, headline rules)",
+      "Library docs for python-pptx and python-docx on demand"
+    ],
+    "approach": [
+      "One build script makes every output",
+      "Real photos from Wikimedia Commons or a labelled frame",
+      "Open the result and fix every reported problem"
+    ],
+    "checks": [
+      "Empty placeholders, content off the slide, tiny or overflowing text, empty or crowded slides, blank paragraphs, blank PDF pages"
+    ],
+    "tokens": {
+      "typical": "30K to 70K",
+      "note": "Charts and images add steps."
+    },
+    "strengths": [
+      "Never leaves a blank template box",
+      "Photos come with their credits"
+    ],
+    "weaknesses": [
+      "Charts are drawn with matplotlib, so they are pictures, not editable charts"
+    ],
+    "improvements": [
+      "Native PowerPoint charts"
+    ]
+  },
+  {
+    "id": "correction",
+    "title": "Corrections",
+    "kind": "models",
+    "purpose": "You point at what is wrong (often with a screenshot); each point is fixed and verified separately.",
+    "handles": [
+      "the button is still blue, and the title is cut off",
+      "No, use pnpm not npm"
+    ],
+    "outcomeKinds": [],
+    "chain": [
+      {
+        "provider": "gemini",
+        "label": "Gemini",
+        "models": [
+          "gemini-3.8-flash",
+          "gemini-3.7-flash",
+          "gemini-3.6-flash",
+          "gemini-3.5-flash",
+          "gemini-2.5-flash"
+        ]
+      },
+      {
+        "provider": "nvidia",
+        "label": "NVIDIA",
+        "models": [
+          "nvidia/nemotron-3-ultra-550b-a55b",
+          "nvidia/nemotron-3-super-120b-a12b",
+          "z-ai/glm-5.3"
+        ]
+      },
+      {
+        "provider": "mistral",
+        "label": "Mistral",
+        "models": [
+          "mistral-medium-latest"
+        ]
+      },
+      {
+        "provider": "groq",
+        "label": "Groq",
+        "models": [
+          "openai/gpt-oss-120b",
+          "qwen/qwen3.8-27b"
+        ]
+      },
+      {
+        "provider": "cohere",
+        "label": "Cohere",
+        "models": [
+          "command-a-plus-05-2026"
+        ]
+      },
+      {
+        "provider": "openrouter",
+        "label": "OpenRouter",
+        "models": [
+          "openrouter/free"
+        ]
+      },
+      {
+        "provider": "trial",
+        "label": "Free trial",
+        "models": [
+          "deep"
+        ]
+      }
+    ],
+    "chainNote": "Strongest first.",
+    "effort": {
+      "reasoning": "Provider default",
+      "level": 2,
+      "steps": "3 to 12 steps",
+      "note": "Each point becomes its own item."
+    },
+    "tools": {
+      "count": 15,
+      "names": [
+        "read_file",
+        "write_file",
+        "edit_file",
+        "list_dir",
+        "glob",
+        "grep",
+        "todo_write",
+        "search_code",
+        "run_command",
+        "process",
+        "fetch_url",
+        "library_docs",
+        "inspect_environment",
+        "check_page",
+        "get_problems"
+      ],
+      "note": "All tools."
+    },
+    "context": [
+      "A correction brief that numbers your points",
+      "Evidence read from your screenshot or notes"
+    ],
+    "approach": [
+      "Number each point",
+      "Smallest change per point",
+      "Verify each one",
+      "End with what was wrong, what changed, how it was checked"
+    ],
+    "checks": [
+      "Each point verified separately"
+    ],
+    "tokens": {
+      "typical": "15K to 40K",
+      "note": "Usually fewer steps than the original task."
+    },
+    "strengths": [
+      "Saves a lesson from each correction (and shares it if you chose to)"
+    ],
+    "weaknesses": [
+      "A vague correction (\"make it better\") gives it little to verify"
+    ],
+    "improvements": [
+      "Ask one clarifying question when a point cannot be verified"
+    ]
+  },
+  {
+    "id": "reader",
+    "title": "Attachment reader: documents and screenshots",
+    "kind": "reader",
+    "purpose": "Turns files you attach into text the agent can use: documents are read on your computer; screenshots go to a vision model only when needed.",
+    "handles": [
+      "a PDF spec",
+      "a Word or Excel file",
+      "a screenshot of a bug",
+      "a zip of a project"
+    ],
+    "outcomeKinds": [],
+    "chain": [
+      {
+        "provider": "gemini",
+        "label": "Gemini",
+        "models": [
+          "gemini-3.8-flash"
+        ]
+      },
+      {
+        "provider": "mistral",
+        "label": "Mistral",
+        "models": [
+          "mistral-medium-latest"
+        ]
+      },
+      {
+        "provider": "openai",
+        "label": "OpenAI",
+        "models": [
+          "gpt-5-mini"
+        ]
+      },
+      {
+        "provider": "anthropic",
+        "label": "Anthropic",
+        "models": [
+          "claude-haiku-4-5"
+        ]
+      }
+    ],
+    "chainNote": "Documents and text in screenshots are read locally with no model. A vision model is asked only when an image has little text or when layout and colour matter; only keys whose model can see images are used.",
+    "effort": {
+      "reasoning": "None",
+      "level": 0,
+      "steps": "Before the task starts",
+      "note": "Local reading first; one vision call at most per image."
+    },
+    "tools": {
+      "count": 0,
+      "names": [],
+      "note": "Not an agent: a reader."
+    },
+    "context": [
+      "Each attached file",
+      "Long documents are summarised and saved in .freeagentcoder/attachments/"
+    ],
+    "approach": [
+      "Detect the real format from the bytes, not the extension",
+      "Read locally: PDF, Word, PowerPoint, Excel, OpenDocument, EPUB, ZIP, e-mail, old Office files, text and code",
+      "OCR images on this computer",
+      "Ask a vision model only when needed"
+    ],
+    "checks": [
+      "Reports plainly when a file could not be read, never describes an image it was not shown"
+    ],
+    "tokens": {
+      "typical": "0 to 3K",
+      "note": "Local reading uses no tokens."
+    },
+    "strengths": [
+      "Private: documents are read on your computer",
+      "20+ formats"
+    ],
+    "weaknesses": [
+      "Scanned pages with no text layer need a vision model (Gemini, Mistral, OpenAI or Anthropic key)"
+    ],
+    "improvements": [
+      "Table structure from scanned PDFs"
+    ]
+  },
+  {
+    "id": "pdf",
+    "title": "Scanned PDF reader",
+    "kind": "reader",
+    "purpose": "PDFs with no text layer (scans): read natively by a model that accepts PDFs.",
+    "handles": [
+      "a scanned contract",
+      "a photographed form"
+    ],
+    "outcomeKinds": [],
+    "chain": [
+      {
+        "provider": "gemini",
+        "label": "Gemini",
+        "models": [
+          "gemini-3.8-flash"
+        ]
+      }
+    ],
+    "chainNote": "Only Gemini reads PDFs natively; without a Gemini key it says so instead of guessing.",
+    "effort": {
+      "reasoning": "None",
+      "level": 0,
+      "steps": "Before the task starts",
+      "note": "One request per document."
+    },
+    "tools": {
+      "count": 0,
+      "names": [],
+      "note": "Not an agent: a reader."
+    },
+    "context": [
+      "The PDF file"
+    ],
+    "approach": [
+      "Try the text layer locally",
+      "Only if empty, send the PDF to Gemini"
+    ],
+    "checks": [
+      "Page counts compared with what came back"
+    ],
+    "tokens": {
+      "typical": "2K to 20K",
+      "note": "Depends on the page count."
+    },
+    "strengths": [
+      "Handles scans a local reader cannot"
+    ],
+    "weaknesses": [
+      "Needs a Gemini key"
+    ],
+    "improvements": [
+      "Local OCR for scanned PDFs on machines without a Gemini key"
+    ]
+  },
+  {
+    "id": "lessons",
+    "title": "Lesson writer",
+    "kind": "models",
+    "purpose": "After a correction, writes the short general rule to remember (and to share, if you chose to).",
+    "handles": [
+      "(automatic after a correction)"
+    ],
+    "outcomeKinds": [],
+    "chain": [
+      {
+        "provider": "groq",
+        "label": "Groq",
+        "models": [
+          "openai/gpt-oss-120b",
+          "qwen/qwen3.8-27b"
+        ]
+      },
+      {
+        "provider": "gemini",
+        "label": "Gemini",
+        "models": [
+          "gemini-3.5-flash-lite",
+          "gemini-3.1-flash-lite",
+          "gemini-2.5-flash-lite"
+        ]
+      },
+      {
+        "provider": "nvidia",
+        "label": "NVIDIA",
+        "models": [
+          "nvidia/nemotron-3-super-120b-a12b",
+          "nvidia/nemotron-3.5-lightning-30b-a3b"
+        ]
+      },
+      {
+        "provider": "mistral",
+        "label": "Mistral",
+        "models": [
+          "mistral-small-latest"
+        ]
+      },
+      {
+        "provider": "openrouter",
+        "label": "OpenRouter",
+        "models": [
+          "openrouter/free"
+        ]
+      },
+      {
+        "provider": "cohere",
+        "label": "Cohere",
+        "models": [
+          "command-a-plus-05-2026"
+        ]
+      },
+      {
+        "provider": "trial",
+        "label": "Free trial",
+        "models": [
+          "fast"
+        ]
+      }
+    ],
+    "chainNote": "The quick-task chain: a lesson is a few sentences.",
+    "effort": {
+      "reasoning": "Low",
+      "level": 1,
+      "steps": "1 request",
+      "note": "One short completion; 60 s limit."
+    },
+    "tools": {
+      "count": 0,
+      "names": [],
+      "note": "None."
+    },
+    "context": [
+      "Your correction",
+      "The evidence from your screenshot",
+      "Your existing lessons (to avoid duplicates)"
+    ],
+    "approach": [
+      "Write 1 to 2 general rules",
+      "Strip names, paths and secrets",
+      "Skip if it duplicates an existing lesson"
+    ],
+    "checks": [
+      "A rule is only shared if it passes the privacy filter"
+    ],
+    "tokens": {
+      "typical": "500 to 1.5K",
+      "note": "Tiny."
+    },
+    "strengths": [
+      "Cheap, and runs in the background"
+    ],
+    "weaknesses": [
+      "A lesson is only as good as the correction"
+    ],
+    "improvements": [
+      "Merge near-duplicate lessons automatically"
+    ]
+  }
+]

@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 
 vi.mock('server-only', () => ({}));
 
-const { isShareablePattern, isShareableRule, learnedOrder, parseLearning, ruleHash } = await import('../lib/learning');
+const { aggregateKinds, isShareablePattern, isShareableRule, learnedOrder, parseLearning, ruleHash } = await import('../lib/learning');
 
 const install = '0b5f3c1e-7a2d-4c8e-9f10-123456789abc';
 
@@ -69,5 +69,17 @@ describe('learned model order', () => {
         const order = learnedOrder([score('gemini', 40, 30, { corrected: 6 }), score('nvidia', 30, 28), score('groq', 5, 5), score('openrouter', 50, 50)]);
         expect(order.deep).toEqual(['nvidia', 'gemini']);
         expect(order.fast).toBeUndefined();
+    });
+});
+
+describe('outcomes by kind of work', () => {
+    it('groups rows by kind with rates, averages and the models that answered', () => {
+        const row = (kind: string, provider: string, model: string, completed: boolean, steps: number) => ({ kind, provider, model, completed, corrected: false, paused: false, steps, tokens: steps * 1000, duration_ms: steps * 2000 });
+        const out = aggregateKinds([row('fix', 'gemini', 'g', true, 6), row('fix', 'gemini', 'g', false, 10), row('fix', 'groq', 'o', true, 5), row('quick', 'groq', 'o', true, 1)]);
+        expect(out.map((k) => k.kind)).toEqual(['fix', 'quick']);
+        const fix = out[0]!;
+        expect(fix).toMatchObject({ tasks: 3, completed: 2 });
+        expect(fix.avgSteps).toBeCloseTo(7, 5);
+        expect(fix.byModel[0]).toMatchObject({ provider: 'gemini', tasks: 2, completed: 1 });
     });
 });

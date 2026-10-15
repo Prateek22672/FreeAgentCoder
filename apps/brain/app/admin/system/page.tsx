@@ -101,6 +101,7 @@ export default async function SystemPage() {
                 </div>
                 <nav className="flex gap-4 text-[13px] text-muted">
                     <a href="/admin" className="hover:text-fg">Overview</a>
+                    <a href="/admin/models" className="hover:text-fg">Models</a>
                     <a href="/admin/learning" className="hover:text-fg">Learning</a>
                     <a href="/admin/lab" className="hover:text-fg">Test lab</a>
                     <a href="/admin/references" className="hover:text-fg">References</a>

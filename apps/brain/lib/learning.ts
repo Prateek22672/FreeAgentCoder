@@ -256,6 +256,58 @@ export interface ModelScore {
     bad: number;
 }
 
+/** Outcome rows grouped by the kind of work, for the Models page: how each role is really doing. */
+export interface KindStats {
+    kind: string;
+    tasks: number;
+    completed: number;
+    corrected: number;
+    paused: number;
+    avgSteps: number;
+    avgTokens: number;
+    avgSeconds: number;
+    byModel: { provider: string; model: string; tasks: number; completed: number }[];
+}
+
+export function aggregateKinds(
+    rows: { kind: string; provider: string; model: string; completed: boolean; corrected: boolean; paused: boolean; steps: number; tokens: number; duration_ms: number }[],
+): KindStats[] {
+    const by = new Map<string, typeof rows>();
+    for (const row of rows) by.set(row.kind, [...(by.get(row.kind) ?? []), row]);
+    return [...by.entries()]
+        .map(([kind, list]) => {
+            const n = list.length;
+            const models = new Map<string, { provider: string; model: string; tasks: number; completed: number }>();
+            for (const r of list) {
+                const key = `${r.provider}:${r.model}`;
+                const m = models.get(key) ?? { provider: r.provider, model: r.model, tasks: 0, completed: 0 };
+                m.tasks++;
+                if (r.completed) m.completed++;
+                models.set(key, m);
+            }
+            return {
+                kind,
+                tasks: n,
+                completed: list.filter((r) => r.completed).length,
+                corrected: list.filter((r) => r.corrected).length,
+                paused: list.filter((r) => r.paused).length,
+                avgSteps: list.reduce((s, r) => s + r.steps, 0) / n,
+                avgTokens: list.reduce((s, r) => s + r.tokens, 0) / n,
+                avgSeconds: list.reduce((s, r) => s + r.duration_ms, 0) / n / 1000,
+                byModel: [...models.values()].filter((m) => m.provider).sort((a, b) => b.tasks - a.tasks).slice(0, 5),
+            };
+        })
+        .sort((a, b) => b.tasks - a.tasks);
+}
+
+export async function kindStats(days = 14): Promise<KindStats[]> {
+    const since = new Date(Date.now() - days * 86_400_000).toISOString();
+    const rows = await select<Parameters<typeof aggregateKinds>[0][number]>(
+        `fac_task_outcomes?select=kind,provider,model,completed,corrected,paused,steps,tokens,duration_ms&created_at=gte.${encodeURIComponent(since)}&order=created_at.desc&limit=5000`,
+    );
+    return aggregateKinds(rows);
+}
+
 export const listLessons = () => select<LessonRow>('fac_lessons?select=*&order=installs.desc,occurrences.desc&limit=300');
 export const listErrors = () => select<ErrorRow>('fac_error_patterns?select=*&status=neq.ignored&order=repeats.desc,occurrences.desc&limit=100');
 export const listFyx = () => select<FyxRow>('fac_fyx_patterns?select=*&order=installs.desc,occurrences.desc&limit=200');

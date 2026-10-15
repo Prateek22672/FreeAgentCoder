@@ -2,7 +2,7 @@ import { modelSupportsImages } from '@agentic/core';
 import type { KeyRef, RouteStep } from './catalog';
 
 /** Models that read screenshots and scanned documents well, strongest free option first. */
-const VISION_MODELS: [provider: string, model: string][] = [
+export const VISION_MODELS: [provider: string, model: string][] = [
     ['gemini', 'gemini-3.8-flash'],
     ['mistral', 'mistral-medium-latest'],
     ['openai', 'gpt-5-mini'],
