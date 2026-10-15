@@ -2,7 +2,7 @@
   "name": "freeagentcoder",
   "displayName": "Free Agent Coder: Free AI Coding Agent, Claude Code, Copilot & Cursor Alternative",
   "description": "Free AI coding agent for VS Code: a free, open-source GitHub Copilot, Cursor, Claude Code and Gemini Code Assist alternative. Plans, edits, runs and tests code on your free Gemini, Groq, NVIDIA or OpenRouter keys. Private: keys and chats stay on your device. Fixes editor errors. No subscription.",
-  "version": "0.6.1",
+  "version": "0.6.2",
   "publisher": "PrateekKoratala",
   "license": "MIT",
   "icon": "media/icon.png",
