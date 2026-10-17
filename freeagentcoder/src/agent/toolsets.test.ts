@@ -23,3 +23,14 @@ describe('toolsFor', () => {
         expect(toolsFor({ tier: 'fast' })).not.toContain('find_image');
     });
 });
+
+describe('a presentation task', () => {
+    it('gets only what make_deck needs: no scripts, no commands, no docs lookups', async () => {
+        const { DECK_TOOLS } = await import('./toolsets');
+        expect(toolsFor({ tier: 'deep', newBuild: true, documents: true, deck: true })).toEqual(DECK_TOOLS);
+        expect(DECK_TOOLS).not.toContain('write_file');
+        expect(DECK_TOOLS).not.toContain('run_command');
+        expect(DECK_TOOLS).toEqual(expect.arrayContaining(['find_image', 'make_deck']));
+    });
+});
+

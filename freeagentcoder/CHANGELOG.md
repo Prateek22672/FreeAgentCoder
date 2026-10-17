@@ -2,8 +2,19 @@
 
 ## 0.6.2 — Reads every file
 
+### Added
+
+- **Presentations made by a real deck builder.** Decks are laid out from 16 tested layouts (cards, timeline, steps, big number, chart, gallery, quote and more), 8 themes and 85 built-in icons, then checked slide by slide and exported to PDF in the same step. Slips in the outline (a gallery written as a list, a timeline as "1956: text") are put right instead of refused, so the agent no longer falls back to writing a Python script.
+- **Better-matched photos.** Pictures now come from Pexels, Pixabay and Unsplash first, searched through the FreeAgentCoder site so no photo key is needed (only the search words are sent), then from Wikimedia Commons and Openverse. Several pictures come in one step.
+- **The version in Settings.** The Settings header shows the version you are running and when it was built.
+
 ### Improved
 
+- **Understands what you mean.** A quick first look works out what you are asking for and what you expect to get (a deck, a document, a running app) before the agent starts. A request to make something is never answered with "done, the same way as last time": Fyx only learns real chores.
+- **Nothing extra in your folder.** Only what you asked for goes where you asked: pictures are kept under `.freeagentcoder/images/` and report build scripts under `.freeagentcoder/scripts/`. A python-pptx script is refused unless you asked for a script.
+- **Apps that really run.** SDKs FreeAgentCoder installed are used first, one server runs on one port, and the agent stops after three failed starts instead of looping. The link is given only once the app answers, with an **Open ↗** button beside it, and the preview appears by itself when a slow app (Flutter) is ready.
+- **Done means done.** Checks count only if they ran after the last change, and a reply that claims success with nothing to show for it is sent back.
+- **Fewer tokens for decks.** A deck task gets only the six tools it needs and fetches every picture in one call.
 - **Word documents read completely.** Numbered lists keep their numbers (1., 2., a., iv.), links keep their address, pictures and charts are named with their description, and page headers, footers and comments are included.
 - **PowerPoint charts and Excel formulas.** A chart's data comes through as a table, and a formula whose result was never saved (a workbook written by a script) shows the formula.
 - **New formats.** OpenDocument (.odt, .ods, .odp from LibreOffice and Google Docs), EPUB books, ZIP archives (the file list plus the text of the files inside), e-mail (.eml, with its attachments listed), and the old Office formats read properly by their structure: .doc, .xls (with dates and formula results), .ppt slide by slide, and Outlook .msg.

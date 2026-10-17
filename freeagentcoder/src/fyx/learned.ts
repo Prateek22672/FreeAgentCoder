@@ -39,9 +39,27 @@ export function normalise(prompt: string): string {
 /** Commands never learned: anything that deletes, rewrites history, publishes, or runs code from the internet. */
 const RISKY = /\b(rm|del|rmdir|erase|remove-item|format|mkfs|dd|sudo|shutdown|reboot|kill|taskkill|chmod|chown|deploy|publish|release)\b|--force\b|(?<!\btar\b[^|;&\n]*)\s-f\b|reset\s+--hard|clean\s+-[a-z]*f|push\s+.*--delete|\|\s*(sh|bash|iex|invoke-expression)\b|curl|wget|invoke-webrequest|iwr\b|>\s*\/dev\//i;
 
+/**
+ * A request to make something (a deck, a report, a site, an app): never a chore, whatever command the agent ran
+ * first. A real chat learned "create a ppt presentation on …" as `mkdir`, then answered the next two requests with
+ * "Done, the same way as last time" and no presentation.
+ */
+const MAKES_SOMETHING =
+    /\b(?:pptx?|power\s*point|presentation|slide\s*deck|slides|deck)\b|\b(?:create|make|build|generate|write|design|draft|prepare|produce|implement|develop)\b[\s\S]{0,60}?\b(?:report|document|docx?|pdf|essay|letter|resume|cv|website|site|web\s*page|page|app|application|game|api|component|feature|chart|dashboard|script|program|function|class|tests?|model|story|poem|article|blog)\b/i;
+/** Commands that never finish a request on their own: they only prepare or look. */
+const TRIVIAL = /^\s*(?:mkdir|md|cd|ls|dir|pwd|echo|cat|type|cls|clear|true)\b[^;&|]*$/i;
+
 export function worthLearning(prompt: string, command: string): boolean {
     const words = prompt.trim().split(/\s+/).length;
-    return words >= 2 && words <= 20 && command.length <= 300 && !command.includes('\n') && !RISKY.test(command);
+    return (
+        words >= 2 &&
+        words <= 20 &&
+        command.length <= 300 &&
+        !command.includes('\n') &&
+        !RISKY.test(command) &&
+        !MAKES_SOMETHING.test(prompt) &&
+        !TRIVIAL.test(command)
+    );
 }
 
 export class LearnedCommands {
@@ -53,7 +71,7 @@ export class LearnedCommands {
 
     plan(prompt: string): FyxPlan | undefined {
         const found = this.all()[normalise(prompt)];
-        if (!found) {return undefined;}
+        if (!found || !worthLearning(prompt, found.command)) {return undefined;}
         return {
             kind: 'learned',
             intro: 'Running the command that did this last time.',
@@ -119,6 +137,7 @@ export class LearnedCommands {
  */
 export function sharedChore(prompt: string, patterns: { pattern: string; command: string }[]): FyxPlan | undefined {
     const request = normalise(prompt);
+    if (MAKES_SOMETHING.test(prompt)) {return undefined;}
     for (const { pattern, command } of patterns) {
         const slots: string[] = [];
         const source = pattern

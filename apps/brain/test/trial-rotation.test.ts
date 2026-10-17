@@ -3,7 +3,8 @@ import type { PoolTarget } from '../lib/keypool';
 
 vi.mock('server-only', () => ({}));
 
-const { plan } = await import('../lib/trialPlan');
+const { modelFor, plan } = await import('../lib/trialPlan');
+const { publicBaseURL } = await import('../lib/keyhealth');
 const { restSeconds } = await import('../lib/keypool');
 
 const key = (id: string, provider: string, usedToday = 0, maxRequestTokens?: number): PoolTarget => ({
@@ -40,5 +41,29 @@ describe('free trial rotation', () => {
         expect(restSeconds(null, 'You exceeded your current quota, please check your plan', now)).toBe(2 * 3600 + 5 * 60);
         expect(restSeconds(null, 'Rate limit reached for requests per minute')).toBe(60);
         expect(restSeconds('999999', '')).toBe(86_400);
+    });
+
+    it('puts a provider marked "use first" ahead of every built-in one, with its own models, and Cerebras in line', () => {
+        const bonus = { ...key('bonus', 'custom'), baseURL: 'https://api.bonus.example/v1', models: { fast: 'qwen3-coder', deep: 'kimi-k3' }, first: true };
+        const later = { ...key('later', 'custom'), baseURL: 'https://api.other.example/v1', models: { fast: 'm-small', deep: 'm-large' } };
+        const pool = [key('gem0', 'gemini'), key('groq0', 'groq'), key('cb0', 'cerebras'), bonus, later];
+        expect(plan(pool, 'deep', 2_000).map((t) => t.id)).toEqual(['bonus', 'gem0', 'cb0', 'groq0', 'later']);
+        expect(plan(pool, 'fast', 2_000).map((t) => t.id)).toEqual(['bonus', 'groq0', 'gem0', 'cb0', 'later']);
+        expect(modelFor(bonus, 'deep')).toBe('kimi-k3');
+        expect(modelFor(key('cb1', 'cerebras'), 'fast')).toBe('gpt-oss-120b');
+        // A custom key with no models of its own is never tried.
+        expect(plan([key('bare', 'custom')], 'deep', 100)).toEqual([]);
+    });
+
+    it('takes only a public https address for a custom provider', () => {
+        expect(publicBaseURL('https://api.example.com/v1/')).toBe('https://api.example.com/v1');
+        expect(publicBaseURL('http://api.example.com/v1')).toBeUndefined();
+        expect(publicBaseURL('https://localhost:8080/v1')).toBeUndefined();
+        expect(publicBaseURL('https://127.0.0.1/v1')).toBeUndefined();
+        expect(publicBaseURL('https://192.168.1.4/v1')).toBeUndefined();
+        expect(publicBaseURL('https://172.20.0.1/v1')).toBeUndefined();
+        expect(publicBaseURL('https://[::1]/v1')).toBeUndefined();
+        expect(publicBaseURL('https://metadata.internal/v1')).toBeUndefined();
+        expect(publicBaseURL('not a url')).toBeUndefined();
     });
 });

@@ -59,6 +59,12 @@ export class PagePreviews {
         }
     }
 
+    /** Loads a running app's address (a dev server) in a hidden browser; undefined when there is no browser. */
+    async checkUrl(url: string, signal?: AbortSignal): Promise<PageReport | undefined> {
+        const browser = await findBrowser();
+        return browser ? checkPage(browser, url, signal) : undefined;
+    }
+
     dispose(): void {
         this.server?.close();
         this.server = undefined;

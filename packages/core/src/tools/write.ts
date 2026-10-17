@@ -1,6 +1,7 @@
 import { displayPath } from '../workspace/types';
 import { countLines, plural } from '../util/text';
 import { checkFreshness, markWritten } from './common';
+import { bracketsBroken } from '../util/brackets';
 import { toolError, type Tool } from './types';
 
 interface Args {
@@ -43,6 +44,8 @@ export const writeFileTool: Tool<Args> = {
       return { content: `${shown} already has exactly this content; nothing changed.`, summary: 'unchanged' };
     }
 
+    const broken = (st ? bracketsBroken(abs, before, content, shown) : undefined) ?? ctx.guardWrite?.(abs, content);
+    if (broken) return toolError(broken);
     const display = { type: 'diff' as const, path: shown, before, after: content, created: !st };
     return {
       preview: display,

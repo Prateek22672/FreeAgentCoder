@@ -589,6 +589,8 @@ export class SettingsPanel {
     private readonly nav = h('nav', { class: 'settings-nav', attrs: { role: 'tablist' } });
     private readonly plansBody = h('div', { class: 'plans' });
     private readonly scroller = h('div', { class: 'settings-scroll' });
+    /** The version and build being used, always in view. */
+    private readonly versionTag = h('span', { class: 'settings-version' });
     private readonly form = new AddKeyForm();
     private readonly keySummary = h('div', { class: 'key-summary' });
     private readonly keyGroups = h('div', { class: 'key-groups' });
@@ -637,7 +639,7 @@ export class SettingsPanel {
         const back = h('button', { class: 'settings-back', title: 'Back to chat (Esc)', attrs: { type: 'button' } }, icon('back'), h('span', { text: 'Back' }));
         back.addEventListener('click', options.close);
         this.el.append(
-            h('div', { class: 'settings-header' }, back, h('span', { class: 'settings-title', text: 'Settings' }), button('Done', 'primary small', options.close, undefined, 'Back to chat (Esc)')),
+            h('div', { class: 'settings-header' }, back, h('span', { class: 'settings-title', text: 'Settings' }), this.versionTag, button('Done', 'primary small', options.close, undefined, 'Back to chat (Esc)')),
             h('div', { class: 'settings-body' }, this.nav, this.scroller),
         );
         this.el.addEventListener('keydown', (event) => {
@@ -651,6 +653,7 @@ export class SettingsPanel {
 
     update(data: SettingsView): void {
         this.data = data;
+        this.showVersion(data.about);
         this.form.setProviders(data.providers);
         this.renderOverview();
         this.renderKeys();
@@ -663,6 +666,16 @@ export class SettingsPanel {
 
     plans(message: Msg<'plans'>): void {
         this.renderPlans({ plans: message.plans, error: message.error });
+    }
+
+    private showVersion(about: SettingsView['about'] | undefined): void {
+        if (!about?.version) {
+            return;
+        }
+        const built = about.built ? new Date(about.built) : undefined;
+        const when = built && !Number.isNaN(built.getTime()) ? built.toLocaleString(undefined, { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) : '';
+        this.versionTag.textContent = when ? `v${about.version} · built ${when}` : `v${about.version}`;
+        this.versionTag.title = `FreeAgentCoder ${about.version}${built ? `, built ${built.toLocaleString()}` : ''} · VS Code ${about.vscode}`;
     }
 
     /** Two tiers, plainly: the free one you are on, and the paid one if it exists yet. */

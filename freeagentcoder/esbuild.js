@@ -42,6 +42,8 @@ const ocrCorePlugin = {
 /** @type {import('esbuild').BuildOptions} */
 const shared = {
 	bundle: true,
+	// When this build was made: shown beside the version in Settings, so a test install can be told from another.
+	define: { __FAC_BUILT__: JSON.stringify(new Date().toISOString()) },
 	minify: production,
 	sourcemap: !production,
 	sourcesContent: false,

@@ -117,8 +117,17 @@ export function orderWith(defaults: string[], learned: string[] = []): string[] 
     const last = new Set(['openrouter', 'trial']);
     const ranked = learned.filter((id, i) => defaults.includes(id) && !last.has(id) && learned.indexOf(id) === i);
     const rest = defaults.filter((id) => !ranked.includes(id) && !last.has(id));
-    return [...ranked, ...rest, ...defaults.filter((id) => last.has(id))];
+    const order = [...ranked, ...rest];
+    // A learned order can raise a provider with a small monthly allowance, never put it first: every task would spend it.
+    const lead = order.findIndex((id) => !NEVER_FIRST.has(id));
+    if (lead > 0) {
+        order.unshift(...order.splice(lead, 1));
+    }
+    return [...order, ...defaults.filter((id) => last.has(id))];
 }
+
+/** Cohere's free key allows about 1,000 calls a month. */
+const NEVER_FIRST = new Set(['cohere']);
 
 export function planRoute<K extends KeyRef>(
     keys: K[],

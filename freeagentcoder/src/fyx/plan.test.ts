@@ -15,6 +15,14 @@ const linux: FyxContext = { ...win, platform: 'linux' };
 
 const commands = (prompt: string, ctx = win) => planFyx(prompt, ctx)?.steps.map((s) => s.command);
 
+describe('planFyx: messages that are not chores', () => {
+    it('leaves a message that hands over a path or asks for a link to the model (a real chat made a 1.6 GB zip)', () => {
+        expect(planFyx('run the wallpaper app and give me the localhost link. flutter zip is here: C:\\Users\\Lenovo\\Desktop\\flutter_windows.zip', win)).toBeUndefined();
+        expect(planFyx('the flutter zip is here, please run it', win)).toBeUndefined();
+        expect(planFyx('give me the link to the site', win)).toBeUndefined();
+    });
+});
+
 describe('planFyx: zipping', () => {
     it('zips the folder the request names, under the name it asks for, leaving out rebuildable folders', () => {
         const plan = planFyx('hey make the whole homes folder into zip file named home-zip in this current folder', win);

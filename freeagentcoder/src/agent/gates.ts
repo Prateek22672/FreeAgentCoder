@@ -35,8 +35,15 @@ export async function filesNear(root: string, touched: Iterable<string>): Promis
 }
 
 /** How each gate stands for this task, with gates that cannot apply here not required. */
-export async function gateResults(playbooks: Playbook[], runs: CommandRun[], release: boolean, root: string, touched: Iterable<string>): Promise<GateResult[]> {
-    return evaluateGates(playbooks, runs, release, await filesNear(root, touched));
+export async function gateResults(
+    playbooks: Playbook[],
+    runs: CommandRun[],
+    release: boolean,
+    root: string,
+    touched: Iterable<string>,
+    lastEditSeq = 0,
+): Promise<GateResult[]> {
+    return evaluateGates(playbooks, runs, release, await filesNear(root, touched), lastEditSeq);
 }
 
 /** A message sending the agent back to work, or undefined when it may finish. */
@@ -47,6 +54,7 @@ export async function completionReview(
     root: string,
     touched: Iterable<string>,
     finalReply: string,
+    lastEditSeq = 0,
 ): Promise<string | undefined> {
-    return reviewMessage(await gateResults(playbooks, runs, release, root, touched), finalReply);
+    return reviewMessage(await gateResults(playbooks, runs, release, root, touched, lastEditSeq), finalReply);
 }

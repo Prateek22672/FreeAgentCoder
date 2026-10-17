@@ -54,16 +54,24 @@ export interface AgentOptions {
   /**
    * Asked when the model is about to end its turn. Return a message to send it
    * back to work (for example, required checks haven't passed), or nothing to
-   * let it finish. Asked at most twice per turn.
+   * let it finish. Asked at most twice per turn. With `notice`, the user is told
+   * in plain words why the reply they just read is not accepted.
    */
-  reviewCompletion?: (message: AssistantMessage) => string | undefined | Promise<string | undefined>;
+  reviewCompletion?: (message: AssistantMessage) => CompletionReview | Promise<CompletionReview>;
   /**
    * Asked after a tool changes files, with their absolute paths. What it returns
    * is added to the tool's result: an editor uses it to report the errors the
    * change introduced, so the model fixes them now rather than at the end.
    */
   afterEdit?: (paths: string[], signal: AbortSignal) => Promise<string | undefined>;
+  /**
+   * Asked before a file is written, with its full new content. A message refuses
+   * the write (the model gets it as the tool's error); undefined lets it through.
+   */
+  guardWrite?: (absPath: string, content: string) => string | undefined;
 }
+
+export type CompletionReview = string | { feedback: string; notice?: string } | undefined;
 
 export interface RunOptions {
   signal?: AbortSignal;
@@ -462,11 +470,13 @@ export class Agent {
           continue;
         }
         if (reviews < 2 && this.opts.reviewCompletion && message.stop !== 'max_tokens') {
-          const feedback = await this.opts.reviewCompletion(message);
+          const review = await this.opts.reviewCompletion(message);
+          const feedback = typeof review === 'string' ? review : review?.feedback;
           if (feedback) {
             reviews++;
             this.messages.push({ role: 'user', content: feedback, synthetic: true });
-            yield { type: 'notice', message: 'The task is not finished yet: required checks are still missing. Continuing.' };
+            const notice = typeof review === 'object' ? review.notice : undefined;
+            yield { type: 'notice', message: notice ?? 'The task is not finished yet: required checks are still missing. Continuing.' };
             continue;
           }
         }
@@ -569,6 +579,7 @@ export class Agent {
       signal,
       files: this.files,
       checkpoints: this.checkpoints,
+      guardWrite: this.opts.guardWrite,
       todos: {
         get: () => this.todos,
         set: (todos) => {

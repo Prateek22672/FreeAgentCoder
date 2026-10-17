@@ -52,6 +52,8 @@ export interface ToolContext {
   todos: { get(): Todo[]; set(todos: Todo[]): void };
   /** Live output from long-running tools (command stdout/stderr). */
   onOutput?: (chunk: string) => void;
+  /** Refuses a write by returning why (see AgentOptions.guardWrite). */
+  guardWrite?: (absPath: string, content: string) => string | undefined;
 }
 
 export interface PreparedCall {

@@ -27,6 +27,8 @@ export interface Outcome {
     durationMs: number;
     paused: boolean;
     repeatedErrors: number;
+    /** Changed files or passed a check (0.6.2+). */
+    worked?: boolean;
 }
 
 export interface Feedback {
@@ -112,6 +114,7 @@ export function parseLearning(body: unknown): LearningReport | undefined {
                 durationMs: num(o.durationMs, 24 * 3_600_000),
                 paused: o.paused === true,
                 repeatedErrors: num(o.repeatedErrors, 1_000),
+                ...(typeof o.worked === 'boolean' ? { worked: o.worked } : {}),
             },
         ];
     });
@@ -176,6 +179,7 @@ export async function recordLearning(report: LearningReport): Promise<void> {
                         duration_ms: o.durationMs,
                         paused: o.paused,
                         repeated_errors: o.repeatedErrors,
+                        ...(o.worked === undefined ? {} : { worked: o.worked }),
                     })),
                     headers: { prefer: 'return=minimal' },
                 }),
@@ -254,6 +258,10 @@ export interface ModelScore {
     avg_tokens: number;
     good: number;
     bad: number;
+    /** Finished, not corrected, and changed files or passed a check (only from 0.6.2+ installs). */
+    useful?: number;
+    /** Tasks that reported whether they did work. */
+    reported?: number;
 }
 
 /** Outcome rows grouped by the kind of work, for the Models page: how each role is really doing. */
@@ -316,7 +324,15 @@ export async function modelScores(days = 14): Promise<ModelScore[]> {
     if (!learningAvailable) return [];
     const response = await supabaseRest('rpc/fac_model_scores', { body: { p_days: days } });
     if (!response.ok) throw new Error(`learning: scores HTTP ${response.status}`);
-    return ((await response.json()) as ModelScore[]).map((s) => ({ ...s, tasks: Number(s.tasks), completed: Number(s.completed), corrected: Number(s.corrected), good: Number(s.good), bad: Number(s.bad) }));
+    return ((await response.json()) as ModelScore[]).map((s) => ({
+        ...s,
+        tasks: Number(s.tasks),
+        completed: Number(s.completed),
+        corrected: Number(s.corrected),
+        good: Number(s.good),
+        bad: Number(s.bad),
+        ...(s.useful === undefined ? {} : { useful: Number(s.useful), reported: Number(s.reported ?? 0) }),
+    }));
 }
 
 export async function feedbackSummary(days = 14): Promise<{ good: number; bad: number; reasons: Record<string, number> }> {
@@ -345,27 +361,59 @@ export async function setFyxStatus(pattern: string, status: FyxRow['status']): P
 /** Fewer tasks than this and a model's numbers say more about luck than the model. */
 export const MIN_TASKS = 20;
 
+/** The default first choice per tier; a learned order may only displace it on clear evidence. */
+export const DEFAULT_FIRST = { fast: 'groq', deep: 'gemini' } as const;
+/** How much better (share of useful tasks) a challenger must be to go ahead of the default first choice. */
+const MARGIN = 0.1;
+
 /**
- * The provider order the outcomes support, per tier: completed tasks count,
- * corrections and thumbs-down count against, extra steps a little. Only
- * providers with enough tasks are ranked; the extension keeps its own order
- * for the rest, and never puts a weak fallback first.
+ * The share of a provider's tasks that really helped: finished, not corrected
+ * by the user's next message, not thumbed down, and (where the install says)
+ * changed files or passed a check. A model that "finishes" by telling the user
+ * to do it themselves finishes fast and changes nothing, so it scores low.
+ */
+function usefulShare(list: ModelScore[]): { tasks: number; share: number } {
+    let tasks = 0;
+    let value = 0;
+    for (const s of list) {
+        const rated = s.good + s.bad;
+        const badShare = rated ? s.bad / rated : 0;
+        // Tasks that reported "did work" count by it; older installs count finished-and-not-corrected at half weight.
+        const reported = s.reported ?? 0;
+        const unreported = s.tasks - reported;
+        const knownUseful = s.useful ?? 0;
+        const guessUseful = Math.max(0, s.completed - s.corrected) * (s.tasks ? unreported / s.tasks : 0) * 0.5;
+        value += knownUseful + guessUseful - badShare * s.tasks * 0.5 - Math.max(0, s.avg_steps - 12) * s.tasks * 0.01;
+        tasks += s.tasks;
+    }
+    return { tasks, share: tasks ? value / tasks : 0 };
+}
+
+/**
+ * The provider order the outcomes support, per tier. Only providers with
+ * enough tasks are ranked, and the ranking is applied only when it is safe:
+ * the default first choice must itself have enough tasks to compare, and a
+ * challenger goes ahead of it only when it is clearly more useful on twice the
+ * minimum evidence. Otherwise the extension keeps its own order.
  */
 export function learnedOrder(scores: ModelScore[]): { fast?: string[]; deep?: string[] } {
     const order: { fast?: string[]; deep?: string[] } = {};
     for (const tier of ['fast', 'deep'] as const) {
-        const byProvider = new Map<string, { tasks: number; value: number }>();
-        for (const s of scores.filter((x) => x.tier === tier)) {
-            const p = byProvider.get(s.provider) ?? { tasks: 0, value: 0 };
-            const rated = s.good + s.bad;
-            const value = s.completed - s.corrected * 0.5 - (rated ? (s.bad / rated) * s.tasks * 0.3 : 0) - Math.max(0, s.avg_steps - 8) * s.tasks * 0.01;
-            byProvider.set(s.provider, { tasks: p.tasks + s.tasks, value: p.value + value });
-        }
+        const byProvider = new Map<string, ModelScore[]>();
+        for (const s of scores.filter((x) => x.tier === tier)) byProvider.set(s.provider, [...(byProvider.get(s.provider) ?? []), s]);
         const ranked = [...byProvider]
-            .filter(([provider, p]) => p.tasks >= MIN_TASKS && provider !== 'openrouter' && provider !== 'trial')
-            .sort((a, b) => b[1].value / b[1].tasks - a[1].value / a[1].tasks)
-            .map(([provider]) => provider);
-        if (ranked.length >= 2) order[tier] = ranked;
+            .map(([provider, list]) => ({ provider, ...usefulShare(list) }))
+            .filter((p) => p.tasks >= MIN_TASKS && p.provider !== 'openrouter' && p.provider !== 'trial')
+            .sort((a, b) => b.share - a.share);
+        const first = ranked.find((p) => p.provider === DEFAULT_FIRST[tier]);
+        if (ranked.length < 2 || !first) continue;
+        const top = ranked[0]!;
+        if (top.provider !== first.provider && (top.share - first.share < MARGIN || top.tasks < MIN_TASKS * 2)) {
+            // Not clear enough to overturn the default: keep it first, rank the rest after it.
+            order[tier] = [first.provider, ...ranked.filter((p) => p !== first).map((p) => p.provider)];
+        } else {
+            order[tier] = ranked.map((p) => p.provider);
+        }
     }
     return order;
 }

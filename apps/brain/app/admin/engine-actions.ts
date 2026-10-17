@@ -13,7 +13,15 @@ export interface FormState {
 
 export async function addKeyAction(_state: FormState | undefined, form: FormData): Promise<FormState> {
     if (!(await isSignedIn())) return { error: 'Sign in first.' };
-    const result = await addPoolKey(String(form.get('provider') ?? ''), String(form.get('label') ?? ''), String(form.get('key') ?? ''));
+    const text = (name: string) => String(form.get(name) ?? '');
+    const result = await addPoolKey(text('provider'), text('label'), text('key'), {
+        name: text('customName'),
+        baseURL: text('customBaseURL'),
+        fast: text('customFast'),
+        deep: text('customDeep'),
+        contextWindow: Number(text('customContext')) || undefined,
+        first: form.get('customFirst') === 'on',
+    });
     if ('error' in result) return { error: result.error };
     revalidatePath('/admin');
     return { saved: true };
@@ -23,8 +31,9 @@ export async function checkKeysAction(form: FormData): Promise<void> {
     if (!(await isSignedIn())) return;
     const id = String(form.get('id') ?? '');
     // One key, or every key when no id is given.
-    // Pressing Check sends one real request per key, to prove it answers and to read its limits.
-    await checkPoolKeys(id ? [id] : (await listPool()).map((k) => k.id), 0, true);
+    // Test sends one real request per key, to prove it answers and to read its limits; Validate only asks
+    // whether the provider accepts the key (free: no tokens and no request against the allowance).
+    await checkPoolKeys(id ? [id] : (await listPool()).map((k) => k.id), 0, form.get('mode') !== 'validate');
     revalidatePath('/admin');
 }
 

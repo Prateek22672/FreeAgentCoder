@@ -40,3 +40,19 @@ describe('sharedChore', () => {
         expect(sharedChore('zip everything', patterns)).toBeUndefined();
     });
 });
+
+describe('requests that are not chores (a real chat learned a presentation as mkdir)', () => {
+    it('never learns or replays a request to make something, or a command that only prepares', async () => {
+        const { worthLearning } = await import('./learned');
+        expect(worthLearning('create a ppt presentation on "is AI an advantage or a disadvantage for humans"', 'mkdir -p /c/Users/Lenovo/OneDrive/Desktop/py')).toBe(false);
+        expect(worthLearning('build a landing page for my bakery', 'npx create-vite bakery')).toBe(false);
+        expect(worthLearning('set up the folders', 'mkdir -p src lib')).toBe(false);
+        expect(worthLearning('run the website', 'npm run dev')).toBe(true);
+    });
+
+    it('ignores a bad shortcut saved before this rule', () => {
+        const saved = { 'create a ppt presentation on ai': { command: 'mkdir -p /c/py', uses: 1, learnedAt: 0, lastUsed: 0 } };
+        const learned = new LearnedCommands({ get: <T,>() => saved as T, update: async () => undefined });
+        expect(learned.plan('create a ppt presentation on ai')).toBeUndefined();
+    });
+});

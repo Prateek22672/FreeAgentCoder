@@ -23,6 +23,8 @@ export interface Outcome {
     durationMs: number;
     paused: boolean;
     repeatedErrors: number;
+    /** Changed files, passed a check or started a server. A task that only told the user what to do did not. */
+    worked?: boolean;
 }
 
 export interface Rating {

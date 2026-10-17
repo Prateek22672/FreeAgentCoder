@@ -19,7 +19,7 @@ export { LocalWorkspace } from './local-workspace';
 export { detectShell, killTree, ProcessRegistry, runCommandTool, processTool, type ShellInfo } from './shell';
 export { fetchUrlTool, htmlToText } from './fetch-url';
 export { libraryDocsTool } from './library-docs';
-export { findImageTool } from './find-image';
+export { findImageTool, useImageSearch, type ImageCandidate, type ImageSearch } from './find-image';
 export { formatRepoMap, importedNames, keyFiles, repoMap } from './repo-map';
 export { environmentTool, inspectEnvironment, TOOLCHAINS, type CommandRunner, type ToolchainCheck } from './environment';
 export {
@@ -59,6 +59,8 @@ export interface LocalAgentOptions {
   extraTools?: Tool[];
   /** See AgentOptions.afterEdit. */
   afterEdit?: AgentOptions['afterEdit'];
+  /** See AgentOptions.guardWrite. */
+  guardWrite?: AgentOptions['guardWrite'];
 }
 
 export interface LocalAgent {
@@ -115,6 +117,7 @@ export async function createLocalAgent(opts: LocalAgentOptions): Promise<LocalAg
     todos: opts.todos,
     reviewCompletion: opts.reviewCompletion,
     afterEdit: opts.afterEdit,
+    guardWrite: opts.guardWrite,
   });
   return { agent, workspace, shell, processes, codeIndex, instructionsFile: instructions?.file, warnings };
 }

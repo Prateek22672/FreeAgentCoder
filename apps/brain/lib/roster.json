@@ -1,5 +1,117 @@
 [
   {
+    "id": "understand",
+    "title": "Understanding the request",
+    "kind": "models",
+    "purpose": "Before any work, a fast open model reads your message with the last few exchanges and says what you want now, what kind of task it is, what you expect at the end, whether you are unhappy with the last answer, and what would be a misunderstanding. The agent works from that, and you see it as \"Understood: …\".",
+    "handles": [
+      "you run it and give the link",
+      "where to download here? (about the Flutter page you pasted)",
+      "C:\\…\\flutter.zip — its your job now",
+      "create a presentation on …"
+    ],
+    "outcomeKinds": [],
+    "chain": [
+      {
+        "provider": "groq",
+        "label": "Groq",
+        "models": [
+          "openai/gpt-oss-120b",
+          "qwen/qwen3.8-27b"
+        ]
+      },
+      {
+        "provider": "nvidia",
+        "label": "NVIDIA",
+        "models": [
+          "nvidia/nemotron-3-super-120b-a12b",
+          "nvidia/nemotron-3.5-lightning-30b-a3b"
+        ]
+      },
+      {
+        "provider": "gemini",
+        "label": "Gemini",
+        "models": [
+          "gemini-3.5-flash-lite",
+          "gemini-3.1-flash-lite",
+          "gemini-2.5-flash-lite"
+        ]
+      },
+      {
+        "provider": "mistral",
+        "label": "Mistral",
+        "models": [
+          "mistral-small-latest"
+        ]
+      },
+      {
+        "provider": "cohere",
+        "label": "Cohere",
+        "models": [
+          "command-a-plus-05-2026"
+        ]
+      },
+      {
+        "provider": "openrouter",
+        "label": "OpenRouter",
+        "models": [
+          "openrouter/free"
+        ]
+      },
+      {
+        "provider": "trial",
+        "label": "Free trial",
+        "models": [
+          "fast"
+        ]
+      }
+    ],
+    "chainNote": "Open models first: gpt-oss and Qwen on Groq (about a second), then Nemotron on NVIDIA (2 to 8 seconds). After 10 seconds, or on any error, the older keyword rules decide.",
+    "effort": {
+      "reasoning": "Low",
+      "level": 1,
+      "steps": "1 request",
+      "note": "One JSON answer; skipped for small talk, \"continue\" and a first plain question."
+    },
+    "tools": {
+      "count": 0,
+      "names": [],
+      "note": "None: it only reads the conversation."
+    },
+    "context": [
+      "Your message",
+      "The last 4 exchanges, 700 characters each",
+      "The names and first lines of pasted text",
+      "The open folder"
+    ],
+    "approach": [
+      "Resolve \"it\", \"this\" and \"here\" from the conversation",
+      "A short or angry message continues the previous goal: do it, do not tell the user to",
+      "A path to a zip or installer means install from it and carry on",
+      "Pick the kind of work, which picks the method, the tier, references and file search",
+      "Ask one question only when nothing sensible can be done without it"
+    ],
+    "checks": [
+      "A deck, Word file or PDF deliverable is always documents, whatever the model says",
+      "Every path and URL in the message is kept"
+    ],
+    "tokens": {
+      "typical": "700 to 1,200",
+      "note": "Measured on 14 real and everyday requests: 14 of 14 right on Groq and on NVIDIA."
+    },
+    "strengths": [
+      "Fixes the misreads of real chats: \"here\" with an attachment, \"business model\", \"you run it\"",
+      "Fails safe: without it, nothing changes"
+    ],
+    "weaknesses": [
+      "Adds about a second before the work starts",
+      "A provider at its rate limit can make it time out, and the keyword rules decide"
+    ],
+    "improvements": [
+      "Learn from complaints which understandings were wrong, and add them to the evaluation set"
+    ]
+  },
+  {
     "id": "chat",
     "title": "Small talk and general questions",
     "kind": "models",
@@ -160,6 +272,141 @@
     ],
     "improvements": [
       "More chores from the shared Fyx patterns you approve on the Learning page"
+    ]
+  },
+  {
+    "id": "run",
+    "title": "Run and preview",
+    "kind": "models",
+    "purpose": "Starts your project so you can see it, installing a missing toolchain from a file you supplied, and gives you the live link.",
+    "handles": [
+      "run my Flutter app and give me the localhost link",
+      "install Flutter from this zip and run it",
+      "start the website"
+    ],
+    "outcomeKinds": [
+      "run",
+      "setup"
+    ],
+    "chain": [
+      {
+        "provider": "gemini",
+        "label": "Gemini",
+        "models": [
+          "gemini-3.8-flash",
+          "gemini-3.7-flash",
+          "gemini-3.6-flash",
+          "gemini-3.5-flash",
+          "gemini-2.5-flash"
+        ]
+      },
+      {
+        "provider": "nvidia",
+        "label": "NVIDIA",
+        "models": [
+          "nvidia/nemotron-3-ultra-550b-a55b",
+          "nvidia/nemotron-3-super-120b-a12b",
+          "z-ai/glm-5.3"
+        ]
+      },
+      {
+        "provider": "mistral",
+        "label": "Mistral",
+        "models": [
+          "mistral-medium-latest"
+        ]
+      },
+      {
+        "provider": "groq",
+        "label": "Groq",
+        "models": [
+          "openai/gpt-oss-120b",
+          "qwen/qwen3.8-27b"
+        ]
+      },
+      {
+        "provider": "cohere",
+        "label": "Cohere",
+        "models": [
+          "command-a-plus-05-2026"
+        ]
+      },
+      {
+        "provider": "openrouter",
+        "label": "OpenRouter",
+        "models": [
+          "openrouter/free"
+        ]
+      },
+      {
+        "provider": "trial",
+        "label": "Free trial",
+        "models": [
+          "deep"
+        ]
+      }
+    ],
+    "chainNote": "Strongest first.",
+    "effort": {
+      "reasoning": "Provider default",
+      "level": 2,
+      "steps": "4 to 15 steps",
+      "note": "Long installs and first builds run in the background and are checked on."
+    },
+    "tools": {
+      "count": 15,
+      "names": [
+        "read_file",
+        "write_file",
+        "edit_file",
+        "list_dir",
+        "glob",
+        "grep",
+        "todo_write",
+        "search_code",
+        "run_command",
+        "process",
+        "fetch_url",
+        "library_docs",
+        "inspect_environment",
+        "check_page",
+        "get_problems"
+      ],
+      "note": "All tools; run_command with background=true and the process tool do the work."
+    },
+    "context": [
+      "The Run and preview method",
+      "What you supplied (paths, zips, links)",
+      "No design references and no code search: they do not help here"
+    ],
+    "approach": [
+      "Find how the project starts",
+      "\"Not on PATH\" is not \"not installed\": look in the usual places first",
+      "Install from your zip into a folder outside OneDrive and the project, in the background",
+      "Start it in the background, read the address it prints, open it with fetch_url",
+      "Give the link and how to stop it; change nothing else"
+    ],
+    "checks": [
+      "The editor opens the link itself before the agent may give it, and loads it in a hidden browser; browser errors send it back",
+      "After any code change, the compile check of the stack (Flutter analyze, errors only) must pass after the last edit",
+      "An edit that would unbalance the brackets of a code file is refused before it is written",
+      "A server is not started on a port that is taken: its own process is named, or a free port is offered when another program holds it",
+      "At most 3 starts of the same app per task, then an honest report instead of more guesses",
+      "Commands written for another shell (%USERPROFILE%, cmd /c, taskkill /PID, PowerShell in double quotes) are fixed or refused before they run"
+    ],
+    "tokens": {
+      "typical": "15K to 60K",
+      "note": "A first Flutter web build takes minutes, not tokens."
+    },
+    "strengths": [
+      "Does the work instead of handing you commands",
+      "Reports the real address the server printed"
+    ],
+    "weaknesses": [
+      "Steps that need administrator rights or a device still need you"
+    ],
+    "improvements": [
+      "Remember where each toolchain was installed, per computer"
     ]
   },
   {
@@ -1189,13 +1436,15 @@
     "id": "documents",
     "title": "Decks, documents and PDFs",
     "kind": "models",
-    "purpose": "PowerPoint, Word and PDF files built by script, designed and checked.",
+    "purpose": "PowerPoint, Word and PDF files built by script from an outline, designed, then rendered and reviewed page by page until they are ready.",
     "handles": [
       "make a 12-slide deck on Nepal floods",
-      "write a project report as a PDF",
-      "build a pricing sheet in Excel"
+      "create a presentation on the business model of a hybrid store",
+      "write a project report as a PDF"
     ],
-    "outcomeKinds": [],
+    "outcomeKinds": [
+      "documents"
+    ],
     "chain": [
       {
         "provider": "gemini",
@@ -1258,11 +1507,11 @@
     "effort": {
       "reasoning": "Provider default",
       "level": 2,
-      "steps": "6 to 15 steps",
-      "note": "One build script, then check_document until it finds nothing."
+      "steps": "6 to 20 steps",
+      "note": "One build script, then check_document and fixes, at most three rounds."
     },
     "tools": {
-      "count": 14,
+      "count": 15,
       "names": [
         "read_file",
         "write_file",
@@ -1277,35 +1526,42 @@
         "inspect_environment",
         "check_page",
         "find_image",
+        "make_deck",
         "check_document"
       ],
-      "note": "Build tools plus find_image (real photos with credits) and check_document."
+      "note": "Build tools plus make_deck (decks from an outline, built with PptxGenJS), find_image (real photos with credits) and check_document (file checks and a visual review)."
     },
     "context": [
-      "The documents playbook (palette, grid, headline rules)",
+      "The documents playbook (outline first, varied layouts, palette, grid, headline rules)",
       "Library docs for python-pptx and python-docx on demand"
     ],
     "approach": [
-      "One build script makes every output",
+      "Decks: the agent writes only the outline (a headline, points and a layout per slide); make_deck lays it out with tested designs and native, editable charts",
+      "Gamma-style layouts: pictures filling one side, icon cards (85 Lucide icons drawn as native shapes), pill tags, steps, tables, galleries, timelines, callouts and a closing statement; 8 themes with their own font pairs; figures only with a source",
       "Real photos from Wikimedia Commons or a labelled frame",
-      "Open the result and fix every reported problem"
+      "Render the pages (its PDF copy, PowerPoint, Word or LibreOffice) and have Gemini review them as a reader would",
+      "Fix what the review lists in the script and rebuild, as PPTAgent does"
     ],
     "checks": [
-      "Empty placeholders, content off the slide, tiny or overflowing text, empty or crowded slides, blank paragraphs, blank PDF pages"
+      "Empty placeholders, content off the slide, tiny or overflowing text, empty or crowded slides, blank paragraphs, blank PDF pages",
+      "A visual review of each page: cut-off text, contrast, walls of text, weak pictures, inconsistent design, a weak story, with scores for content, design and coherence"
     ],
     "tokens": {
-      "typical": "30K to 70K",
-      "note": "Charts and images add steps."
+      "typical": "35K to 80K",
+      "note": "Each visual review is about 5K Gemini tokens (an 8-slide deck: 4.6K in, 0.2K out, 9 seconds)."
     },
     "strengths": [
       "Never leaves a blank template box",
-      "Photos come with their credits"
+      "Photos come with their credits",
+      "Sees the deck as you will, not just its XML"
     ],
     "weaknesses": [
-      "Charts are drawn with matplotlib, so they are pictures, not editable charts"
+      "Charts are drawn with matplotlib, so they are pictures, not editable charts",
+      "The visual review needs a Gemini key and PowerPoint, Word or LibreOffice (or the PDF copy)"
     ],
     "improvements": [
-      "Native PowerPoint charts"
+      "Native PowerPoint charts",
+      "Start from your own template when you attach one"
     ]
   },
   {

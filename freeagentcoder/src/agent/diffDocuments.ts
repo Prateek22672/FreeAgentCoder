@@ -1,4 +1,5 @@
 import * as vscode from 'vscode';
+import { besideChat } from '../webview/columns';
 
 export const DIFF_SCHEME = 'freeagentcoder-diff';
 const LIMIT = 80;
@@ -43,7 +44,7 @@ export class DiffDocuments implements vscode.TextDocumentContentProvider {
         const name = title.split(/[\\/]/).pop() || 'file';
         const left = vscode.Uri.from({ scheme: DIFF_SCHEME, path: `/before/${id}/${name}` });
         const right = vscode.Uri.from({ scheme: DIFF_SCHEME, path: `/after/${id}/${name}` });
-        await vscode.commands.executeCommand('vscode.diff', left, right, `${title} (FreeAgentCoder changes)`, { preview: true });
+        await vscode.commands.executeCommand('vscode.diff', left, right, `${title} (FreeAgentCoder changes)`, { preview: true, viewColumn: besideChat() });
         return true;
     }
 }

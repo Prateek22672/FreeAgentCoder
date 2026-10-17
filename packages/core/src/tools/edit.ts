@@ -1,5 +1,6 @@
 import { displayPath } from '../workspace/types';
 import { checkFreshness, markWritten, numberedLines, suggestSimilar } from './common';
+import { bracketsBroken } from '../util/brackets';
 import { toolError, type PreparedCall, type Tool, type ToolContext, type ToolResult } from './types';
 
 interface Args {
@@ -94,6 +95,8 @@ async function prepareEdit(args: Args, ctx: ToolContext): Promise<PreparedCall |
     ? text.split(oldS).join(newS)
     : text.slice(0, first) + newS + text.slice(first + oldS.length);
   const after = crlf ? updated.replace(/\n/g, '\r\n') : updated;
+  const broken = bracketsBroken(abs, raw, after, shown) ?? ctx.guardWrite?.(abs, after);
+  if (broken) return toolError(broken);
   const display = { type: 'diff' as const, path: shown, before: raw, after, created: false };
   const replaced = args.replace_all ? count : 1;
 
@@ -173,6 +176,8 @@ async function prepareLineEdit(args: Args, ctx: ToolContext, abs: string, shown:
   const updated = updatedLines.join('\n') + (trailingNewline ? '\n' : '');
   const after = crlf ? updated.replace(/\n/g, '\r\n') : updated;
   if (after === raw) return toolError('That would not change anything.');
+  const broken = bracketsBroken(abs, raw, after, shown) ?? ctx.guardWrite?.(abs, after);
+  if (broken) return toolError(broken);
   const display = { type: 'diff' as const, path: shown, before: raw, after, created: false };
   const replacedCount = end - start + 1;
   return {

@@ -214,6 +214,14 @@ function list(lines: string[], start: number, out: string[]): number {
     return i;
 }
 
+const LOCAL_LINK = /^https?:\/\/(?:localhost|127\.0\.0\.1|0\.0\.0\.0|\[::1\])(?::\d+)?(?:[/?#]|$)/i;
+
+/** A link, plus an Open button beside it when it is an app on this computer (people miss plain links). */
+function linkHtml(url: string, label: string): string {
+    const link = `<a href="${escapeHtml(url)}" data-external="1">${label}</a>`;
+    return LOCAL_LINK.test(url) ? `${link} <a class="open-link" href="${escapeHtml(url)}" data-external="1" title="Open ${escapeHtml(url)} in your browser">Open ↗</a>` : link;
+}
+
 function inline(text: string): string {
     const slots: string[] = [];
     const hold = (html: string) => `${OPEN}${slots.push(html) - 1}${CLOSE}`;
@@ -221,7 +229,7 @@ function inline(text: string): string {
     let s = text.replace(/(`+)([\s\S]*?[^`])\1(?!`)/g, (_m, _ticks: string, code: string) => hold(codeSpan(code.trim())));
     s = s.replace(/\[([^\]\n]+)\]\(([^)\s]+)(?:\s+"[^"]*")?\)/g, (_m, label: string, url: string) => {
         if (/^(https?:|mailto:)/i.test(url)) {
-            return hold(`<a href="${escapeHtml(url)}" data-external="1">${emphasis(escapeHtml(label))}</a>`);
+            return hold(linkHtml(url, emphasis(escapeHtml(label))));
         }
         if (FILE_REF.test(url)) {
             return hold(fileRefHtml(url, emphasis(escapeHtml(label))));
@@ -229,7 +237,7 @@ function inline(text: string): string {
         return hold(emphasis(escapeHtml(label)));
     });
     s = s.replace(/(^|[\s(])(https?:\/\/[^\s<>()]*[^\s<>().,;:!?'"])/g, (_m, before: string, url: string) =>
-        before + hold(`<a href="${escapeHtml(url)}" data-external="1">${escapeHtml(url)}</a>`),
+        before + hold(linkHtml(url, escapeHtml(url))),
     );
     s = emphasis(escapeHtml(s));
     for (let pass = 0; pass < 3 && s.includes(OPEN); pass++) {

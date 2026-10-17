@@ -81,7 +81,7 @@ const DATA: Specialist = {
     id: 'data',
     name: 'Data and ML',
     request:
-        /\b(?:model|train(?:ing)?|dataset|data ?set|dataframe|pandas|numpy|sklearn|scikit|pytorch|torch|tensorflow|keras|notebook|jupyter|csv|feature engineering|accuracy|precision|recall|loss|epoch|fine-?tun(?:e|ing)|embedding|regression|classif(?:y|ier|ication)|cluster(?:ing)?|predict(?:ion)?)\b/i,
+        /\b(?:(?:ml|ai|machine[\s-]learning|deep[\s-]learning|neural|prediction|predictive|classification|regression|language|llm|trained|train(?:ing)?\s+(?:a|the))\s+models?|train(?:ing)?\s+(?:a|the|my|on)|dataset|data ?set|dataframe|pandas|numpy|sklearn|scikit|pytorch|torch|tensorflow|keras|notebook|jupyter|csv|feature engineering|accuracy|precision|recall|loss|epoch|fine-?tun(?:e|ing)|embedding|regression|classif(?:y|ier|ication)|cluster(?:ing)?|predict(?:ion)?)\b/i,
     minTier: 'deep',
     method: [
         'Make it reproducible: fix random seeds, pin versions, and never train or evaluate on data the model has already seen.',

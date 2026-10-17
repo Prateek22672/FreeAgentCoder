@@ -3,6 +3,7 @@ import * as path from 'node:path';
 import { unzipSync } from 'fflate';
 import { displayPath, toolError, type Tool } from '@agentic/core';
 import { loadPdfJs } from './pdf';
+import { renderToPdf } from './render';
 import { childElements, findAll, findFirst, firstChild, parseXml, type XmlElement } from './xml';
 
 /**
@@ -86,7 +87,8 @@ export function checkPptx(bytes: Uint8Array): DocReport {
                             problems.push(`Slide ${n}: "${text.slice(0, 40)}…" is too long for its box at ${pt} pt (about ${lines} lines in room for ${Math.max(1, Math.floor(cy / EMU_PER_PT / (pt * 1.25)))}). Shorten it, enlarge the box or split the slide.`);
                         }
                     }
-                    if (!ph?.attrs.type?.match(/sldNum|dt|ftr/)) {
+                    // Footers, slide numbers and source lines along the bottom edge are meant to be small.
+                    if (!ph?.attrs.type?.match(/sldNum|dt|ftr/) && y < height * 0.88) {
                         chars += text.length;
                         if (sizes.length && Math.max(...sizes) < 1200) {smallChars += text.length;}
                     }
@@ -172,38 +174,84 @@ function dedupe(items: string[]): string[] {
     return [...new Set(items)].slice(0, 25);
 }
 
-export const checkDocumentTool: Tool<{ path: string }> = {
-    name: 'check_document',
-    description:
-        'Open a finished .pptx, .docx or .pdf and report what a reader would notice: empty template placeholders, text off the slide or too long for its box, type too small, near-empty or crowded slides, blank paragraphs used as spacing, leftover placeholder text, blank pages. Run it on every document you make before calling it done, and fix what it finds.',
-    parameters: {
-        type: 'object',
-        properties: { path: { type: 'string', description: 'The .pptx, .docx or .pdf to check' } },
-        required: ['path'],
-    },
-    kind: 'read',
-    label: (a, ws) => `Check ${displayPath(ws, ws.resolve(a.path))}`,
-    paths: (a, ws) => [ws.resolve(a.path)],
-    async prepare(args, ctx) {
-        const file = ctx.workspace.resolve(args.path);
-        const ext = path.extname(file).toLowerCase();
-        if (!['.pptx', '.docx', '.pdf'].includes(ext)) {return toolError('check_document reads .pptx, .docx and .pdf files.');}
-        return {
-            run: async () => {
-                try {
-                    const bytes = new Uint8Array(await readFile(file));
-                    const report = ext === '.pptx' ? checkPptx(bytes) : ext === '.docx' ? checkDocx(bytes) : await checkPdf(bytes);
-                    const shown = displayPath(ctx.workspace, file);
-                    return {
-                        content: report.problems.length
+/**
+ * Looks at the rendered pages (a vision model reading the PDF) and returns
+ * what a reader would notice, or undefined when no model can look.
+ */
+export type VisualReview = (pdf: Uint8Array, name: string, signal: AbortSignal) => Promise<string | undefined>;
+
+/** Inline PDFs above this are not sent for review. */
+const MAX_REVIEW_BYTES = 18_000_000;
+
+/** The pages as they look: rendered, then read by a vision model. A line saying why when that is not possible. */
+async function lookAt(file: string, look: VisualReview | undefined, signal: AbortSignal): Promise<string> {
+    if (!look) {
+        return 'Not looked at visually: no reviewer is available, so only the file structure was checked.';
+    }
+    const rendered = await renderToPdf(file, signal);
+    if ('error' in rendered) {
+        return `Not looked at visually: ${rendered.error}`;
+    }
+    const pdf = new Uint8Array(await readFile(rendered.pdf));
+    if (pdf.byteLength > MAX_REVIEW_BYTES) {
+        return `Not looked at visually: the rendered PDF is ${Math.round(pdf.byteLength / 1e6)} MB; compress its pictures and check again.`;
+    }
+    try {
+        const review = await look(pdf, path.basename(file), signal);
+        return review?.trim()
+            ? `How it looks (rendered with ${rendered.via}, reviewed page by page):\n${review.trim()}`
+            : 'Not looked at visually: no Gemini key is set, so only the file structure was checked.';
+    } catch (err) {
+        return `Not looked at visually: ${err instanceof Error ? err.message.slice(0, 200) : String(err)}`;
+    }
+}
+
+/** check_document without a visual review: the file structure only. */
+export const checkDocumentTool: Tool<{ path: string }> = documentCheckTool();
+
+/** check_document; with `look`, the rendered pages are also reviewed by a vision model. */
+export function documentCheckTool(look?: VisualReview): Tool<{ path: string }> {
+    return {
+        name: 'check_document',
+        description:
+            'Open a finished .pptx, .docx or .pdf and report what a reader would notice: empty template placeholders, text off the slide or too long for its box, type too small, near-empty or crowded slides, blank paragraphs used as spacing, leftover placeholder text, blank pages. It also renders the pages and has a vision model look at them (cut-off or overlapping text, contrast, walls of text, weak pictures, inconsistent design, a weak structure). Run it on every document you make before calling it done, fix what it finds in the build script, rebuild and check again.',
+        parameters: {
+            type: 'object',
+            properties: { path: { type: 'string', description: 'The .pptx, .docx or .pdf to check' } },
+            required: ['path'],
+        },
+        kind: 'read',
+        label: (a, ws) => `Check ${displayPath(ws, ws.resolve(a.path))}`,
+        paths: (a, ws) => [ws.resolve(a.path)],
+        async prepare(args, ctx) {
+            const file = ctx.workspace.resolve(args.path);
+            const ext = path.extname(file).toLowerCase();
+            if (!['.pptx', '.docx', '.pdf'].includes(ext)) {return toolError('check_document reads .pptx, .docx and .pdf files.');}
+            return {
+                run: async () => {
+                    try {
+                        const bytes = new Uint8Array(await readFile(file));
+                        const report = ext === '.pptx' ? checkPptx(bytes) : ext === '.docx' ? checkDocx(bytes) : await checkPdf(bytes);
+                        const shown = displayPath(ctx.workspace, file);
+                        const structure = report.problems.length
                             ? `${shown}: ${report.summary}.\nNot done yet: fix these, rebuild, and check again:\n${report.problems.map((p) => `- ${p}`).join('\n')}`
-                            : `${shown}: ${report.summary}. No layout problems found.`,
-                        summary: report.problems.length ? `${report.problems.length} problem${report.problems.length === 1 ? '' : 's'}` : 'looks right',
-                    };
-                } catch (err) {
-                    return toolError(`Could not open ${args.path}: ${err instanceof Error ? err.message : String(err)}`);
-                }
-            },
-        };
-    },
-};
+                            : `${shown}: ${report.summary}. No layout problems found in the file.`;
+                        const seen = await lookAt(file, look, ctx.signal);
+                        const reviewed = seen.startsWith('How it looks');
+                        const ready = reviewed && /\bready as it is\b/i.test(seen);
+                        return {
+                            content: `${structure}\n\n${seen}${reviewed && !ready ? '\nFix what the review lists in the build script, rebuild, and check again.' : ''}`,
+                            summary: report.problems.length
+                                ? `${report.problems.length} problem${report.problems.length === 1 ? '' : 's'}`
+                                : reviewed && !ready
+                                  ? 'reviewed: changes suggested'
+                                  : 'looks right',
+                        };
+                    } catch (err) {
+                        return toolError(`Could not open ${args.path}: ${err instanceof Error ? err.message : String(err)}`);
+                    }
+                },
+            };
+        },
+    };
+}

@@ -49,6 +49,11 @@ export interface FyxPlan {
 const NEEDS_A_MODEL =
     /\b(fix|bug|error|why|explain|how (do|does|can|to)|implement|refactor|design|component|page|function|class|test cases?|write (a|an|the|some)|review|optimi[sz]e|improve|debug|migrate|convert .* to|translate|summari[sz]e|then|after that|and also)\b/i;
 const MAX_WORDS = 28;
+/**
+ * Signs that a message is not a chore: it hands over a path ("flutter zip is here: C:\\…\\flutter.zip" was
+ * read as "zip the flutter folder" and made a 1.6 GB file), says where a file already is, or asks for a link.
+ */
+const NOT_A_CHORE = /(?<![A-Za-z])[A-Za-z]:[\\/]|\\\\|(?:^|\s)~?\/[\w.-]+\/|\b(?:link|url|localhost)\b|\b(?:zip|archive|installer|folder|file)\b[^.?!]{0,24}\b(?:is|was|are)\s+(?:here|there|at|in|on)\b/i;
 
 /** Safe to put inside double quotes in bash, PowerShell and cmd. */
 const SAFE_NAME = /^[\w.@+\-/ ]{1,120}$/;
@@ -341,7 +346,7 @@ const PLANNERS = [zipPlan, unzipPlan, gitPlan, packagePlan, filePlan, infoPlan];
 /** A plan when the request is one Fyx can do on its own, otherwise undefined and the model takes it. */
 export function planFyx(prompt: string, ctx: FyxContext): FyxPlan | undefined {
     const text = prompt.trim().replace(/\s+/g, ' ');
-    if (!text || words(text) > MAX_WORDS || NEEDS_A_MODEL.test(text) || text.includes('\n')) {return undefined;}
+    if (!text || words(text) > MAX_WORDS || NEEDS_A_MODEL.test(text) || NOT_A_CHORE.test(text) || text.includes('\n')) {return undefined;}
     for (const planner of PLANNERS) {
         const plan = planner(text, ctx);
         if (plan) {return plan;}

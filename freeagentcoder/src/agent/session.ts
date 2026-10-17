@@ -1,5 +1,6 @@
 import { promises as fs } from 'node:fs';
-import { checkDocumentTool } from '../attachments/docCheck';
+import { documentCheckTool, type VisualReview } from '../attachments/docCheck';
+import { makeDeckTool } from '../attachments/deck';
 import * as path from 'node:path';
 import * as vscode from 'vscode';
 import {
@@ -24,12 +25,14 @@ import type { DiffDocuments } from './diffDocuments';
 import { editorProblemsAfterEdit, getProblemsTool } from './editorProblems';
 import { editorInstructions } from './instructions';
 import { completionReview, gateResults } from './gates';
-import type { Playbook } from './playbooks';
+import type { GateResult, Playbook } from './playbooks';
 import type { ProjectCheck } from './projectChecks';
 import { checkPageTool, pageFeedback, pageProblem, type PagePreviews } from '../preview/pages';
 import { projectSnapshot } from './projectSnapshot';
 import { explainError, isContextTooLarge, recoveryFor } from './recovery';
 import { codeChanged, verificationReview, type SequencedRun } from './testing';
+import { addressesIn, appAddress, appErrors, httpProbe, runProof, stillStarting, type Verdict } from './runProof';
+import { isBlank } from '../preview/pages';
 
 type ToolEndEvent = Extract<AgentEvent, { type: 'tool_end' }>;
 type RawDisplay = NonNullable<ToolEndEvent['result']['display']>;
@@ -39,7 +42,6 @@ const DIFF_LINES = 400;
 const OUTPUT_CHARS = 8_000;
 const RESUME_PROMPT = 'Continue the task from where you stopped. (The editor resumed it automatically after a temporary problem reaching the AI providers.)';
 /** A local address in what a dev server printed. */
-const LOCAL_URL = /https?:\/\/(?:localhost|127\.0\.0\.1|\[::1\]):\d+[^\s"'<>)\]]*/i;
 const ANSI = /\u001b\[[0-9;?]*[A-Za-z]/g;
 const COMPACTED_PROMPT =
     'Continue the task from where you stopped. (The editor summarized the earlier conversation because it had grown too large for the models; re-read any file you need rather than relying on memory of its contents.)';
@@ -96,6 +98,8 @@ interface TouchedFile {
 
 interface ActiveTurn {
     id: string;
+    /** The user asked for a script or for Python itself, so writing one is what they want. */
+    askedForScript: boolean;
     /** Ask for a rating at the end. */
     rate?: boolean;
     startedAt: number;
@@ -114,8 +118,46 @@ interface ActiveTurn {
     pageCheckSeq?: number;
     /** Content that does not fit has been sent back once already. */
     layoutRaised?: boolean;
+    /** What the editor itself verified about a running app (not what the model said), for the report. */
+    evidence?: RunEvidence;
     /** Ends an automatic-retry wait early (when the user stops the task). */
     wake?: () => void;
+}
+
+interface RunEvidence {
+    url: string;
+    opens: true | string;
+    drawn: 'yes' | 'errors' | 'unconfirmed' | 'no-browser';
+    detail?: string;
+    seq: number;
+}
+
+/** The report lines for a run task: what was opened and seen by the editor, never the model's word. */
+function evidenceGates(evidence: RunEvidence | undefined): GateResult[] {
+    const starting = evidence?.opens === 'still starting';
+    const opened: GateResult = {
+        label: evidence ? `Link opens: ${evidence.url}${starting ? ' (still starting)' : ''}` : 'Link opens',
+        command: 'Opened by FreeAgentCoder',
+        required: true,
+        status: !evidence || starting ? 'not_run' : evidence.opens === true ? 'passed' : 'failed',
+    };
+    if (!evidence || evidence.opens !== true) {
+        return [opened];
+    }
+    const drawn: GateResult = {
+        label:
+            evidence.drawn === 'yes'
+                ? 'Page drawn in a hidden browser, no errors'
+                : evidence.drawn === 'errors'
+                  ? `Page drawn: ${evidence.detail ?? 'the browser reported errors'}`
+                  : evidence.drawn === 'no-browser'
+                    ? 'Page drawn: not checked (no Chrome or Edge found)'
+                    : 'Page drawn: not confirmed (a debug server can wait for a debugger); open the link to look',
+        command: 'Checked by FreeAgentCoder',
+        required: false,
+        status: evidence.drawn === 'yes' ? 'passed' : evidence.drawn === 'errors' ? 'failed' : 'not_run',
+    };
+    return [opened, drawn];
 }
 
 export interface SessionOptions {
@@ -131,10 +173,14 @@ export interface SessionOptions {
     previews: PagePreviews;
     /** Whether a web page is loaded in a hidden browser before the agent may call it done. */
     checkPages(): boolean;
+    /** Has a vision model look at a rendered document, for check_document. */
+    reviewDocument?: VisualReview;
 }
 
 /** One conversation with the engine: runs turns and translates its events for the webview. */
 export class AgentSession implements vscode.Disposable {
+    /** Watches an app left starting at the end of a task, to show its Preview when it is ready. */
+    private readyWatch?: ReturnType<typeof setInterval>;
     /** Normalised errors seen in the current task, for fleet learning: signature → tool and how often. */
     private errorsThisTurn = new Map<string, { tool: string; count: number }>();
     private local?: LocalAgent;
@@ -300,12 +346,14 @@ export class AgentSession implements vscode.Disposable {
 
     dispose(): void {
         this.stop();
+        clearInterval(this.readyWatch);
         this.local?.processes.killAll();
     }
 
     private async execute(cwd: string, prompt: string, plan: TurnPlan): Promise<void> {
         const turn: ActiveTurn = {
             id: `turn-${Date.now().toString(36)}-${++this.turnCount}`,
+            askedForScript: /\b(?:python|script|\.py\b|python-pptx|code\s+(?:to|that)\s+(?:makes?|generates?|builds?))\b/i.test(prompt),
             startedAt: Date.now(),
             tokensAtStart: 0,
             files: new Map(),
@@ -354,7 +402,13 @@ export class AgentSession implements vscode.Disposable {
             }
             const agent = local.agent;
             agent.permissions.mode = this.options.mode();
-            agent.maxTurnTokens = this.options.taskTokenLimit();
+            // Running a project is a short job: if it has not worked by then, the user should hear why instead of waiting.
+            // Start counts carry over "Continue": only a new request starts them again.
+            if (plan.fresh) {
+                local.processes.newTask();
+            }
+            const limit = this.options.taskTokenLimit();
+            agent.maxTurnTokens = limit > 0 && plan.playbooks.some((p) => p.id === 'run') ? Math.min(limit, 150_000) : limit;
             turn.tokensAtStart = agent.usage.inputTokens + agent.usage.outputTokens;
             this.abort = new AbortController();
 
@@ -515,8 +569,41 @@ export class AgentSession implements vscode.Disposable {
         // Everything that needs the disk is read before the turn is marked over, so a new task cannot start in between.
         const gates =
             turn.playbooks.length && (turn.runs.length || turn.files.size) && this.localRoot
-                ? await gateResults(turn.playbooks, turn.runs, turn.release, this.localRoot, turn.files.keys()).catch(() => undefined)
+                ? await gateResults(turn.playbooks, turn.runs, turn.release, this.localRoot, turn.files.keys(), turn.lastEditSeq).catch(() => undefined)
                 : undefined;
+        // The report on a running app, only when the task started one (installing a tool alone has no link to show).
+        if (gates && turn.playbooks.some((p) => p.id === 'run') && (turn.runs.some((r) => r.background) || this.runningApps().length > 0)) {
+            const app = this.runningApps().find((a) => a.address);
+            const starting = !!app?.starting && !app.errors.length;
+            if (starting) {
+                turn.evidence = { url: app!.address!, opens: 'still starting', drawn: 'no-browser', seq: turn.lastEditSeq };
+            } else if (app?.address && (!turn.evidence || turn.evidence.url !== app.address || turn.evidence.opens !== true)) {
+                const opens = await httpProbe(app.address);
+                turn.evidence = { url: app.address, opens, drawn: app.errors.length ? 'errors' : 'no-browser', detail: app.errors[0], seq: turn.lastEditSeq };
+            }
+            gates.push(...evidenceGates(turn.evidence));
+            if (starting && reason !== 'aborted' && reason !== 'error') {
+                this.options.post({
+                    type: 'notice',
+                    turnId: turn.id,
+                    level: 'info',
+                    message: 'The app is still starting (a first Flutter web build takes one to two minutes). A Preview button appears here as soon as it answers.',
+                });
+                this.watchUntilReady(turn.id);
+            } else if (reason !== 'aborted' && reason !== 'error') {
+                const e = turn.evidence;
+                const truth = !e
+                    ? 'The app is not running: no server was started that answers. The reply above is not verified.'
+                    : e.opens !== true
+                      ? `The app is not reachable: FreeAgentCoder opened ${e.url} and ${e.opens}. The reply above is not verified.`
+                      : e.drawn === 'errors'
+                        ? `The app opens at ${e.url} but shows an error: ${e.detail ?? 'see the output above'}.`
+                        : undefined;
+                if (truth) {
+                    this.options.post({ type: 'notice', turnId: turn.id, level: 'warn', message: truth });
+                }
+            }
+        }
         const preview = reason === 'aborted' || reason === 'error' ? undefined : await this.previewFor(turn).catch(() => undefined);
         if (reason === 'completed' && preview?.kind === 'file') {
             // The agent may finish only so many times; if it changed the page after its last check, say how it stands.
@@ -561,6 +648,8 @@ export class AgentSession implements vscode.Disposable {
             files,
             canUndo,
             preview,
+            // Did it do the work, or only talk about it? Changed files, a check that passed, or a server it started.
+            worked: files.length > 0 || !!gates?.some((g) => g.status === 'passed') || turn.runs.some((r) => r.background),
             ...(turn.rate && reason !== 'aborted' ? { rate: true } : {}),
         });
         this.options.post({ type: 'usage', ...this.usageInfo() });
@@ -594,10 +683,10 @@ export class AgentSession implements vscode.Disposable {
         if (!root || !this.local) {
             return undefined;
         }
-        for (const proc of this.local.processes.list()) {
-            const url = proc.exited ? undefined : LOCAL_URL.exec(proc.output.replace(ANSI, ''))?.[0];
-            if (url) {
-                return { kind: 'url', target: url.replace('[::1]', 'localhost'), auto: turn.runs.some((run) => run.background) };
+        // Only a link the editor has opened itself, as the server printed it for the app.
+        for (const app of this.runningApps()) {
+            if (app.address && !app.errors.length && (await httpProbe(app.address)) === true) {
+                return { kind: 'url', target: app.address, auto: turn.runs.some((run) => run.background) };
             }
         }
         const page = await this.pageFor(turn);
@@ -752,6 +841,10 @@ export class AgentSession implements vscode.Disposable {
         if (ok && event.call.name === 'check_page' && turn) {
             turn.pageCheckSeq = turn.lastEditSeq;
         }
+        if (ok && event.call.name === 'make_deck' && turn) {
+            // A deck built from its outline is the build: it counts like running a build script.
+            turn.runs.push({ command: 'make_deck', exitCode: 0, background: false, seq: ++turn.seq });
+        }
         if (raw?.type === 'command' && event.call.name === 'run_command' && turn) {
             turn.runs.push({ command: raw.command, exitCode: raw.exitCode, background: !!raw.background, seq: ++turn.seq });
         }
@@ -819,16 +912,36 @@ export class AgentSession implements vscode.Disposable {
      * passed, and any other complex task that changed code must have passed
      * one of the project's own checks since its last edit.
      */
-    private readonly reviewCompletion = async (message: AssistantMessage): Promise<string | undefined> => {
+    private readonly reviewCompletion = async (message: AssistantMessage): Promise<string | Verdict | undefined> => {
         const turn = this.turn;
         if (!turn) {
             return undefined;
+        }
+        // A run task ends with a live address, not a link nothing serves or instructions for the user.
+        if (turn.playbooks.some((p) => p.id === 'run') && this.local) {
+            const apps = this.runningApps();
+            if (apps.length && apps.every((app) => app.starting)) {
+                return {
+                    feedback:
+                        'The app is still starting: its output has not said where it is served yet (a first Flutter web build takes one to two minutes). Wait for it: check the process tool every 20 to 30 seconds until it prints the address, then finish in one or two lines without writing the address.',
+                    notice: 'Still starting: FreeAgentCoder is waiting for the app to say it is ready.',
+                };
+            }
+            const serving = apps.flatMap((app) => (app.address ? [app.address] : []));
+            const verdict = await runProof(message.content, serving);
+            if (verdict) {
+                return verdict;
+            }
+            const seen = await this.lookAtRunningApp(turn, addressesIn(message.content)[0] ?? serving[0], apps.flatMap((app) => app.errors));
+            if (seen) {
+                return seen;
+            }
         }
         let feedback: string | undefined;
         if (turn.playbooks.length) {
             feedback =
                 (turn.files.size || turn.runs.length || turn.playbooks.some((p) => p.id === 'test')) && this.localRoot
-                    ? await completionReview(turn.playbooks, turn.runs, turn.release, this.localRoot, turn.files.keys(), message.content)
+                    ? await completionReview(turn.playbooks, turn.runs, turn.release, this.localRoot, turn.files.keys(), message.content, turn.lastEditSeq)
                     : undefined;
         } else if (turn.deep && turn.checks.length && turn.files.size && codeChanged(turn.files.keys())) {
             feedback = verificationReview(turn.checks, turn.runs, turn.lastEditSeq, message.content);
@@ -836,6 +949,114 @@ export class AgentSession implements vscode.Disposable {
         // Whatever the checks say, a web page must also load: a hidden browser opens it and reports its errors.
         return feedback ?? this.pageReview(turn, message.content).catch(() => undefined);
     };
+
+    /**
+     * Opens the app's address and loads it in a hidden browser, once per change,
+     * keeping what was found for the report. Errors the browser reports send the
+     * agent back; a page that cannot be confirmed (a Flutter debug server waits
+     * for a debugger) is reported as not confirmed, never as working.
+     */
+    private async lookAtRunningApp(turn: ActiveTurn, address: string | undefined, errors: string[] = []): Promise<Verdict | undefined> {
+        const url = address ? addressesIn(address)[0] : undefined;
+        if (url && errors.length) {
+            // What the app printed is what the user sees: a red error screen is not a working app.
+            turn.evidence = { url, opens: true, drawn: 'errors', detail: errors[0], seq: turn.lastEditSeq };
+            return {
+                feedback: [
+                    `The app is served at ${url}, but it shows an error instead of the app. Its output says:`,
+                    ...errors.slice(0, 3).map((e) => `- ${e}`),
+                    'That is what the user sees. Find the cause in the source (read the files involved first), fix only that, and let the server reload or restart it once. Do not call it working while this error is printed.',
+                ].join('\n'),
+                notice: `The app opens but shows an error: ${errors[0]!.slice(0, 160)}. Still working on it.`,
+            };
+        }
+        if (!url || (turn.evidence?.url === url && turn.evidence.seq === turn.lastEditSeq)) {
+            return undefined;
+        }
+        const opens = await httpProbe(url);
+        const evidence: RunEvidence = { url, opens, drawn: 'no-browser', seq: turn.lastEditSeq };
+        turn.evidence = evidence;
+        if (opens !== true) {
+            return undefined;
+        }
+        const report = await this.options.previews.checkUrl(url, this.abort?.signal).catch(() => undefined);
+        if (!report) {
+            return undefined;
+        }
+        evidence.drawn = report.errors.length ? 'errors' : isBlank(report) ? 'unconfirmed' : 'yes';
+        evidence.detail = report.errors[0];
+        return report.errors.length
+            ? {
+                  feedback: `The page at ${url} opens, but the browser reports ${report.errors.length} error${report.errors.length === 1 ? '' : 's'}:\n${report.errors
+                      .slice(0, 3)
+                      .map((e) => `- ${e}`)
+                      .join('\n')}\nFind the cause in the source, fix it, and check again before calling it done.`,
+                  notice: `The page opens but the browser reports an error: ${report.errors[0]!.slice(0, 160)}. Still working on it.`,
+              }
+            : undefined;
+    }
+
+    /**
+     * In a documents task, a python-pptx script is refused unless the user asked
+     * for one: make_deck lays decks out with tested designs, and a hand-written
+     * script was what turned a real deck back into a plain template (eight of them
+     * were left in the user's folder).
+     */
+    private guardWrite(abs: string, content: string): string | undefined {
+        const turn = this.turn;
+        if (!turn || turn.askedForScript || !turn.playbooks.some((p) => p.id === 'documents')) {
+            return undefined;
+        }
+        if (/\.py$/i.test(abs) && /^\s*(?:from\s+pptx\b|import\s+pptx\b)/m.test(content)) {
+            return 'Not written: presentations are built with make_deck, never with a python-pptx script. Call make_deck with the outline; if it listed problems, fix those fields and call it again (it also accepts gallery, cards and steps written as items or points).';
+        }
+        return undefined;
+    }
+
+    /** The apps this session left running: the address each printed for the app (never its debug service) and the errors it printed. */
+    private runningApps(): { address?: string; errors: string[]; starting: boolean }[] {
+        return (this.local?.processes.list() ?? [])
+            .filter((proc) => !proc.exited)
+            .map((proc) => {
+                const output = proc.output.replace(ANSI, '');
+                return { address: appAddress(output, proc.command), errors: appErrors(output), starting: stillStarting(output, proc.command) };
+            });
+    }
+
+    /**
+     * After a task ends with its app still starting: watch it for a few minutes,
+     * and once it says where it is served and the link answers, put the Preview
+     * button on that task. Stops if the app stops or prints an error.
+     */
+    private watchUntilReady(turnId: string): void {
+        clearInterval(this.readyWatch);
+        const until = Date.now() + 6 * 60_000;
+        let checking = false;
+        this.readyWatch = setInterval(() => {
+            if (checking) {
+                return;
+            }
+            checking = true;
+            void (async () => {
+                const apps = this.runningApps();
+                const app = apps.find((a) => a.address);
+                if (!apps.length || Date.now() > until) {
+                    clearInterval(this.readyWatch);
+                    if (!apps.length) {
+                        this.options.post({ type: 'notice', turnId, level: 'warn', message: 'The app stopped before it was ready. Ask again to see what went wrong.' });
+                    }
+                } else if (app?.errors.length) {
+                    clearInterval(this.readyWatch);
+                    this.options.post({ type: 'notice', turnId, level: 'warn', message: `The app started but shows an error: ${app.errors[0]!.slice(0, 200)}` });
+                } else if (app?.address && !app.starting && (await httpProbe(app.address)) === true) {
+                    clearInterval(this.readyWatch);
+                    this.options.post({ type: 'previewReady', turnId, preview: { kind: 'url', target: app.address, auto: false } });
+                }
+            })().finally(() => {
+                checking = false;
+            });
+        }, 3_000);
+    }
 
     private readonly approve = (request: ApprovalRequest): Promise<ApprovalDecision> => {
         const turnId = this.turn?.id;
@@ -898,7 +1119,8 @@ export class AgentSession implements vscode.Disposable {
                     return [editorInstructions({ python: /\bPython\b|Jupyter/.test(snapshot) }), snapshot].filter(Boolean).join('\n\n');
                 })(),
                 maxSteps: MAX_STEPS,
-                extraTools: [checkPageTool(this.options.previews), getProblemsTool(), checkDocumentTool],
+                extraTools: [checkPageTool(this.options.previews), getProblemsTool(), documentCheckTool(this.options.reviewDocument), makeDeckTool(this.options.reviewDocument)],
+                guardWrite: (abs, content) => this.guardWrite(abs, content),
                 afterEdit: editorProblemsAfterEdit(cwd, () => vscode.workspace.getConfiguration('freeagentcoder').get<boolean>('editorErrorsAfterEdit', true)),
             });
             this.local = local;

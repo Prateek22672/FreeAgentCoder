@@ -33,6 +33,9 @@ export interface Health {
  * for when a provider sends no live figures. Kept in step with that guide.
  */
 export const PUBLISHED_LIMITS: Record<string, string> = {
+    pexels: 'Free: 200 searches an hour, 20,000 a month (credit "Photo by … on Pexels")',
+    pixabay: 'Free: 100 searches a minute, no credit required',
+    unsplash: 'Free: 50 searches an hour as a demo app, 5,000 after Unsplash approves it',
     gemini: 'Google no longer publishes free-tier limits; AI Studio shows this key\'s',
     groq: 'Free tier: 1,000 requests a day, 30 a minute, 200,000 tokens a day',
     openrouter: 'Free models: 20 a minute; 50 a day, or 1,000 a day after $10 of credits',
@@ -88,6 +91,114 @@ interface Probe {
 
 const bearer = (key: string) => ({ authorization: `Bearer ${key}` });
 
+/** Stock-photo search keys: checked with one real search, which also shows the hourly allowance. */
+export const IMAGE_PROVIDERS = ['pexels', 'pixabay', 'unsplash'] as const;
+
+const IMAGE_PROBES: Record<string, Probe> = {
+    pexels: { url: () => 'https://api.pexels.com/v1/search?query=nature&per_page=1', headers: (key) => ({ authorization: key }) },
+    pixabay: { url: (key) => `https://pixabay.com/api/?key=${encodeURIComponent(key)}&q=nature&per_page=3`, headers: () => ({}) },
+    unsplash: { url: () => 'https://api.unsplash.com/search/photos?query=nature&per_page=1', headers: (key) => ({ authorization: `Client-ID ${key}`, 'accept-version': 'v1' }) },
+};
+
+/** The plain X-Ratelimit-Limit / -Remaining pair the photo services send. */
+function plainLimits(headers: Headers, window: string): string[] {
+    const limit = headers.get('x-ratelimit-limit');
+    const remaining = headers.get('x-ratelimit-remaining');
+    return limit && remaining ? [`${number(remaining)} of ${number(limit)} searches ${window} left`] : [];
+}
+
+async function checkImageKey(provider: string, key: string): Promise<Health> {
+    const probe = IMAGE_PROBES[provider]!;
+    const at = Date.now();
+    const started = Date.now();
+    try {
+        const response = await fetch(probe.url(key), { headers: probe.headers(key), cache: 'no-store', signal: AbortSignal.timeout(10_000) });
+        const ms = Date.now() - started;
+        const limits = plainLimits(response.headers, provider === 'pixabay' ? 'a minute' : 'an hour');
+        if (response.ok) {
+            const body = (await response.json().catch(() => ({}))) as { photos?: unknown[]; hits?: unknown[]; results?: unknown[] };
+            const found = (body.photos ?? body.hits ?? body.results ?? []).length;
+            return found
+                ? { state: 'ok', message: `Working: a test search found photos in ${(ms / 1000).toFixed(1)} s`, at, ms, limits, deep: true }
+                : { state: 'error', message: 'The key was accepted, but a test search found nothing.', at, ms, limits, deep: true };
+        }
+        const why = await reason(response, key);
+        if (response.status === 429) return { state: 'limited', message: `Valid, but out of searches for now${why ? `: ${why}` : ''}`, at, ms, limits, deep: true };
+        if (response.status === 401 || response.status === 403 || (response.status === 400 && /key/i.test(why))) {
+            return { state: 'invalid', message: why || `Rejected by ${provider} (HTTP ${response.status})`, at, ms, deep: true };
+        }
+        return { state: 'error', message: `${provider} answered HTTP ${response.status}${why ? `: ${why}` : ''}`, at, ms, deep: true };
+    } catch (error) {
+        return { state: 'error', message: (error as Error).name === 'TimeoutError' ? `${provider} did not answer within 10 seconds` : `Could not reach ${provider}`, at };
+    }
+}
+
+/** A provider the admin describes: any service with the OpenAI chat API. */
+export interface CustomProvider {
+    name: string;
+    baseURL: string;
+    fast: string;
+    deep: string;
+    contextWindow: number;
+    /** Tried before the built-in providers (a generous free allowance worth using up first). */
+    first: boolean;
+}
+
+/** An https address on the public internet: never this server's own network. */
+export function publicBaseURL(raw: string): string | undefined {
+    try {
+        const url = new URL(raw.trim());
+        const host = url.hostname.toLowerCase();
+        if (url.protocol !== 'https:') return undefined;
+        if (/^(?:localhost|.*\.local|.*\.internal|0\.0\.0\.0|127\.|10\.|192\.168\.|169\.254\.|172\.(?:1[6-9]|2\d|3[01])\.|\[?::1\]?|\[?f[cd])/.test(host)) return undefined;
+        return url.toString().replace(/\/+$/, '');
+    } catch {
+        return undefined;
+    }
+}
+
+/**
+ * Lists the provider's models with the key (proves the key) and checks the
+ * chosen models are offered; a deep check then sends one one-token request to
+ * the fast model.
+ */
+export async function checkCustomKey(custom: CustomProvider, key: string, deep = true): Promise<Health> {
+    const at = Date.now();
+    const started = Date.now();
+    const headers = { authorization: `Bearer ${key}`, 'content-type': 'application/json' };
+    try {
+        const list = await fetch(`${custom.baseURL}/models`, { headers, cache: 'no-store', signal: AbortSignal.timeout(10_000) });
+        if (list.status === 401 || list.status === 403) return { state: 'invalid', message: (await reason(list, key)) || `Rejected by ${custom.name} (HTTP ${list.status})`, at };
+        let offered: string[] = [];
+        if (list.ok) {
+            const body = (await list.json().catch(() => ({}))) as { data?: { id?: string }[] };
+            offered = (body.data ?? []).map((m) => String(m.id ?? '')).filter(Boolean);
+            const missing = [custom.fast, custom.deep].filter((m) => offered.length && !offered.includes(m));
+            if (missing.length) {
+                return { state: 'error', message: `${custom.name} does not offer ${missing.join(' or ')}. It offers: ${offered.slice(0, 15).join(', ')}${offered.length > 15 ? '…' : ''}`, at };
+            }
+            if (!deep) return { state: 'ok', message: `Valid: ${custom.name} lists ${offered.length} models, including ${custom.fast}`, at, ms: Date.now() - started };
+        }
+        const response = await fetch(`${custom.baseURL}/chat/completions`, {
+            method: 'POST',
+            headers,
+            body: JSON.stringify({ model: custom.fast, messages: [{ role: 'user', content: 'hi' }], max_tokens: 1 }),
+            cache: 'no-store',
+            signal: AbortSignal.timeout(20_000),
+        });
+        const ms = Date.now() - started;
+        const limits = limitsFromHeaders(response.headers, 'custom');
+        if (offered.length) limits.push(`${offered.length} models offered`);
+        const why = response.ok ? '' : await reason(response, key);
+        if (response.ok) return { state: 'ok', message: `Working: ${custom.fast} answered a test request in ${(ms / 1000).toFixed(1)} s`, at, ms, limits, deep: true };
+        if (response.status === 429) return { state: 'limited', message: `Valid, but out of requests for now${why ? `: ${why}` : ''}`, at, ms, limits, deep: true };
+        if (response.status === 401 || response.status === 403) return { state: 'invalid', message: why || `Rejected (HTTP ${response.status})`, at, ms, deep: true };
+        return { state: 'error', message: `The test request failed (HTTP ${response.status})${why ? `: ${why}` : ''}`, at, ms, limits, deep: true };
+    } catch (error) {
+        return { state: 'error', message: (error as Error).name === 'TimeoutError' ? `${custom.name} did not answer in time` : `Could not reach ${custom.baseURL}`, at };
+    }
+}
+
 const PROBES: Record<string, Probe> = {
     gemini: { url: (key) => `https://generativelanguage.googleapis.com/v1beta/models?pageSize=1&key=${encodeURIComponent(key)}`, headers: () => ({}) },
     groq: { url: () => 'https://api.groq.com/openai/v1/models', headers: bearer },
@@ -110,6 +221,7 @@ async function reason(response: Response, key: string): Promise<string> {
 }
 
 export async function checkKey(provider: string, key: string): Promise<Health> {
+    if ((IMAGE_PROVIDERS as readonly string[]).includes(provider)) return checkImageKey(provider, key);
     // NVIDIA lists its models to anyone, key or not, so only a real one-token request proves a key works.
     if (provider === 'nvidia') return testRequest(provider, key);
     const probe = PROBES[provider];
@@ -180,6 +292,7 @@ async function testRequest(provider: string, key: string): Promise<Health> {
 
 /** The light check, then, when it passes, one real request. Keeps what both learned about limits. */
 export async function deepCheckKey(provider: string, key: string): Promise<Health> {
+    if ((IMAGE_PROVIDERS as readonly string[]).includes(provider)) return checkImageKey(provider, key);
     if (provider === 'nvidia') return testRequest(provider, key);
     const light = await checkKey(provider, key);
     if (light.state === 'invalid') return light;

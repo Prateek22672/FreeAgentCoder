@@ -32,7 +32,13 @@ export const ALL_TOOLS = [
 ];
 /** Only for work with a visual result: a found photo, and a check of the finished deck or document. */
 const VISUAL_TOOLS = ['find_image'];
-const DOCUMENT_TOOLS = ['find_image', 'check_document'];
+const DOCUMENT_TOOLS = ['find_image', 'make_deck', 'check_document'];
+/**
+ * A presentation: make_deck lays it out, checks it and exports the PDF, so
+ * nothing else is needed. A real deck task spent 23 steps (197K tokens) on a
+ * Python check, mkdir, docs lookups and hand-written scripts besides it.
+ */
+export const DECK_TOOLS = ['read_file', 'list_dir', 'glob', 'todo_write', 'find_image', 'make_deck'];
 
 export interface TaskShape {
     tier: Tier;
@@ -44,6 +50,8 @@ export interface TaskShape {
     test?: boolean;
     /** Making a deck, document, report or PDF. */
     documents?: boolean;
+    /** Making a presentation and nothing else. */
+    deck?: boolean;
     /** Making something people look at: a site, an app screen. */
     visual?: boolean;
 }
@@ -58,6 +66,9 @@ export function toolsFor(task: TaskShape): string[] | undefined {
     }
     if (task.explain) {
         return READ_TOOLS;
+    }
+    if (task.deck) {
+        return DECK_TOOLS;
     }
     const extra = task.documents ? DOCUMENT_TOOLS : task.visual ? VISUAL_TOOLS : [];
     if (task.tier === 'fast') {

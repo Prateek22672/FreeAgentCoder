@@ -114,6 +114,8 @@ export interface SettingsView {
     suggestions: Suggestion[];
     overview: OverviewView;
     health: HealthView;
+    /** Which build is running: the version and when it was built. */
+    about: { version: string; built: string; vscode: string };
 }
 
 export type HealthStatus = 'healthy' | 'untested' | 'cooldown' | 'exhausted' | 'failing' | 'invalid' | 'disabled';
@@ -405,6 +407,8 @@ export type ToWebview =
     | { type: 'reasoning'; turnId: string; delta: string }
     | { type: 'resetText'; turnId: string }
     | { type: 'assistant'; turnId: string; content: string }
+    /** An app the task started finished starting after the task ended, and its link was opened and answered. */
+    | { type: 'previewReady'; turnId: string; preview: PreviewView }
     | { type: 'preparing'; turnId: string; tool: string }
     | { type: 'toolStart'; turnId: string; callId: string; tool: string; label: string }
     | { type: 'toolOutput'; turnId: string; callId: string; chunk: string }
@@ -447,6 +451,8 @@ export type ToWebview =
           preview?: PreviewView;
           /** Ask for a thumbs up or down: only when the user shares what the agent learns. */
           rate?: boolean;
+          /** It changed files, passed a check or started a server, rather than only answering. */
+          worked?: boolean;
       }
     | { type: 'undone'; turnId: string; restored: string[]; deleted: string[] }
     | { type: 'checks'; turnId: string; playbooks: string[]; gates: GateView[]; security: string[]; release: string[] }

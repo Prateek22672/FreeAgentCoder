@@ -52,7 +52,7 @@ describe('what installs may share', () => {
 });
 
 describe('learned model order', () => {
-    const score = (provider: string, tasks: number, completed: number, extra: Partial<{ corrected: number; bad: number; good: number; avg_steps: number }> = {}) => ({
+    const score = (provider: string, tasks: number, completed: number, extra: Partial<{ corrected: number; bad: number; good: number; avg_steps: number; useful: number; reported: number }> = {}) => ({
         tier: 'deep' as const,
         provider,
         model: 'm',
@@ -63,12 +63,32 @@ describe('learned model order', () => {
         avg_tokens: 30000,
         good: extra.good ?? 0,
         bad: extra.bad ?? 0,
+        ...(extra.useful === undefined ? {} : { useful: extra.useful, reported: extra.reported ?? 0 }),
     });
 
-    it('ranks providers by finished, uncorrected, liked tasks, and only with enough evidence', () => {
-        const order = learnedOrder([score('gemini', 40, 30, { corrected: 6 }), score('nvidia', 30, 28), score('groq', 5, 5), score('openrouter', 50, 50)]);
-        expect(order.deep).toEqual(['nvidia', 'gemini']);
+    it('keeps the default first choice unless a challenger is clearly better on twice the evidence', () => {
+        // Today's real case: a model that finishes often (by telling the user to do it) on modest evidence.
+        const order = learnedOrder([score('gemini', 40, 30, { corrected: 6 }), score('cohere', 30, 29), score('groq', 5, 5), score('openrouter', 50, 50)]);
+        expect(order.deep).toEqual(['gemini', 'cohere']);
         expect(order.fast).toBeUndefined();
+    });
+
+    it('does not reward finishing without doing the work', () => {
+        // With the 0.6.2 signal: cohere finished 29 of 45 but changed something in only 3.
+        const order = learnedOrder([
+            score('gemini', 45, 36, { useful: 33, reported: 45 }),
+            score('cohere', 45, 44, { useful: 3, reported: 45 }),
+        ]);
+        expect(order.deep).toEqual(['gemini', 'cohere']);
+    });
+
+    it('lets a clearly better provider go first on enough evidence', () => {
+        const order = learnedOrder([score('gemini', 45, 30, { useful: 20, reported: 45 }), score('nvidia', 45, 42, { useful: 40, reported: 45 })]);
+        expect(order.deep).toEqual(['nvidia', 'gemini']);
+    });
+
+    it('gives no order when the default first choice has too few tasks to compare', () => {
+        expect(learnedOrder([score('gemini', 5, 5), score('cohere', 60, 60), score('nvidia', 60, 50)]).deep).toBeUndefined();
     });
 });
 

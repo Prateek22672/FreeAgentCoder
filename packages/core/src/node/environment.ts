@@ -2,6 +2,7 @@ import { exec } from 'node:child_process';
 import { existsSync, readdirSync } from 'node:fs';
 import * as path from 'node:path';
 import type { Tool } from '../tools/types';
+import { installedSdks, sdkRoot, withSdksOnPath } from './sdks';
 
 export interface ToolchainCheck {
   id: string;
@@ -35,7 +36,7 @@ export type CommandRunner = (command: string, timeoutMs: number) => Promise<{ ok
 
 const runVersionCommand: CommandRunner = (command, timeoutMs) =>
   new Promise((resolve) => {
-    exec(command, { timeout: timeoutMs, windowsHide: true }, (error, stdout, stderr) => {
+    exec(command, { timeout: timeoutMs, windowsHide: true, env: withSdksOnPath({ ...process.env }) }, (error, stdout, stderr) => {
       resolve({ ok: !error, output: `${stdout}\n${stderr}`.trim() });
     });
   });
@@ -71,6 +72,12 @@ function androidPlatforms(sdk: string): string {
  * Which toolchains are installed, found by running each one's version
  * command in parallel. Much faster and safer than searching the disk.
  */
+/** The installed toolchain that provides a tool (Flutter brings Dart). */
+function fromSdk(id: string) {
+  const owner = id === 'dart' ? 'flutter' : id;
+  return installedSdks().find((s) => s.complete && s.name.toLowerCase() === owner);
+}
+
 export async function inspectEnvironment(
   only?: string[],
   runner: CommandRunner = runVersionCommand,
@@ -87,6 +94,10 @@ export async function inspectEnvironment(
     if (ok && version) {
       found.push(tool.id);
       lines.push(`✓ ${tool.label}: ${version}`);
+    } else if (fromSdk(tool.id)) {
+      // Installed and complete but still building itself on its first run (Flutter takes about a minute): it is there.
+      found.push(tool.id);
+      lines.push(`✓ ${tool.label}: installed by FreeAgentCoder in ${fromSdk(tool.id)!.dir} (on PATH; its first run prepares for about a minute, so run it once with background=true)`);
     } else {
       missing.push(tool.id);
       lines.push(`✗ ${tool.label}: not found`);
@@ -111,9 +122,13 @@ export async function inspectEnvironment(
     }
   }
 
+  const installed = installedSdks().filter((s) => s.complete);
+  if (installed.length) {
+    lines.push('', `Installed by FreeAgentCoder in ${sdkRoot()} and on PATH for your commands: ${installed.map((s) => s.name).join(', ')}. Use them directly; never install or unpack them again.`);
+  }
   lines.push(
     '',
-    'If a required tool is missing, tell the user what to install and link the official download page. Ask before installing SDKs, running system package managers, or changing PATH or shell profiles.',
+    `If a required tool is missing: look for an installer or archive the user gave (in their message or the project folder) and install it into ${sdkRoot()}, in the background; it is then on PATH for your commands. Otherwise tell the user the one thing to install, with the official page. Ask before system package managers or changing PATH or shell profiles.`,
   );
   return { text: `Toolchains (${process.platform}):\n${lines.join('\n')}`, found, missing };
 }

@@ -1,6 +1,6 @@
 import { poolTargets, recordPoolCall, restPoolKey, restSeconds, type PoolTarget } from '@/lib/keypool';
 import { logEvent } from '@/lib/events';
-import { MODELS, plan } from '@/lib/trialPlan';
+import { modelFor, plan } from '@/lib/trialPlan';
 import { addressFrom, allowance, charge, installFrom, note, readExtTrialSettings, TOKENS_PER_REQUEST } from '@/lib/extTrial';
 
 export const runtime = 'nodejs';
@@ -26,7 +26,7 @@ function error(message: string, status: number, code: string): Response {
 
 /** The request as this provider wants it: its own model, its own output-limit field, and no Gemini-only fields elsewhere. */
 function bodyFor(target: PoolTarget, body: Record<string, unknown>, tier: 'fast' | 'deep'): string {
-    const out: Record<string, unknown> = { ...body, model: MODELS[target.provider]![tier], stream: true, stream_options: { include_usage: true } };
+    const out: Record<string, unknown> = { ...body, model: modelFor(target, tier), stream: true, stream_options: { include_usage: true } };
     const asked = Number(out.max_tokens ?? out.max_completion_tokens) || MAX_OUTPUT;
     delete out.max_tokens;
     delete out.max_completion_tokens;

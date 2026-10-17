@@ -32,6 +32,8 @@ export interface Playbook {
      * not apply: a plain HTML page has no build to pass.
      */
     manifests?: string[];
+    /** Its gates are required only once the task has changed files (running a project that already compiles needs no analysis). */
+    onlyAfterEdits?: boolean;
     guide: string[];
     gates: QualityGate[];
     security: string[];
@@ -42,6 +44,8 @@ export interface CommandRun {
     command: string;
     exitCode: number | null;
     background: boolean;
+    /** Order within the task, when known, to tell a check from before the last edit from one after it. */
+    seq?: number;
 }
 
 export interface GateResult {
@@ -50,6 +54,8 @@ export interface GateResult {
     required: boolean;
     status: GateStatus;
     exitCode?: number | null;
+    /** It passed or failed before the last edit, so it says nothing about the code as it is now. */
+    stale?: boolean;
 }
 
 const PM = String.raw`(?:npm|pnpm|yarn|bun)`;
@@ -271,25 +277,30 @@ const DOCUMENTS: Playbook = {
     toolchains: ['python'],
     manifests: ['*.py'],
     guide: [
-        'One build script (build_<name>.py) makes every output: the figures, the deck or document, and the PDF. After any change, run the script again; never edit an output by hand.',
-        'Paths from the script itself: HERE = os.path.dirname(os.path.abspath(__file__)), and every figure and output joined to HERE, so it runs from any folder. Write each figure to the exact name the slide code reads.',
-        'Colours: keep the palette as hex strings ("1B2A33"). python-pptx takes RGBColor.from_string("1B2A33") (or three 0-255 ints); matplotlib takes "#1B2A33". Never pass an RGBColor or a 0-255 tuple to matplotlib. Write one helper for each and use them everywhere.',
-        'Slides: widescreen 13.333 x 7.5 in, one helper per layout (title, bullets, image with caption, two columns), at most 6 short bullets, text 18 pt or larger, nothing outside the slide. Exactly the number of slides asked for.',
-        'Charts and diagrams with matplotlib (Agg backend), 200 dpi PNGs, labelled axes, one idea per figure. Flowcharts as boxes and arrows drawn with matplotlib patches.',
-        'PDF: build it in the same script (matplotlib PdfPages, or reportlab drawing the same pages). Do not try LibreOffice, unoconv or PowerPoint automation unless inspect_environment found them.',
-        'Facts about real events: use what you know with care, round figures and mark them "approx.", never present an invented precise number as fact, and end with a sources or notes slide.',
-        'Design it like a professional deck or report, never a blank template: one palette (a dark and a light neutral, one accent) and one font pair used everywhere; a real title slide; a consistent grid with 0.5-0.7 in margins; every slide with a clear headline that says the point ("Floods displaced 40,000 people", not "Impact"). Build each slide from a blank layout with your own shapes, so no empty "Click to add" placeholder is ever left.',
-        'Fill the space on purpose: each slide pairs text with a visual (photo, chart, diagram, big number or icon row); no slide is mostly empty and none is a wall of text (about 40 words at most; detail goes in the speaker notes). Body text 18-24 pt, captions 11-12 pt.',
-        'Images: get real ones with find_image (specific words, e.g. "Kathmandu flood 2024 rescue"), crop them to the frame without distortion (python-pptx crop_left/right or PIL), and list each credit on the sources slide. If no image can be found or downloaded, draw a labelled frame where it belongs ("Image: rescue boats in Kathmandu, 16:9") and tell the user in your reply which slides need one. Never leave a blank gap.',
+        'A presentation, deck or slides means a real .pptx file (and a PDF copy), not an HTML page, unless the user asks for web slides. Build every deck with make_deck: never write python-pptx or matplotlib code for slides.',
+        'Make it look like a deck made with Gamma, the standard people now expect. Plan the story first: a title slide with a picture, an opening that frames the question, sections in a logical order, a close with the takeaways, then a closing statement and sources. Ten to twelve slides for a talk.',
+        'Each slide: a short tag (subtitle, two or three words in capitals, e.g. "WHY IT MATTERS"), a title that is the point as a sentence ("AI already reads scans faster than doctors", not "Healthcare"), and one visual anchor: icons on cards, a picture filling one side, a chart, a big number, a table, steps or a timeline. Prefer cards with icons, steps and tables over bullet lists; use bullets at most twice per deck.',
+        'Layout for the content: four short ideas are cards (2 x 2, each with an icon, a two-word heading and one sentence); a comparison is two_columns; risks and remedies or options side by side are a table; a process or stages are steps; dates are a timeline; one strong figure is big_number; trends with real figures are a chart; three examples with pictures are a gallery. Never three slides alike in a row, and no empty section slides in a short deck.',
+        'Use callout on two or three key slides for the one line to remember ("Final thought: …"), and end with closing: the conclusion as one strong sentence, subtitle "Thank you".',
+        'Facts: only figures you are sure of, rounded, with their source on the slide (chart and big_number need one). Never invent scores, ratings or percentages to fill a chart: without real figures use cards or a table. A quote only when you are certain of the exact words and who said them; otherwise leave it out. A question with two sides ("is X an advantage or a disadvantage") gets both sides fairly, then a clear conclusion. End with a sources slide that lists what you cited.',
+        'Keep the user\'s folder clean: only the .pptx and its PDF go where the user asked. Save pictures with find_image under .freeagentcoder/images/ (e.g. save_as ".freeagentcoder/images/ai-doctor.jpg") and pass that path as image. Never leave scripts, drafts or extra copies beside the deck.',
+        'Pictures: find_image with concrete, photographable subjects ("radiologist reading a scan on screen", "robot arms in a car factory"), for the title slide and two or three others; pass the saved file as image with its credit, and it fills one side of the slide. Check each result fits the point: a picture that does not clearly show it (an old print, an unrelated landscape) is worse than none, so drop it and use imageNote or another layout.',
+        'Theme: workshop (white, bold, blue title slide) for business, school and training; editorial (dark charcoal, serif, copper) for culture, history and stories; terminal (black, mono) for technology; or midnight, ember, ivory, forest, ocean. Keep one theme for the whole deck.',
+        'Steps cost the user tokens, so keep a deck to a few: get every picture in one find_image call (images: a list of query and save_as), then one make_deck call. make_deck creates the folder, checks the file and exports the PDF itself: no mkdir, no Python, no check_document after it.',
+        'If make_deck says Not built, change only the fields it lists (it shows how each slide is written) and call it again with the same path; never switch to writing a script, and never make a second deck file. To change a deck later, call make_deck again on the same path with the edited outline.',
+        'make_deck returns the file check and a review of the rendered slides. Fix what it lists by changing the outline and calling make_deck again, at most three rounds, and tell the user what the last review still noted. Never edit the .pptx by hand.',
+        'A report means .docx or .pdf, made by one build script kept out of sight in .freeagentcoder/scripts/build_<name>.py (the user sees only the report). After any change, run that script again; never edit an output by hand, and edit the one script instead of writing a new one.',
+        'Paths from the script itself: HERE = os.path.dirname(os.path.abspath(__file__)), and every figure and output joined to HERE, so it runs from any folder. Write each figure to the exact name the document reads.',
+        'Colours: keep the palette as hex strings ("1B2A33"). matplotlib takes "#1B2A33" and python-docx RGBColor.from_string("1B2A33"). Never pass a 0-255 tuple to matplotlib. Figures with matplotlib (Agg backend): axis limits from the data, never a fixed range smaller than the values; labelled axes; 200 dpi PNGs; one idea per figure.',
         'Word documents (python-docx): built-in Heading 1-3 styles, a title page, paragraph spacing instead of empty paragraphs, tables with a header row and the same style throughout, images with captions, page numbers in the footer. PDF reports (reportlab platypus): the same structure, with a header and page numbers, and no page left blank.',
-        'Write text files with encoding="utf-8". Check the result in the same run: reopen each output (Presentation(path), the PDF page count) and print one line per slide or page with its title. Then run check_document on every .pptx, .docx and .pdf you made, fix each problem it lists, rebuild and check again until it finds none.',
+        'Write text files with encoding="utf-8". Then run check_document on every .docx and .pdf you made: it checks the file and looks at the rendered pages. Fix what it lists, rebuild and check again (at most three rounds).',
     ],
     gates: [
         {
             id: 'build',
-            label: 'Build script run',
-            command: 'python build_<name>.py',
-            matches: /\bpython3?\b[^|;&]*\.py\b/,
+            label: 'Deck or document built',
+            command: 'make_deck (decks) or python build_<name>.py (reports)',
+            matches: /\bpython3?\b[^|;&]*\.py\b|^make_deck\b/,
             required: 'always',
         },
     ],
@@ -320,6 +331,46 @@ const DOTNET: Playbook = {
     ],
     release: ['Production appsettings with HTTPS and HSTS, secrets outside source control, and a README with run steps and demo logins.'],
 };
+
+/**
+ * Running a project so the user can see it, including installing a missing
+ * toolchain from a file they supplied. Learned from a real chat where the agent
+ * told the user six times to install Flutter, ignored the zip they downloaded,
+ * and wrote %USERPROFILE% into Git Bash, which made a folder by that name.
+ */
+const RUN: Playbook = {
+    id: 'run',
+    name: 'Run and preview',
+    request: /(?!)/,
+    projectFiles: [],
+    toolchains: [],
+    guide: [
+        'The goal is the project running and a link (or window) the user can open. Do it yourself; never hand the user commands you can run.',
+        'Find the project first: the folder the user named, then how it starts (package.json scripts, pubspec.yaml, manage.py, requirements.txt, *.csproj, index.html).',
+        'First run inspect_environment. Toolchains FreeAgentCoder installed before (in %LOCALAPPDATA%\FreeAgentCoder\sdk) are already on PATH for your commands: if it lists Flutter, just use flutter. Never install, unpack or delete that folder again; the editor refuses it.',
+        'Install only the minimum the preview needs, nothing "recommended". Flutter in a browser: only the Flutter SDK, which already contains Dart; run it with -d web-server, which needs no Chrome, no Android Studio, no Visual Studio and no flutter doctor fixes. Android, iOS or Windows desktop builds need more (Android SDK, Xcode, Visual Studio C++): never install those just to show the app; use the web preview. Node or Python projects: only their runtime and the dependencies of the project.',
+        'Only when it is truly missing and the user gave an installer or zip (in the message or the project folder): unpack it once into %LOCALAPPDATA%\FreeAgentCoder\sdk with C:\Windows\System32\tar.exe -xf <zip> -C <folder> (seconds; never Expand-Archive, which takes 15 minutes, and never Git Bash tar, which cannot read zips). It runs in the background by itself; wait with the process tool. It is then on PATH, and its first flutter command prepares for about a minute.',
+        'Anything that downloads or compiles (flutter pub get, flutter run, flutter build, npm install, dotnet restore) goes in the background from the first try, then the process tool; a foreground time-out means the wrong mode was used. In Git Bash, never write %VAR%; to call cmd or taskkill write cmd //c or taskkill //PID; keep PowerShell code in single quotes.',
+        'One server at a time: before starting again, stop your own earlier run with the process tool (process list, then stop), or its port stays taken.',
+        'The port: before starting a server check that it is free (netstat). If it is taken, do not kill a process you did not start (it may be the user\'s own work); use the next free port (8081, 8082, …) and give that link. Stop only the processes you started, with the process tool.',
+        'Before changing code, see every error at once: flutter analyze --no-fatal-infos --no-fatal-warnings (errors only; warnings the project already had are not yours), npx tsc --noEmit, or python -m py_compile. Note them; that is the starting point.',
+        'Repair from the diagnostics, one block at a time: read the whole function or widget the error is in, then make one edit that replaces that complete block (the editor refuses an edit that leaves brackets unbalanced). Never change a signature, constructor or class to quiet an error without finding and updating every caller. Fix only what stops it compiling; never add or change features.',
+        'After every edit run the analysis again (only a check after the last change counts). If an edit left more errors than before, undo it (its diff shows the old text) instead of piling another guess on top.',
+        'Stop rule: after 3 starts that fail, stop and tell the user the exact error, which files you changed and why, and what you would do next. Do not keep editing; a long loop of guesses costs the user more than an honest report.',
+        'Start the app in the background (run_command background=true). Web apps: their dev script. Flutter web: flutter run -d web-server --web-port 8080 --web-hostname 127.0.0.1 (127.0.0.1, not localhost: on Windows localhost can bind IPv6 only and the link is refused; the first run compiles for a few minutes and then prints "is being served at"). Then read the output until it prints the address, fetch_url that address to prove it answers, and give the user the link.',
+        'If a step needs the user (admin rights, a licence prompt, a phone to plug in), say exactly that one step and why, after doing everything else.',
+        'Finish in one or two plain lines: it is running (or the one thing that stops it, in plain words), and what you changed, if anything. Do not write the address, ports, process ids, netstat or fetch results, or a "Verification" section: the editor opens the app itself and shows the working link as a Preview button. Never claim a check you did not run. Nothing else changes in the project: do not add features while running it.',
+        'Keep one port: if the app needs restarting, stop your own run and start it again on the same port. Do not move to a new port each time.',
+    ],
+    gates: [],
+    security: ['Install only what the user supplied or asked for.'],
+    release: [],
+};
+
+/** A playbook by its id: the understanding step names the kind of work, and some kinds have their own method. */
+export function playbookById(id: string): Playbook | undefined {
+    return [RUN, DOCUMENTS, GENERAL, ...PLAYBOOKS].find((p) => p.id === id);
+}
 
 const GENERAL: Playbook = {
     id: 'general',
@@ -370,7 +421,10 @@ export const PLAYBOOKS: Playbook[] = [FLUTTER, ML, DOTNET, PYTHON_API, NODE_API,
 const DOCUMENT_INTENT = /\b(?:need|want|make|create|generate|build|prepare|produce|write|design|give\s+me)\b/i;
 
 const BUILD_INTENT =
-    /\b(?:build|create|make|develop|scaffold|generate|set\s*up|write|design|clone|train|fine-?tune)\b[\s\S]{0,80}?\b(?:app|application|website|site|web\s*app|project|api|backend|server|service|game|extension|bot|dashboard|platform|pipeline|model|tool|cli)\b/i;
+    /\b(?:build|create|make|develop|scaffold|generate|set\s*up|write|design|clone|train|fine-?tune)\b[\s\S]{0,80}?\b(?:app|application|website|site|web\s*app|project|api|backend|server|service|game|extension|bot|dashboard|platform|pipeline|(?:ml|ai|machine[\s-]learning|deep[\s-]learning|neural|prediction|predictive|classification|regression|language|llm|trained|train(?:ing)?\s+(?:a|the))\s+models?|tool|cli)\b/i;
+/** "create a presentation on …", "make a 10-slide deck about …": the thing asked for is the document. */
+const DOCUMENT_OBJECT =
+    /\b(?:create|make|build|generate|prepare|design|write|need|want|give\s+me)\b(?:\s+(?!(?:that|which|who|to|with|for|and|app|apps|application|web|website|site|tool|bot|dashboard|platform|extension|game|system|api|service|page)\b)[\w-]+){0,4}?\s+(?:presentation|deck|slides?|slide\s*deck|pptx?|power\s*point|report|pdf|word\s+(?:doc|document|file)|docx|spreadsheet|xlsx)\b/i;
 const CHANGE_INTENT = /\b(?:fix|debug|refactor|upgrade|migrate|implement|add|integrate|optimi[sz]e|improve)\b/i;
 const RELEASE_INTENT = /\b(?:publish\w*|release|production|deploy\w*|play\s*store|app\s*store|apk|aab|ready\s+to\s+(?:ship|launch))\b/i;
 const MOBILE = /\b(?:mobile|android|ios|iphone|cross-platform)\s+(?:app|application)\b|\bapp\s+for\s+(?:android|ios)\b/i;
@@ -386,7 +440,7 @@ export function choosePlaybooks(prompt: string, tier: Tier, rootFiles: ReadonlyS
     if (tier !== 'deep') {
         return [];
     }
-    if (DOCUMENTS.request.test(prompt) && DOCUMENT_INTENT.test(prompt) && !BUILD_INTENT.test(prompt)) {
+    if (DOCUMENTS.request.test(prompt) && DOCUMENT_INTENT.test(prompt) && (DOCUMENT_OBJECT.test(prompt) || !BUILD_INTENT.test(prompt))) {
         return [DOCUMENTS];
     }
     const build = BUILD_INTENT.test(prompt) || RELEASE_INTENT.test(prompt);
@@ -460,20 +514,44 @@ export function gatesApply(playbook: Playbook, nearby: ReadonlySet<string> | und
  * task changed; a playbook whose manifests are all missing there has nothing
  * to build or test, so none of its gates is required.
  */
-export function evaluateGates(playbooks: Playbook[], runs: CommandRun[], release: boolean, nearby?: ReadonlySet<string>): GateResult[] {
+export function evaluateGates(playbooks: Playbook[], runs: CommandRun[], release: boolean, nearby?: ReadonlySet<string>, lastEditSeq = 0): GateResult[] {
     const prefix = playbooks.length > 1;
+    // A check counts only when it ran after the last edit: every fix is followed by fresh diagnostics.
+    const fresh = (r: CommandRun) => !lastEditSeq || r.seq === undefined || r.seq > lastEditSeq;
     return playbooks.flatMap((playbook) =>
         playbook.gates.map((gate) => {
-            const run = [...runs].reverse().find((r) => !r.background && gate.matches.test(r.command));
+            const matching = [...runs].reverse().filter((r) => !r.background && gate.matches.test(r.command));
+            const run = matching.find(fresh);
             return {
                 label: prefix ? `${playbook.name}: ${gate.label}` : gate.label,
                 command: gate.command,
-                required: isRequired(gate, release) && gatesApply(playbook, nearby),
+                required: isRequired(gate, release) && gatesApply(playbook, nearby) && (!playbook.onlyAfterEdits || lastEditSeq > 0),
                 status: !run ? 'not_run' : run.exitCode === 0 ? 'passed' : 'failed',
                 exitCode: run?.exitCode,
+                stale: !run && matching.length > 0 ? true : undefined,
             } satisfies GateResult;
         }),
     );
+}
+
+const COMPILE_GATES = new Set(['analyze', 'typecheck', 'types']);
+
+/**
+ * For running a project: the stack's compile check only, and only once the task
+ * has changed code, so a repair is always followed by fresh diagnostics.
+ * Flutter's analysis counts errors, not the warnings the project already had.
+ */
+export function runChecks(playbooks: Playbook[]): Playbook[] {
+    return playbooks.flatMap((playbook) => {
+        const gates = playbook.gates
+            .filter((gate) => COMPILE_GATES.has(gate.id))
+            .map((gate) => ({
+                ...gate,
+                required: 'always' as const,
+                command: playbook.id === 'flutter' && gate.id === 'analyze' ? 'flutter analyze --no-fatal-infos --no-fatal-warnings' : gate.command,
+            }));
+        return gates.length ? [{ ...playbook, gates, guide: [], security: [], release: [], onlyAfterEdits: true }] : [];
+    });
 }
 
 /** A message sending the agent back to work, or undefined when it may finish. */
@@ -490,7 +568,7 @@ export function reviewMessage(results: GateResult[], finalReply: string): string
         'Not done yet: these required quality gates have not passed.',
         ...missing.map(
             (r) =>
-                `- ${r.label}: ${r.status === 'failed' ? `failed (exit ${r.exitCode})` : 'not run'}. Run \`${r.command}\` in the project folder and fix what it reports.`,
+                `- ${r.label}: ${r.status === 'failed' ? `failed (exit ${r.exitCode})` : r.stale ? 'not run since your last change' : 'not run'}. Run \`${r.command}\` in the project folder and fix what it reports.`,
         ),
         'Run them now. If one truly cannot run here (for example a required SDK is missing), stop and say so clearly in your final reply instead of retrying.',
     ].join('\n');

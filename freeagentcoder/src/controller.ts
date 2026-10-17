@@ -1,4 +1,5 @@
 import { asksForSomethingNew, CHAT_SYSTEM, isGeneralQuestion, isSmallTalk, QUESTION_SYSTEM } from './agent/intent';
+import { exchangesFrom, parseUnderstanding, settleUnderstanding, shouldAsk, specialistFor, tierFor, understandingBlock, understandPrompt, UNDERSTAND_SYSTEM, wantsFileSearch, wantsReferences, type Understanding } from './agent/understand';
 import { toolsFor } from './agent/toolsets';
 import { chorePattern, isShareableRule, type Outcome } from './learning/fleet';
 import { FleetSender } from './learning/fleetSender';
@@ -10,7 +11,8 @@ import { LabRecorder } from './lab/recorder';
 import * as path from 'node:path';
 import * as vscode from 'vscode';
 import { bestMatches, hideSecrets, ModelRouter, PRESETS, tokenize, type SearchHit } from '@agentic/core';
-import { configPath, detectShell, isGitRepo, keyFiles, loadConfig, loadProjectInstructions, repoMap, type AgenticConfig } from '@agentic/core/node';
+import { configPath, detectShell, isGitRepo, keyFiles, loadConfig, loadProjectInstructions, repoMap, useImageSearch, type AgenticConfig } from '@agentic/core/node';
+import { siteImageSearch } from './attachments/stockImages';
 import { planFyx, type FyxContext, type FyxPlan } from './fyx/plan';
 import { FYX_MODEL, FyxProvider } from './fyx/provider';
 import { LearnedCommands, sharedChore } from './fyx/learned';
@@ -19,20 +21,20 @@ import { ChainBuilder, isAuthFailure, verifyKey, type CallResult, type RoutableK
 import { correctionBrief, isCorrection, learnPrompt, LEARN_SYSTEM, parseLessons, rememberCommand } from './agent/correction';
 import { DIFF_SCHEME, DiffDocuments } from './agent/diffDocuments';
 import { mentionBlock, mentionedPaths, rankFiles } from './agent/mentions';
-import { buildBrief, choosePlaybooks, releaseIntent } from './agent/playbooks';
+import { buildBrief, choosePlaybooks, playbookById, releaseIntent, runChecks } from './agent/playbooks';
 import { detectChecks, structureMap, type ProjectCheck } from './agent/projectChecks';
 import { detectStack } from './agent/projectSnapshot';
 import { structureBlock, TEST_PROMPT, testBrief, testPlaybook } from './agent/testing';
 import { AgentSession, type SessionLogEntry, type TurnPlan } from './agent/session';
-import { PDF_READER_MODEL, planVisionRoute } from './agent/visionRoute';
+import { PDF_READER_MODEL, PDF_READER_MODELS, planVisionRoute } from './agent/visionRoute';
 import { attachmentViews, prepareAttachments, type AttachmentReaders } from './attachments/prepare';
 import { readImagesLocally } from './attachments/ocr';
 import { SITE_URL, TRIAL_PROVIDER } from './shared/site';
 import { showWhatsNew, tellIfOutdated } from './updates';
 import { Telemetry } from './telemetry/telemetry';
 import { enabledSpecialists, RemoteConfig } from './agent/remoteConfig';
-import { chooseSpecialist, specialistSection } from './agent/specialists';
-import { complete, describeImages, digestDocument, readPdfWithGemini } from './attachments/reader';
+import { chooseSpecialist, specialistById, specialistSection } from './agent/specialists';
+import { complete, describeImages, digestDocument, DOCUMENT_REVIEW_PROMPT, readPdfWithGemini } from './attachments/reader';
 import { HistoryStore, newChatId } from './history/historyStore';
 import { KeyStore } from './keys/keyStore';
 import { parseQuotaHeaders } from './keys/quota';
@@ -45,6 +47,8 @@ import { adviseKeys, estimatePromptsLeft, providerCapacity } from './usage/advis
 import { capacityMessage, capacityRisk, estimateSavings, isDailyLimit, requestsNeeded, type TaskShape } from './usage/forecast';
 import { PagePreviews } from './preview/pages';
 import { UsageStore } from './usage/usageStore';
+import { besideChat } from './webview/columns';
+import { BUILT_AT } from './build';
 
 const MODE_KEY = 'freeagentcoder.mode';
 const MODEL_KEY = 'freeagentcoder.model';
@@ -151,6 +155,8 @@ export class Controller implements vscode.Disposable {
     private readonly disposables: vscode.Disposable[] = [];
     private sink?: ViewSink;
     private transcript: ToWebview[] = [];
+    /** What the current task is for, so a document review knows its audience and purpose. */
+    private lastPrompt?: string;
     private mode: PermissionMode;
     private model: string;
     private historyMode: HistoryMode;
@@ -206,6 +212,8 @@ export class Controller implements vscode.Disposable {
             return { count: keys.length, providers: keys.map((key) => key.provider) };
         });
         this.fleet = new FleetSender(context, this.telemetry);
+        // Pictures for decks and documents: the site's stock-photo search first, then the free archives.
+        useImageSearch(siteImageSearch(() => this.trialId()));
 
         const savedMode = context.globalState.get<string>(MODE_KEY);
         this.mode = savedMode === 'ask' || savedMode === 'auto-edit' || savedMode === 'auto' ? savedMode : 'auto-edit';
@@ -229,6 +237,7 @@ export class Controller implements vscode.Disposable {
             taskTokenLimit: () => Math.max(0, vscode.workspace.getConfiguration('freeagentcoder').get<number>('taskTokenLimit', 500_000)),
             previews: this.previews,
             checkPages: () => vscode.workspace.getConfiguration('freeagentcoder').get<boolean>('checkPages', true),
+            reviewDocument: (pdf, name, signal) => this.reviewDocument(pdf, name, signal),
         });
 
         this.disposables.push(
@@ -580,20 +589,32 @@ export class Controller implements vscode.Disposable {
             return;
         }
 
-        const correction = !test && (explicitCorrection || isCorrection(prompt, this.session.hasHistory, attachments.length > 0));
+        // Understand the request before deciding anything: misreading it is worse than a useless task.
+        const understood = test ? undefined : await this.understand(prompt, attachments, keys, cwd);
+        this.lastPrompt = understood?.request ?? prompt;
+        const correction = !test && (explicitCorrection || (understood ? understood.kind === 'correction' : isCorrection(prompt, this.session.hasHistory, attachments.length > 0)));
         this.turnWatch.correction = correction;
         if (this.pendingOutcome) {
-            this.fleet.add('outcomes', [{ ...this.pendingOutcome, corrected: correction }]);
+            // A complaint about the previous answer counts against it, even when it is not a correction of code.
+            this.fleet.add('outcomes', [{ ...this.pendingOutcome, corrected: correction || !!understood?.complaint }]);
             this.pendingOutcome = undefined;
         }
         this.turnModel = { provider: '', model: '' };
         // A question about the world, not this project: answered from knowledge, with no tools and no project context.
-        const general = !test && !correction && !attachments.length && (isSmallTalk(prompt) || isGeneralQuestion(prompt));
+        const asking = !!understood && shouldAsk(understood);
+        const general =
+            !test && !correction && !attachments.length && (asking || (understood ? understood.kind === 'question' : isSmallTalk(prompt) || isGeneralQuestion(prompt)));
         const selected = parseModelChoice(this.model);
         // The kind of work sets the method. Follow-ups and corrections keep the method they already have.
+        const enabled = enabledSpecialists(this.remoteConfig.current);
+        const fromUnderstanding = understood ? specialistFor(understood.kind) : undefined;
         const specialist =
             !general && !test && !correction && !isFollowUp(prompt) && this.features.seniorMode
-                ? chooseSpecialist(prompt, enabledSpecialists(this.remoteConfig.current))
+                ? understood
+                    ? fromUnderstanding && enabled.has(fromUnderstanding)
+                        ? specialistById(fromUnderstanding)
+                        : undefined
+                    : chooseSpecialist(prompt, enabled)
                 : undefined;
         const base = selected
             ? { tier: 'deep' as Tier, reason: `Selected model: ${providerLabel(selected.provider)} · ${selected.model}` }
@@ -604,8 +625,10 @@ export class Controller implements vscode.Disposable {
               : attachments.length
                 ? { tier: 'deep' as Tier, reason: 'Request with attachments' }
                 : general
-                  ? { tier: 'fast' as Tier, reason: 'General question: answered directly' }
-                  : classifyTask(prompt, this.session.lastTier);
+                  ? { tier: 'fast' as Tier, reason: asking ? 'One question before starting' : 'General question: answered directly' }
+                  : understood
+                    ? { tier: tierFor(understood.kind), reason: `Understood as ${understood.kind}` }
+                    : classifyTask(prompt, this.session.lastTier);
         // A short request can still be the kind of work that needs a plan and checks.
         const { tier, reason } =
             specialist && specialist.minTier === 'deep' && base.tier === 'fast' && !selected
@@ -652,11 +675,21 @@ export class Controller implements vscode.Disposable {
               ? []
               : carryChecks
                 ? this.session.lastPlaybooks
-                : choosePlaybooks(prompt, tier, new Set(await readdir(cwd).catch(() => [] as string[])));
+                : understood?.kind === 'documents'
+                  ? [playbookById('documents')!]
+                  : understood?.kind === 'run' || understood?.kind === 'setup'
+                    ? [
+                          playbookById('run')!,
+                          ...runChecks(choosePlaybooks(`${prompt}\n${understood.request}`, tier, new Set(await readdir(cwd).catch(() => [] as string[])))),
+                      ]
+                    : choosePlaybooks(understood ? `${prompt}\n${understood.request}` : prompt, tier, new Set(await readdir(cwd).catch(() => [] as string[])));
         const release = !test && senior && (carryChecks ? this.session.lastRelease : releaseIntent(prompt));
         const notes = route.note ? [route.note] : [];
         if (fyxHandover) {
             notes.unshift('Fyx is for basic tasks: zip, git, installing packages, running your project and file chores. This request needs an AI model, so it is going to Auto. Fyx stays selected for your next basic task.');
+        }
+        if (understood && !asking) {
+            notes.unshift(`Understood: ${understood.request}${understood.deliverable ? ` You will get: ${understood.deliverable}` : ''}`);
         }
         if (keys[0]?.provider === TRIAL_PROVIDER) {
             notes.push("Running on FreeAgentCoder's free trial: a daily allowance on our keys, sent through FreeAgentCoder's server. Add your own free Gemini or Groq key in Settings → API Keys for faster, private requests with no daily cap of ours.");
@@ -668,6 +701,9 @@ export class Controller implements vscode.Disposable {
               : playbooks.length && !followUp
                 ? buildBrief(playbooks, release, prompt)
                 : prompt;
+        if (understood && !asking && !general) {
+            agentPrompt = `${understandingBlock(understood)}\n\n${agentPrompt}`;
+        }
         if (specialist) {
             const section = specialistSection(specialist, this.remoteConfig.current[specialist.id]?.extra);
             agentPrompt = agentPrompt.includes('</task-brief>')
@@ -676,7 +712,10 @@ export class Controller implements vscode.Disposable {
             notes.push(`Method: ${specialist.name}`);
         }
         this.lastSpecialist = specialist?.id ?? (isFollowUp(prompt) ? this.lastSpecialist : undefined);
-        this.turnShape = { kind: general ? 'question' : (specialist?.id ?? (asksForSomethingNew(prompt) ? 'build' : tier === 'fast' ? 'quick' : 'change')), tier };
+        this.turnShape = {
+            kind: general ? 'question' : (specialist?.id ?? understood?.kind ?? (asksForSomethingNew(prompt) ? 'build' : tier === 'fast' ? 'quick' : 'change')),
+            tier,
+        };
         if (!test && firstDeep && structure) {
             agentPrompt += `\n\n${structureBlock(structure)}`;
             // Changing an existing project: the files that matter most and what they define, so the right ones are opened first.
@@ -706,7 +745,7 @@ export class Controller implements vscode.Disposable {
         }
 
         // Quick tasks get the likely files too: naming them up front saves exploring for them, step by resent step.
-        if (this.features.codeSearch && !general && !followUp && !test && this.session.indexedFiles !== 0) {
+        if (this.features.codeSearch && !general && !followUp && !test && this.session.indexedFiles !== 0 && (!understood || wantsFileSearch(understood.kind))) {
             const hits = (await this.relevantFiles(cwd, prompt)).slice(0, tier === 'fast' ? 4 : 8);
             if (hits.length) {
                 agentPrompt += `\n\n## Likely relevant files\nFound by a local search of this project for the words in the request. Read one only if it is clearly part of what the request is about.\n${hits
@@ -747,7 +786,8 @@ export class Controller implements vscode.Disposable {
 
         // Complex work gets the know-how that fits it: the spec method for a requirements document, and the blueprints for its kind of project.
         // Anything new with a screen gets a design reference too, however small, so it is designed rather than plain.
-        const withReferences = !followUp && !test && (tier === 'deep' || (asksForSomethingNew(prompt) && wantsDesign(prompt)));
+        const withReferences =
+            !followUp && !test && !correction && (understood ? wantsReferences(understood.kind) : tier === 'deep' || (asksForSomethingNew(prompt) && wantsDesign(prompt)));
         if (withReferences && !attachments.length) {
             const reference = referenceBlock(prompt, '', this.remoteConfig.references);
             if (reference) {
@@ -813,13 +853,54 @@ export class Controller implements vscode.Disposable {
             capacity: this.forecast({ tier, playbooks: playbooks.length, attachments: attachments.length, correction, test }),
             test,
             checks,
-            fresh: !followUp && !correction,
+            // Earlier tool output is dropped only for a new topic: "you run it" continues the last task.
+            fresh: understood ? understood.newTopic && !correction : !followUp && !correction,
             knownFiles: [...mentioned.included, ...(overview?.included ?? []), ...(mainFiles?.included ?? [])],
-            tools: toolsFor({ tier, general, explain: explaining, newBuild: asksForSomethingNew(prompt), test, documents: playbooks.some((p) => p.id === 'documents'), visual: asksForSomethingNew(prompt) && wantsDesign(prompt) }),
+            tools: toolsFor({
+                tier,
+                general,
+                explain: explaining,
+                newBuild: asksForSomethingNew(prompt),
+                test,
+                documents: playbooks.some((p) => p.id === 'documents'),
+                deck: playbooks.some((p) => p.id === 'documents') && onlyADeck(`${prompt}\n${understood?.request ?? ''}`),
+                visual: asksForSomethingNew(prompt) && wantsDesign(prompt),
+            }),
             // A greeting or a general question: a tiny prompt and only the last couple of exchanges, not the coding agent's whole setup.
-            chat: general ? { system: isSmallTalk(prompt) ? CHAT_SYSTEM : QUESTION_SYSTEM, history: 2 } : undefined,
+            chat: general ? { system: asking ? askSystem(understood!.question) : isSmallTalk(prompt) ? CHAT_SYSTEM : QUESTION_SYSTEM, history: 2 } : undefined,
             rate: this.fleet.sharing && !test && !general,
         });
+    }
+
+    /**
+     * What the user wants, read by a fast open model (gpt-oss or Qwen on Groq, Nemotron on NVIDIA first) from the
+     * message and the last few exchanges. Skipped for small talk and for a first message that is a plain
+     * question; on any failure the old keyword rules decide, so it can only help.
+     */
+    private async understand(prompt: string, attachments: AttachmentInput[], keys: RoutableKey[], cwd: string): Promise<Understanding | undefined> {
+        if (isSmallTalk(prompt) || isFollowUp(prompt) || (!this.session.hasHistory && !attachments.length && isGeneralQuestion(prompt))) {
+            return undefined;
+        }
+        const route = planRoute(keys, AUTO_MODEL, 'fast', (id) => this.usage.today(id).requests, { fast: ['groq', 'nvidia'] });
+        const entries = this.chain.build(route.steps);
+        if (!entries.length) {
+            return undefined;
+        }
+        const pasted = attachments
+            .filter((a) => a.kind === 'text' || a.kind === 'document')
+            .map((a) => ({ name: a.name, preview: a.kind === 'text' ? a.data.slice(0, 1_500) : undefined }));
+        try {
+            const reply = await complete(
+                new ModelRouter(entries),
+                UNDERSTAND_SYSTEM,
+                understandPrompt({ message: prompt, history: exchangesFrom(this.transcript as never), attachments: pasted, folder: cwd }),
+                AbortSignal.timeout(10_000),
+            );
+            const parsed = parseUnderstanding(reply.text);
+            return parsed ? settleUnderstanding(prompt, parsed) : undefined;
+        } catch {
+            return undefined;
+        }
     }
 
     /** Whether a task is running, so a command can wait in the input instead of interrupting it. */
@@ -1067,7 +1148,8 @@ export class Controller implements vscode.Disposable {
             if (this.turnWatch.edits > 0) {
                 this.turnWatch.okAfterEdit = message.ok;
             }
-        } else if ((message.tool === 'write_file' || message.tool === 'edit_file') && message.ok) {
+        } else if (message.ok && !LOOK_ONLY_TOOLS.has(message.tool)) {
+            // make_deck, find_image, write_file, edit_file…: the task did work beyond its commands, so it is no chore.
             this.turnWatch.edits++;
             this.turnWatch.okAfterEdit = false;
         }
@@ -1129,6 +1211,54 @@ export class Controller implements vscode.Disposable {
         };
     }
 
+    /** check_document's look at the rendered pages: Gemini reads the PDF, with the user's keys, least used first. */
+    private async reviewDocument(pdf: Uint8Array, name: string, signal: AbortSignal): Promise<string | undefined> {
+        const gemini = (await this.routableKeys()).filter((k) => k.provider === 'gemini');
+        if (!gemini.length) {
+            return undefined;
+        }
+        const result = await this.readPdfWithAnyGemini(gemini, { bytes: pdf, name, request: this.lastPrompt ?? '', prompt: DOCUMENT_REVIEW_PROMPT, maxOutputTokens: 2_000, signal });
+        return result.text;
+    }
+
+    /**
+     * A PDF read by Gemini with whatever free quota is left: each key, least
+     * used first, and on each key every PDF-capable model, since the free tier
+     * counts each model separately.
+     */
+    private async readPdfWithAnyGemini(
+        keys: RoutableKey[],
+        opts: { bytes: Uint8Array; name: string; request: string; prompt?: string; maxOutputTokens?: number; signal: AbortSignal },
+    ): Promise<Awaited<ReturnType<typeof readPdfWithGemini>>> {
+        const load = (id: string) => this.usage.today(id).requests;
+        let lastError: unknown;
+        let quotaOnly = true;
+        for (const key of [...keys].sort((a, b) => load(a.id) - load(b.id))) {
+            for (const model of PDF_READER_MODELS) {
+                try {
+                    const result = await readPdfWithGemini({ apiKey: key.secret, model, ...opts });
+                    this.usage.record(key.id, { ok: true, inputTokens: result.inputTokens, outputTokens: result.outputTokens });
+                    return result;
+                } catch (error) {
+                    if (opts.signal.aborted) {
+                        throw error;
+                    }
+                    lastError = error;
+                    if (/quota|RESOURCE_EXHAUSTED|rate.?limit|\b429\b/i.test(errorMessage(error))) {
+                        continue; // this model's free allowance is used up on this key: the next model has its own
+                    }
+                    quotaOnly = false;
+                    this.usage.record(key.id, { ok: false, inputTokens: 0, outputTokens: 0 });
+                    this.errorLog.add({ kind: 'provider', source: `Gemini · ${key.label}`, message: errorMessage(error), recovered: true, action: 'Tried the next Gemini key for the PDF' });
+                    break;
+                }
+            }
+        }
+        throw quotaOnly
+            ? new Error(`the free Gemini allowance for reading pages is used up for today on every key and model (about 20 a day each); it resets within 24 hours, or add another Gemini key`)
+            : lastError;
+    }
+
     private attachmentReaders(keys: RoutableKey[], request: string): AttachmentReaders {
         const load = (id: string) => this.usage.today(id).requests;
         const readers: AttachmentReaders = {};
@@ -1141,24 +1271,7 @@ export class Controller implements vscode.Disposable {
 
         const gemini = keys.filter((k) => k.provider === 'gemini').sort((a, b) => load(a.id) - load(b.id));
         if (gemini.length) {
-            readers.scannedPdf = async (bytes, name, signal) => {
-                let lastError: unknown;
-                for (const key of gemini) {
-                    try {
-                        const result = await readPdfWithGemini({ apiKey: key.secret, model: PDF_READER_MODEL, bytes, name, request, signal });
-                        this.usage.record(key.id, { ok: true, inputTokens: result.inputTokens, outputTokens: result.outputTokens });
-                        return result;
-                    } catch (error) {
-                        if (signal.aborted) {
-                            throw error;
-                        }
-                        this.usage.record(key.id, { ok: false, inputTokens: 0, outputTokens: 0 });
-                        this.errorLog.add({ kind: 'provider', source: `Gemini · ${key.label}`, message: errorMessage(error), recovered: true, action: 'Tried the next Gemini key for the PDF' });
-                        lastError = error;
-                    }
-                }
-                throw lastError;
-            };
+            readers.scannedPdf = (bytes, name, signal) => this.readPdfWithAnyGemini(gemini, { bytes, name, request, signal });
         }
 
         const deep = this.chain.build(planRoute(keys, AUTO_MODEL, 'deep', load).steps);
@@ -1449,6 +1562,8 @@ export class Controller implements vscode.Disposable {
             durationMs: end.durationMs,
             paused: end.reason === 'budget',
             repeatedErrors: errors.reduce((n, e) => n + e.repeats, 0),
+            // For an explanation or a question, the answer is the work.
+            worked: end.worked === true || this.turnShape.kind === 'question' || this.turnShape.kind === 'explain',
         };
         this.fleet.add('errors', errors.map((e) => ({ ...e, stack })));
         void this.fleet.flush();
@@ -1709,7 +1824,7 @@ export class Controller implements vscode.Disposable {
         const uri = path.isAbsolute(filePath) || !folder ? vscode.Uri.file(filePath) : vscode.Uri.joinPath(folder.uri, normalized);
         try {
             const position = line && line > 0 ? new vscode.Position(line - 1, 0) : undefined;
-            await vscode.window.showTextDocument(uri, { preview: true, selection: position ? new vscode.Range(position, position) : undefined });
+            await vscode.window.showTextDocument(uri, { preview: true, viewColumn: besideChat(), selection: position ? new vscode.Range(position, position) : undefined });
         } catch {
             this.toast(`Couldn't open ${filePath}.`, 'error');
         }
@@ -1721,7 +1836,7 @@ export class Controller implements vscode.Disposable {
      * modules load as they would on a real site. Only a page inside the open
      * folder or an address on this computer is ever opened.
      */
-    private async openPreview(kind: 'file' | 'url', target: string): Promise<void> {
+    private async openPreview(kind: 'file' | 'url', target: string, quiet = false): Promise<void> {
         try {
             let url: string | undefined = target;
             if (kind === 'file') {
@@ -1734,7 +1849,10 @@ export class Controller implements vscode.Disposable {
                 return;
             }
             const address = url;
-            await vscode.commands.executeCommand('simpleBrowser.show', address).then(undefined, () => vscode.env.openExternal(vscode.Uri.parse(address)));
+            // Beside the chat, and when it opens by itself at the end of a task, without taking the keyboard from it.
+            await vscode.commands
+                .executeCommand('simpleBrowser.show', address, { viewColumn: besideChat() ?? vscode.ViewColumn.Beside, preserveFocus: quiet })
+                .then(undefined, () => vscode.env.openExternal(vscode.Uri.parse(address)));
         } catch {
             this.toast(`Couldn't open a preview of ${target}.`, 'error');
         }
@@ -1917,6 +2035,7 @@ export class Controller implements vscode.Disposable {
             suggestions: adviseKeys({ keys: views, capacity, weakFallbacksToday: this.usage.weakFallbacksToday(), recent, promptsLeft, now }),
             overview: await this.overview(promptsLeft, views),
             health: this.healthView(usable, now),
+            about: { version: String(this.context.extension.packageJSON.version ?? ''), built: BUILT_AT, vscode: vscode.version },
         };
         this.lastSettings = settings;
         return settings;
@@ -2166,7 +2285,7 @@ export class Controller implements vscode.Disposable {
         this.sink?.post(message);
         if (message.type === 'turnEnd') {
             if (message.preview?.auto && vscode.workspace.getConfiguration('freeagentcoder').get<boolean>('openPreview', true)) {
-                void this.openPreview(message.preview.kind, message.preview.target);
+                void this.openPreview(message.preview.kind, message.preview.target, true);
             }
             void this.afterTurn(message);
         }
@@ -2229,4 +2348,31 @@ const MAIN_FILE_CHARS = 4_000;
 /** The shared lessons that fit a request: its stack, or several of its words. At most three, to stay cheap. */
 function sharedLessonsFor(text: string, lessons: { text: string; stack: string }[]): { text: string; stack: string }[] {
     return bestMatches(lessons, text, (l) => ({ tags: l.stack ? [l.stack, l.stack] : [], name: l.text }), 3);
+}
+
+/** When the request cannot be acted on without one answer: ask it, briefly and warmly, and nothing else. */
+function askSystem(question: string): string {
+    return `You are FreeAgentCoder, a friendly AI coding agent in VS Code. Before starting this task you need one answer from the user. Ask exactly this, in one or two warm sentences in their language, and say what you will do once they answer: "${question.replace(/"/g, "'")}". Do not start the task.`;
+}
+
+/** Tools that only read or check: a task that used just these and one command can be a Fyx chore. */
+const LOOK_ONLY_TOOLS = new Set([
+    'read_file',
+    'list_dir',
+    'glob',
+    'grep',
+    'search_code',
+    'library_docs',
+    'inspect_environment',
+    'fetch_url',
+    'check_page',
+    'check_document',
+    'get_problems',
+    'process',
+    'todo_write',
+]);
+
+/** A request for a presentation and no other kind of document (a report or spreadsheet needs a build script). */
+function onlyADeck(text: string): boolean {
+    return /\b(?:pptx?|power\s*point|presentation|slides?|slide\s*deck|deck)\b/i.test(text) && !/\b(?:docx|word\s+(?:doc|document|file)|report|spreadsheet|xlsx|excel|script|python)\b/i.test(text);
 }

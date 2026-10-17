@@ -1,7 +1,7 @@
 import 'server-only';
 import { createCipheriv, createDecipheriv, createHash, randomBytes, randomUUID } from 'node:crypto';
-import { createProvider, PRESETS, type ChatRequest, type Provider, type RouterEntry, type StreamEvent } from '@agentic/core';
-import { checkKey, deepCheckKey, PUBLISHED_LIMITS, type Health } from './keyhealth';
+import { createProvider, PRESETS, type ChatRequest, type Provider, type ProviderPreset, type RouterEntry, type StreamEvent } from '@agentic/core';
+import { checkCustomKey, checkKey, deepCheckKey, IMAGE_PROVIDERS, publicBaseURL, PUBLISHED_LIMITS, type CustomProvider, type Health } from './keyhealth';
 import { outputTokens } from './modelLimits';
 import { NO_STORE_MESSAGE, settingsNeedStore, store } from './kv';
 
@@ -21,7 +21,7 @@ import { NO_STORE_MESSAGE, settingsNeedStore, store } from './kv';
 
 // No Cohere: its trial keys are not allowed for production or commercial use,
 // and serving this site's visitors is exactly that.
-export const POOL_PROVIDERS = ['gemini', 'groq', 'nvidia', 'openrouter', 'mistral', 'openai', 'anthropic'] as const;
+export const POOL_PROVIDERS = ['gemini', 'groq', 'nvidia', 'openrouter', 'mistral', 'cerebras', 'openai', 'anthropic', 'custom', ...IMAGE_PROVIDERS] as const;
 
 interface StoredKey {
     id: string;
@@ -32,6 +32,8 @@ interface StoredKey {
     enabled: boolean;
     addedAt: number;
     health?: Health;
+    /** For provider "custom": where it is and which models it runs. */
+    custom?: CustomProvider;
 }
 
 export interface PoolKeyView {
@@ -46,6 +48,7 @@ export interface PoolKeyView {
     health?: Health;
     /** The provider's published free-tier limits, for when it sends no live figures. */
     published?: string;
+    custom?: CustomProvider;
 }
 
 const POOL = 'pb:keypool';
@@ -98,8 +101,23 @@ async function writePool(keys: StoredKey[]): Promise<void> {
     shared.__poolCache = undefined;
 }
 
-export async function addPoolKey(provider: string, label: string, key: string): Promise<{ ok: true } | { error: string }> {
+export async function addPoolKey(provider: string, label: string, key: string, customInput?: Partial<CustomProvider>): Promise<{ ok: true } | { error: string }> {
     if (!(POOL_PROVIDERS as readonly string[]).includes(provider)) return { error: 'Pick a provider from the list.' };
+    let custom: CustomProvider | undefined;
+    if (provider === 'custom') {
+        const baseURL = publicBaseURL(customInput?.baseURL ?? '');
+        if (!baseURL) return { error: 'Give the provider’s https API address, e.g. https://api.example.com/v1 (not a local or private address).' };
+        const fast = (customInput?.fast ?? '').trim();
+        if (!fast) return { error: 'Give the model id to use (from the provider’s model list).' };
+        custom = {
+            name: (customInput?.name ?? '').trim().slice(0, 40) || new URL(baseURL).hostname,
+            baseURL,
+            fast,
+            deep: (customInput?.deep ?? '').trim() || fast,
+            contextWindow: Math.max(4_096, Math.min(2_000_000, Math.floor(Number(customInput?.contextWindow) || 32_768))),
+            first: !!customInput?.first,
+        };
+    }
     const clean = key.trim();
     if (!/^[\x21-\x7e]{16,256}$/.test(clean)) return { error: 'That does not look like an API key. Paste the whole key.' };
     const pool = await readPool();
@@ -108,10 +126,11 @@ export async function addPoolKey(provider: string, label: string, key: string): 
     if (pool.some((k) => k.provider === provider && k.last4 === last4)) return { error: 'That key looks like one already in the pool.' };
     if (settingsNeedStore) return { error: NO_STORE_MESSAGE };
     // Ask the provider first: a key it rejects is never saved.
-    const health = await checkKey(provider, clean);
-    if (health.state === 'invalid') return { error: `Not saved: ${provider} rejected this key. ${health.message}` };
+    const health = custom ? await checkCustomKey(custom, clean) : await checkKey(provider, clean);
+    if (health.state === 'invalid') return { error: `Not saved: ${custom?.name ?? provider} rejected this key. ${health.message}` };
+    if (custom && health.state === 'error' && /does not offer/.test(health.message)) return { error: `Not saved: ${health.message}` };
     try {
-        pool.push({ id: randomUUID(), provider, label: label.trim().slice(0, 40) || provider, cipher: encrypt(clean), last4, enabled: true, addedAt: Date.now(), health });
+        pool.push({ id: randomUUID(), provider, label: label.trim().slice(0, 40) || custom?.name || provider, cipher: encrypt(clean), last4, enabled: true, addedAt: Date.now(), health, custom });
     } catch (error) {
         return { error: (error as Error).message };
     }
@@ -133,7 +152,9 @@ export async function checkPoolKeys(ids?: string[], staleMs = 30 * 60_000, deep 
             const apiKey = decrypt(k.cipher);
             const before = k.health;
             k.health = apiKey
-                ? await (deep ? deepCheckKey : checkKey)(k.provider, apiKey)
+                ? k.custom
+                    ? await checkCustomKey(k.custom, apiKey, deep)
+                    : await (deep ? deepCheckKey : checkKey)(k.provider, apiKey)
                 : { state: 'invalid', message: 'Cannot be decrypted: KEY_POOL_SECRET or ADMIN_PASSWORD changed since it was added. Remove it and add it again.', at: Date.now() };
             // A free recheck sees no quota figures; keep the ones the last real Check found.
             if (!deep && k.health.state === 'ok' && !k.health.limits?.length && before?.limits?.length) {
@@ -179,7 +200,54 @@ export async function listPool(): Promise<PoolKeyView[]> {
         benched: benched[i] !== null,
         health: k.health,
         published: PUBLISHED_LIMITS[k.provider],
+        custom: k.custom,
     }));
+}
+
+/** A provider the admin described, as a preset the router and the trial can use like any other. */
+function customPreset(c: CustomProvider): ProviderPreset {
+    return {
+        id: 'custom',
+        label: c.name,
+        kind: 'openai',
+        baseURL: c.baseURL,
+        keyEnv: [],
+        needsKey: true,
+        free: true,
+        defaultModel: c.deep,
+        models: [...new Set([c.deep, c.fast])],
+        prefer: [],
+        contextWindow: c.contextWindow,
+        signupUrl: c.baseURL,
+        note: 'Added on the admin page.',
+        // Asks for token usage on the streamed reply, as the built-in OpenAI-style presets do.
+        extraBody: { stream_options: { include_usage: true } },
+    };
+}
+
+/** The preset for a stored key: its provider's, or the one the admin described. */
+const presetOf = (k: StoredKey): ProviderPreset | undefined => (k.provider === 'custom' ? (k.custom ? customPreset(k.custom) : undefined) : PRESETS[k.provider]);
+
+/** A stock-photo key from the pool, for the site's image search. */
+export interface ImageKey {
+    id: string;
+    provider: (typeof IMAGE_PROVIDERS)[number];
+    apiKey: string;
+}
+
+/** Enabled, healthy, unrested photo keys: Pexels first, then Pixabay, then Unsplash; least used first within each. */
+export async function imageKeys(): Promise<ImageKey[]> {
+    const [pool, counts] = await Promise.all([readPool(), store.counts(`pb:keyuse:${today()}`)]);
+    const usable = pool.filter((k) => k.enabled && k.health?.state !== 'invalid' && (IMAGE_PROVIDERS as readonly string[]).includes(k.provider));
+    const resting = await store.getMany(usable.map((k) => `pb:keyrest:${k.id}`));
+    const used = (k: StoredKey) => (counts[`${k.id}:ok`] ?? 0) + (counts[`${k.id}:fail`] ?? 0) * 3;
+    return usable
+        .filter((_, i) => !resting[i])
+        .sort((a, b) => IMAGE_PROVIDERS.indexOf(a.provider as ImageKey['provider']) - IMAGE_PROVIDERS.indexOf(b.provider as ImageKey['provider']) || used(a) - used(b))
+        .flatMap((k) => {
+            const apiKey = decrypt(k.cipher);
+            return apiKey ? [{ id: k.id, provider: k.provider as ImageKey['provider'], apiKey }] : [];
+        });
 }
 
 /** Watches one key's calls, counting successes and failures and benching it after repeated failures. */
@@ -243,7 +311,7 @@ export async function poolEntries(): Promise<RouterEntry[]> {
     pool.forEach((k, i) => {
         // A key its provider has rejected is not tried on visitors' requests.
         if (benched[i] !== null || k.health?.state === 'invalid') return;
-        const preset = PRESETS[k.provider];
+        const preset = presetOf(k);
         const apiKey = decrypt(k.cipher);
         if (!preset || !apiKey) return;
         entries.push({
@@ -274,6 +342,10 @@ export interface PoolTarget {
     thoughtSignatures: boolean;
     /** Successful calls today, so the least-used key goes first. */
     usedToday: number;
+    /** A custom provider's own models; built-in providers use the trial's model table. */
+    models?: { fast: string; deep: string };
+    /** Tried before every built-in provider. */
+    first?: boolean;
 }
 
 /**
@@ -299,10 +371,11 @@ export async function poolTargets(): Promise<PoolTarget[]> {
     usable.forEach((k, i) => {
         // Benched after failing again and again; resting after its provider said it is out of requests for now.
         if (benched[i] !== null || resting[i]) return;
-        const preset = PRESETS[k.provider];
+        const preset = presetOf(k);
         const apiKey = decrypt(k.cipher);
         if (!preset || preset.kind !== 'openai' || !apiKey) return;
         targets.push({
+            ...(k.custom ? { models: { fast: k.custom.fast, deep: k.custom.deep }, first: k.custom.first } : {}),
             id: k.id,
             provider: k.provider,
             label: k.label,

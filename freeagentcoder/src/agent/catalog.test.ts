@@ -24,4 +24,10 @@ describe('orderWith', () => {
         expect(orderWith(defaults, ['openrouter', 'unknown'])).toEqual(defaults);
         expect(orderWith(defaults)).toEqual(defaults);
     });
+
+    it('never puts Cohere first, whose free key runs out within a month', () => {
+        const defaults = ['gemini', 'nvidia', 'mistral', 'groq', 'cohere', 'openrouter', 'trial'];
+        // The order the server sent every 0.6.1 user, learned from tasks that "completed" by giving up.
+        expect(orderWith(defaults, ['cohere', 'gemini', 'mistral'])).toEqual(['gemini', 'cohere', 'mistral', 'nvidia', 'groq', 'openrouter', 'trial']);
+    });
 });

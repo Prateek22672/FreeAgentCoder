@@ -4,7 +4,7 @@ import * as path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { classifyTask, isFollowUp } from './catalog';
 import { completionReview, filesNear, gateResults } from './gates';
-import { buildBrief, choosePlaybooks, evaluateGates } from './playbooks';
+import { buildBrief, choosePlaybooks, evaluateGates, playbookById, reviewMessage, runChecks } from './playbooks';
 
 let root: string;
 
@@ -101,5 +101,25 @@ describe('the .NET playbook', () => {
         const chosen = choosePlaybooks('build a CRM web app in ASP.NET Core MVC with Identity', 'deep', new Set());
         expect(chosen.map((p) => p.id)).toEqual(['dotnet']);
         expect(chosen[0]!.toolchains).toEqual(['dotnet']);
+    });
+});
+
+describe('checks after the last change (a real chat edited Dart files after its last analysis)', () => {
+    const flutter = choosePlaybooks('fix my flutter app', 'deep', new Set(['pubspec.yaml'])).filter((p) => p.id === 'flutter');
+
+    it('does not count a check that ran before the last edit', () => {
+        const runs = [{ command: 'flutter analyze', exitCode: 0, background: false, seq: 2 }];
+        const [analyze] = evaluateGates(flutter, runs, false, undefined, 5).filter((g) => g.label.includes('analysis'));
+        expect(analyze).toMatchObject({ status: 'not_run', stale: true, required: true });
+        expect(reviewMessage([analyze!], 'Done!')).toContain('not run since your last change');
+        expect(evaluateGates(flutter, [...runs, { command: 'flutter analyze', exitCode: 0, background: false, seq: 6 }], false, undefined, 5).find((g) => g.label.includes('analysis'))?.status).toBe('passed');
+    });
+
+    it('a run task keeps only the compile check, errors only, and only once code changed', () => {
+        const run = [playbookById('run')!, ...runChecks(flutter)];
+        const gates = run.flatMap((p) => p.gates);
+        expect(gates.map((g) => g.command)).toEqual(['flutter analyze --no-fatal-infos --no-fatal-warnings']);
+        expect(evaluateGates(run, [], false, undefined, 0).some((g) => g.required)).toBe(false);
+        expect(evaluateGates(run, [], false, undefined, 3).filter((g) => g.required).length).toBe(1);
     });
 });

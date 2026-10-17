@@ -2,6 +2,7 @@ import * as path from 'node:path';
 import * as vscode from 'vscode';
 import { toolError, type Tool } from '@agentic/core';
 import { CHECKED_FILES, editNote, introduced, listProblems, type Problem } from './problems';
+import { besideChat } from '../webview/columns';
 
 /**
  * Waiting for a language server: for its first report (longer when the file has
@@ -66,12 +67,13 @@ function inTab(uri: vscode.Uri): boolean {
 /**
  * Puts a file in a preview tab without taking focus. Language servers (the
  * TypeScript one among them) only check files shown in a tab; a preview tab is
- * reused by the next one, so tabs do not pile up.
+ * reused by the next one, so tabs do not pile up. It opens beside the chat
+ * when the chat is an editor tab, so the chat stays in view while the agent works.
  */
 async function showQuietly(uri: vscode.Uri): Promise<boolean> {
     try {
         const document = await vscode.workspace.openTextDocument(uri);
-        await vscode.window.showTextDocument(document, { preview: true, preserveFocus: true });
+        await vscode.window.showTextDocument(document, { preview: true, preserveFocus: true, viewColumn: besideChat() });
         return true;
     } catch {
         return false;

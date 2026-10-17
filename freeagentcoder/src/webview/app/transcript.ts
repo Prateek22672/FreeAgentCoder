@@ -179,6 +179,10 @@ export class Transcript {
             case 'notice':
                 this.turn(message.turnId).notice(message.message, message.level);
                 break;
+            case 'previewReady':
+                this.turn(message.turnId).previewReady(message.preview);
+                this.scroll(true);
+                break;
             case 'turnEnd':
                 if (message.canUndo) {
                     for (const other of this.turns.values()) {
@@ -483,6 +487,13 @@ class TurnView {
         this.setStatus(`Switching to ${target}…`);
     }
 
+    /** The app this task started is ready now: its link answered, so it gets its buttons. */
+    previewReady(preview: { kind: 'file' | 'url'; target: string }): void {
+        this.root.querySelector('.preview-ready')?.remove();
+        const row = h('div', { class: 'turn-actions preview-ready' }, h('span', { class: 'ready-note', text: 'The app is ready:' }), ...previewButtons(preview));
+        (this.footer ?? this.body).append(row);
+    }
+
     end(message: Msg<'turnEnd'>): void {
         this.closeThinking();
         this.closeGroup();
@@ -632,15 +643,7 @@ class TurnView {
         const actions = h('div', { class: 'turn-actions' });
         const preview = message.preview;
         if (preview) {
-            actions.append(
-                button(
-                    'Open preview',
-                    'primary small',
-                    () => send({ type: 'openPreview', kind: preview.kind, target: preview.target }),
-                    'external',
-                    `Show ${preview.target} beside your code`,
-                ),
-            );
+            actions.append(...previewButtons(preview));
         }
         if (message.canUndo) {
             this.undoButton = button('Undo changes', 'secondary small', () => send({ type: 'undo', turnId: this.id }), 'undo', 'Restore the files changed in this task');
@@ -1150,4 +1153,22 @@ function capacityCard(message: Msg<'capacity'>): HTMLElement {
             ),
         ),
     );
+}
+
+/** Preview beside the code, and Open in browser, for a link FreeAgentCoder has opened itself. */
+function previewButtons(preview: { kind: 'file' | 'url'; target: string }): HTMLElement[] {
+    const host = preview.kind === 'url' ? preview.target.replace(/^https?:\/\//, '').replace(/\/$/, '') : '';
+    const buttons = [
+        button(
+            preview.kind === 'url' ? `Preview ${host}` : 'Open preview',
+            'primary small',
+            () => send({ type: 'openPreview', kind: preview.kind, target: preview.target }),
+            'external',
+            `Show ${preview.target} beside your code (checked: it opens)`,
+        ),
+    ];
+    if (preview.kind === 'url') {
+        buttons.push(button('Open in browser', 'secondary small', () => send({ type: 'openExternal', url: preview.target }), undefined, preview.target));
+    }
+    return buttons;
 }

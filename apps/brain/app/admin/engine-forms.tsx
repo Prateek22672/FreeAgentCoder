@@ -1,6 +1,6 @@
 'use client';
 
-import { useActionState } from 'react';
+import { useActionState, useState } from 'react';
 import type { PoolKeyView } from '@/lib/keypool';
 import type { SpecialistId, SpecialistSetting } from '@/lib/specialists';
 import { addKeyAction, checkKeysAction, removeKeyAction, saveExtTrialAction, saveSpecialistsAction, toggleKeyAction, type FormState } from './engine-actions';
@@ -24,11 +24,25 @@ function ago(at: number): string {
     return hours < 48 ? `${hours} h ago` : `${Math.round(hours / 24)} days ago`;
 }
 
+/** How each provider is shown in the add form, grouped by what its keys are for. */
+const PROVIDER_GROUPS: { label: string; providers: Record<string, string> }[] = [
+    {
+        label: 'AI models (free tiers)',
+        providers: { gemini: 'Google Gemini', groq: 'Groq', nvidia: 'NVIDIA', openrouter: 'OpenRouter', mistral: 'Mistral', cerebras: 'Cerebras' },
+    },
+    { label: 'AI models (paid)', providers: { openai: 'OpenAI', anthropic: 'Anthropic' } },
+    { label: 'Any other AI provider', providers: { custom: 'OpenAI-compatible (any provider)…' } },
+    { label: 'Stock photos (for decks and documents)', providers: { pexels: 'Pexels', pixabay: 'Pixabay', unsplash: 'Unsplash' } },
+];
+const PHOTO_PROVIDERS = new Set(['pexels', 'pixabay', 'unsplash']);
+
 const HEALTH_TONE = { ok: 'text-ok', limited: 'text-warn', invalid: 'text-bad', error: 'text-warn' } as const;
 const HEALTH_WORD = { ok: 'Working', limited: 'Rate limited', invalid: 'Invalid key', error: 'Could not check' } as const;
 
 export function KeyPool({ keys, providers, needStore }: { keys: PoolKeyView[]; providers: readonly string[]; needStore: boolean }) {
     const [state, action, pending] = useActionState<FormState | undefined, FormData>(addKeyAction, undefined);
+    const [provider, setProvider] = useState('gemini');
+    const offered = new Set(providers);
     return (
         <div className="col-span-full grid gap-4">
             <p className="rounded-lg border border-warn/30 bg-warn/10 px-4 py-3 text-[13px] leading-relaxed text-warn">
@@ -64,7 +78,14 @@ export function KeyPool({ keys, providers, needStore }: { keys: PoolKeyView[]; p
                             {keys.map((k) => (
                                 <tr key={k.id} className="border-t border-line">
                                     <td className="px-3 py-2">
-                                        <span className="text-fg">{k.label}</span> <span className="text-faint">· {k.provider} · …{k.last4}</span>
+                                        <span className="text-fg">{k.label}</span> <span className="text-faint">· {k.custom?.name ?? k.provider} · …{k.last4}</span>
+                                        {k.custom && (
+                                            <span className="block text-[11.5px] text-faint" title={k.custom.baseURL}>
+                                                {k.custom.fast === k.custom.deep ? k.custom.fast : `${k.custom.fast} / ${k.custom.deep}`} · {Math.round(k.custom.contextWindow / 1024)}K
+                                                {k.custom.first && <span className="text-accent"> · used first</span>}
+                                            </span>
+                                        )}
+                                        {PHOTO_PROVIDERS.has(k.provider) && <span className="block text-[11.5px] text-faint">photos for find_image</span>}
                                     </td>
                                     <td className="px-3 py-2">
                                         {!k.enabled ? (
@@ -109,8 +130,23 @@ export function KeyPool({ keys, providers, needStore }: { keys: PoolKeyView[]; p
                                     <td className="flex justify-end gap-2 px-3 py-2">
                                         <form action={checkKeysAction}>
                                             <input type="hidden" name="id" value={k.id} />
-                                            <button type="submit" className="rounded-md border border-line px-2.5 py-1 text-[12px] text-muted hover:text-fg">
-                                                Check
+                                            <input type="hidden" name="mode" value="validate" />
+                                            <button
+                                                type="submit"
+                                                title="Asks the provider whether it accepts the key. Free: no tokens used."
+                                                className="rounded-md border border-line px-2.5 py-1 text-[12px] text-muted hover:text-fg"
+                                            >
+                                                Validate
+                                            </button>
+                                        </form>
+                                        <form action={checkKeysAction}>
+                                            <input type="hidden" name="id" value={k.id} />
+                                            <button
+                                                type="submit"
+                                                title={PHOTO_PROVIDERS.has(k.provider) ? 'Runs one real photo search.' : 'Sends one real one-token request and reads the key’s limits.'}
+                                                className="rounded-md border border-line px-2.5 py-1 text-[12px] text-muted hover:text-fg"
+                                            >
+                                                Test
                                             </button>
                                         </form>
                                         <form action={toggleKeyAction}>
@@ -131,11 +167,19 @@ export function KeyPool({ keys, providers, needStore }: { keys: PoolKeyView[]; p
                             ))}
                         </tbody>
                     </table>
-                    <form action={checkKeysAction} className="flex justify-end border-t border-line px-3 py-2">
-                        <button type="submit" className="rounded-md border border-line px-3 py-1 text-[12px] text-muted hover:text-fg">
-                            Check all keys now (one test request each)
-                        </button>
-                    </form>
+                    <div className="flex justify-end gap-2 border-t border-line px-3 py-2">
+                        <form action={checkKeysAction}>
+                            <input type="hidden" name="mode" value="validate" />
+                            <button type="submit" className="rounded-md border border-line px-3 py-1 text-[12px] text-muted hover:text-fg">
+                                Validate all (free)
+                            </button>
+                        </form>
+                        <form action={checkKeysAction}>
+                            <button type="submit" className="rounded-md border border-line px-3 py-1 text-[12px] text-muted hover:text-fg">
+                                Test all (one real request each)
+                            </button>
+                        </form>
+                    </div>
                 </div>
             ) : (
                 <p className="text-[13px] text-muted">No keys in the pool yet. The trial uses only keys set in the environment.</p>
@@ -143,27 +187,74 @@ export function KeyPool({ keys, providers, needStore }: { keys: PoolKeyView[]; p
             <form action={action} className="grid gap-3 rounded-lg border border-line bg-panel p-4 sm:grid-cols-[160px_1fr_2fr_auto] sm:items-end">
                 <div>
                     <span className={label}>Provider</span>
-                    <select name="provider" className={`${field} mt-1`} defaultValue="gemini">
-                        {providers.map((p) => (
-                            <option key={p} value={p}>
-                                {p}
-                            </option>
+                    <select name="provider" className={`${field} mt-1`} value={provider} onChange={(e) => setProvider(e.target.value)}>
+                        {PROVIDER_GROUPS.map((group) => (
+                            <optgroup key={group.label} label={group.label}>
+                                {Object.entries(group.providers)
+                                    .filter(([id]) => offered.has(id))
+                                    .map(([id, name]) => (
+                                        <option key={id} value={id}>
+                                            {name}
+                                        </option>
+                                    ))}
+                            </optgroup>
                         ))}
                     </select>
                 </div>
                 <div>
                     <span className={label}>Label</span>
-                    <input name="label" placeholder="Main Gemini" maxLength={40} className={`${field} mt-1`} />
+                    <input name="label" placeholder={provider === 'custom' ? 'Bonus month' : PHOTO_PROVIDERS.has(provider) ? 'Main Pexels' : 'Main Gemini'} maxLength={40} className={`${field} mt-1`} />
                 </div>
                 <div>
                     <span className={label}>API key</span>
                     <input name="key" type="password" autoComplete="off" placeholder="Paste the key — it is encrypted before it is stored" className={`${field} mt-1`} />
                 </div>
                 <button type="submit" disabled={pending} className={saveButton}>
-                    {pending ? 'Adding…' : 'Add key'}
+                    {pending ? 'Checking…' : 'Add key'}
                 </button>
+                {provider === 'custom' && (
+                    <div className="grid gap-3 sm:col-span-4 sm:grid-cols-[1fr_2fr_1.4fr_1.4fr_110px]">
+                        <p className="text-[12.5px] leading-relaxed text-muted sm:col-span-5">
+                            Any service with the OpenAI chat API (its docs show a base URL ending in <code className="font-mono">/v1</code>). Before saving, the
+                            key is used to list the service&rsquo;s models, the models you name are looked up in that list, and one one-token request is sent.
+                        </p>
+                        <div>
+                            <span className={label}>Name</span>
+                            <input name="customName" placeholder="e.g. the service’s name" maxLength={40} className={`${field} mt-1`} />
+                        </div>
+                        <div>
+                            <span className={label}>API base URL</span>
+                            <input name="customBaseURL" type="url" required placeholder="https://api.example.com/v1" className={`${field} mt-1`} />
+                        </div>
+                        <div>
+                            <span className={label}>Fast model</span>
+                            <input name="customFast" required placeholder="e.g. qwen3-coder" className={`${field} mt-1`} />
+                        </div>
+                        <div>
+                            <span className={label}>Deep model</span>
+                            <input name="customDeep" placeholder="Same as fast if empty" className={`${field} mt-1`} />
+                        </div>
+                        <div>
+                            <span className={label}>Context</span>
+                            <input name="customContext" type="number" min={4096} step={1024} defaultValue={131072} className={`${field} mt-1`} />
+                        </div>
+                        <label className="flex items-center gap-2 text-[13px] text-fg sm:col-span-5">
+                            <input type="checkbox" name="customFirst" defaultChecked className="h-4 w-4 accent-[var(--accent)]" />
+                            Use first: try this provider before the built-in ones (for a large or time-limited allowance worth using up)
+                        </label>
+                    </div>
+                )}
+                {PHOTO_PROVIDERS.has(provider) && (
+                    <p className="text-[12.5px] leading-relaxed text-muted sm:col-span-4">
+                        Used by the extension&rsquo;s find_image through this site, so the key never leaves the server. Searched in order: Pexels, then
+                        Pixabay, then Unsplash, then the free Wikimedia and Openverse archives. Saving runs one real test search.
+                    </p>
+                )}
                 <div className="sm:col-span-4">
-                    <Status state={state} savedText="Added. The trial starts using it within a minute." />
+                    <Status
+                        state={state}
+                        savedText={PHOTO_PROVIDERS.has(provider) ? 'Added. find_image searches it from now on.' : 'Added. The trial starts using it within a minute.'}
+                    />
                 </div>
             </form>
         </div>

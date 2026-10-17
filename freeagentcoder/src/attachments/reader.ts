@@ -26,6 +26,20 @@ Format:
 
 const PDF_PROMPT = `Transcribe this PDF for a coding agent. Keep reading order and mark pages with "--- Page N ---". Reproduce all text exactly, tables as Markdown tables, and describe figures, diagrams and UI mockups in detail (layout, labels, colors, arrows). Don't summarize or skip anything.`;
 
+/**
+ * How a finished document looks to its reader, page by page: the review step of
+ * PPTAgent's render, review and revise loop (content, design, coherence).
+ */
+export const DOCUMENT_REVIEW_PROMPT = [
+    'You are reviewing a finished document exactly as its audience will see it, page by page (each PDF page is one slide or page).',
+    'List only real problems a person would notice, most serious first, each on its own line as "Page N: problem → fix":',
+    'text cut off, overflowing its box or overlapping; type too small to read when projected (body text under about 18 pt on slides); low contrast; a crowded or nearly empty page;',
+    'a wall of text where a picture, chart or diagram belongs; placeholder text or empty boxes; pictures stretched, blurry, cropped badly or unrelated to the point;',
+    'fonts, colours, alignment or margins that change between pages for no reason; a missing or vague title; no clear opening, flow or close; facts that look wrong.',
+    'Then one line "Overall: content N/10, design N/10, coherence N/10".',
+    'If nothing needs fixing, write "Ready as it is." instead of the list. No praise, and do not restate the content.',
+].join('\n');
+
 export interface ReadResult {
     text: string;
     model?: string;
@@ -65,6 +79,9 @@ export async function readPdfWithGemini(opts: {
     name: string;
     request: string;
     signal?: AbortSignal;
+    /** Instructions in place of the transcription prompt. */
+    prompt?: string;
+    maxOutputTokens?: number;
 }): Promise<ReadResult & { inputTokens: number; outputTokens: number }> {
     const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(opts.model)}:generateContent`, {
         method: 'POST',
@@ -75,11 +92,11 @@ export async function readPdfWithGemini(opts: {
                     role: 'user',
                     parts: [
                         { inline_data: { mime_type: 'application/pdf', data: Buffer.from(opts.bytes).toString('base64') } },
-                        { text: `${PDF_PROMPT}\n\nFile: ${opts.name}\nThe user's request, for context: """${opts.request.slice(0, 2_000)}"""` },
+                        { text: `${opts.prompt ?? PDF_PROMPT}\n\nFile: ${opts.name}\nThe user's request, for context: """${opts.request.slice(0, 2_000)}"""` },
                     ],
                 },
             ],
-            generationConfig: { temperature: 0.1, maxOutputTokens: 16_384 },
+            generationConfig: { temperature: 0.1, maxOutputTokens: opts.maxOutputTokens ?? 16_384 },
         }),
         signal: opts.signal,
     });

@@ -54,6 +54,9 @@ create table if not exists public.fac_task_outcomes (
     paused boolean not null default false,
     repeated_errors integer not null default 0
 );
+-- Added in 0.6.2: whether the task changed files or passed a check. A task that "finishes" by telling the
+-- user to do it themselves changed nothing, so it no longer counts as a success for the model that ended it.
+alter table public.fac_task_outcomes add column if not exists worked boolean;
 create index if not exists fac_task_outcomes_recent on public.fac_task_outcomes (created_at desc);
 create index if not exists fac_task_outcomes_model on public.fac_task_outcomes (tier, provider, created_at desc);
 
@@ -159,14 +162,18 @@ end;
 $$;
 
 -- How each model does on each tier over the last p_days: the evidence for learned routing.
+-- The return type changed in 0.6.2 (useful finishes), so the old function is dropped first.
+drop function if exists public.fac_model_scores(integer);
 create or replace function public.fac_model_scores(p_days integer) returns table (
     tier text, provider text, model text, tasks bigint, completed bigint, corrected bigint,
-    avg_steps numeric, avg_tokens numeric, good bigint, bad bigint
+    avg_steps numeric, avg_tokens numeric, good bigint, bad bigint, useful bigint, reported bigint
 )
 language sql stable as $$
     with o as (
         select tier, provider, model, count(*) as tasks, count(*) filter (where completed) as completed,
-               count(*) filter (where corrected) as corrected, avg(steps) as avg_steps, avg(tokens) as avg_tokens
+               count(*) filter (where corrected) as corrected, avg(steps) as avg_steps, avg(tokens) as avg_tokens,
+               count(*) filter (where completed and not corrected and worked) as useful,
+               count(*) filter (where worked is not null) as reported
         from public.fac_task_outcomes
         where created_at > now() - make_interval(days => p_days) and provider <> ''
         group by tier, provider, model
@@ -177,7 +184,7 @@ language sql stable as $$
         group by provider, model
     )
     select o.tier, o.provider, o.model, o.tasks, o.completed, o.corrected,
-           round(o.avg_steps, 1), round(o.avg_tokens), coalesce(f.good, 0), coalesce(f.bad, 0)
+           round(o.avg_steps, 1), round(o.avg_tokens), coalesce(f.good, 0), coalesce(f.bad, 0), o.useful, o.reported
     from o left join f on f.provider = o.provider and f.model = o.model;
 $$;
 

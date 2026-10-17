@@ -350,6 +350,7 @@
   "dependencies": {
     "@agentic/core": "file:../packages/core",
     "fflate": "^0.8.3",
+    "pptxgenjs": "4.0.1",
     "unpdf": "^1.8.1"
   }
 }
